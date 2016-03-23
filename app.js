@@ -13,9 +13,27 @@ var bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, {polling: true});
 app.use(morgan('combined', {'stream': log.stream}));
 app.use(bodyParser.json());
 
-bot.onText(/./, function (msg, match) {
+/*
+var sampleMsg = {
+  "message_id": 10,
+    "from": {
+  "id": 12345,
+      "first_name": "Simon",
+      "last_name": "Li",
+      "username": "simonli"
+},
+  "chat": {
+  "id": 23456,
+      "title": "Bot Testing",
+      "type": "group"
+},
+  "date": 1458705792,
+    "text": "yo"
+};
+*/
+bot.on('message', function (msg) {
   log.i('msg: ' + JSON.stringify(msg));
-  bot.sendMessage(chatId, chatId);
+  bot.sendMessage(msg.chat.id, 'hi');
 });
 
 app.route('/')
