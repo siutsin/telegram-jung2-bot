@@ -42,6 +42,9 @@ exports.getTopTen = function (chatId, callback) {
           $sort: {
             count: -1
           }
+        },
+        {
+          $limit: 10
         }
       ], function (err, result) {
         if (!err && result && _.isArray(result)) {
