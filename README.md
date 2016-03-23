@@ -8,7 +8,9 @@
 
 Add the bot to your group at [@jung2_bot](https://telegram.me/jung2_bot)
 
-TBC
+<b>冗員</b>[jung2jyun4] Excess personnel in Cantonese
+
+This bot is created for counting the number of message per participant in the group.
 
 ## Author
 
