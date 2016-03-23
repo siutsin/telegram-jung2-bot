@@ -23,7 +23,7 @@ exports.getTopTen = function (chatId, callback) {
     }
   };
   Message.count(greaterThanOrEqualToSevenDaysQuery, function (err, total) {
-    log.i("Number of messages: " + total);
+    log.i('Number of messages: ' + total);
     Message.aggregate(
       [
         {

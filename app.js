@@ -4,6 +4,7 @@ var bodyParser = require('body-parser');
 var morgan = require('morgan');
 var mongoose = require('mongoose');
 var _ = require('lodash');
+var CronJob = require('cron').CronJob;
 var log = require('log-to-file-and-console-node');
 var MessageController = require('./controller/message');
 var TelegramBot = require('node-telegram-bot-api');
@@ -39,7 +40,7 @@ var getTopTen = function(chatId) {
     }
   });
 };
-bot.onText(/\/t/, function (msg, match) {
+bot.onText(/\/topTen/, function (msg, match) {
   log.i('/topTen: ' + JSON.stringify(msg));
   if (process.env.ADMIN_TELEGRAM_IDS) {
     var adminsString = process.env.ADMIN_TELEGRAM_IDS || '';
@@ -75,5 +76,17 @@ app.route('/')
       desc: 'For UpTimeRobot'
     });
   });
+
+if (process.env.DEFAULT_CRON_JOB_GROUP_ID) {
+  var job = new CronJob({
+    cronTime: '00 00 18 * * 1-5',
+    onTick: function() {
+      getTopTen(process.env.DEFAULT_CRON_JOB_GROUP_ID);
+    },
+    start: false,
+    timeZone: 'Asia/Hong_Kong'
+  });
+  job.start();
+}
 
 module.exports = app;
