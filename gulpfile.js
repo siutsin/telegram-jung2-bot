@@ -8,7 +8,8 @@ var _ = require('lodash');
 
 var jsFiles = [
   '*.js',
-  './database/**.js'
+  './model/**.js',
+  './controller/**.js'
 ];
 var checkForJSHint = _.union(jsFiles, ['./test/**.js']);
 

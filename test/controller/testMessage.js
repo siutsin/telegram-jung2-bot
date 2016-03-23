@@ -1,0 +1,1 @@
+var MessageController = require('../../controller/message');
