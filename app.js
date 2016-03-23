@@ -24,17 +24,34 @@ mongoose.connect(connectionString);
 app.use(morgan('combined', {'stream': log.stream}));
 app.use(bodyParser.json());
 
-bot.onText(/\/topTen/, function (msg, match) {
-  MessageController.getTopTen(function (err, topTens) {
+var getTopTen = function(chatId) {
+  MessageController.getTopTen(chatId, function (err, topTens) {
     if (err) {
       log.e('err: ' + JSON.stringify(err));
-      bot.sendMessage(msg.chat.id, '[Error] ' + err.message);
+      bot.sendMessage(chatId, '[Error] ' + err.message);
     } else {
-      //log.i('topTens: ' + JSON.stringify(topTens));
-      log.i(topTens);
-      //bot.sendMessage(msg.chat.id, JSON.stringify(topTens));
+      var message = 'Top 10 冗員 in the last 7 days:\n';
+      message += '\n';
+      for (var i = 0, l = topTens.length; i < l; i++) {
+        message += topTens[i].firstName + ' ' + topTens[i].lastName + ' ' + topTens[i].percent + '\n';
+      }
+      bot.sendMessage(chatId, message);
     }
   });
+};
+bot.onText(/\/t/, function (msg, match) {
+  log.i('/topTen: ' + JSON.stringify(msg));
+  if (process.env.ADMIN_TELEGRAM_IDS) {
+    var adminsString = process.env.ADMIN_TELEGRAM_IDS || '';
+    var admins = adminsString.split(',');
+    if (_.includes(admins, msg.from.id.toString())) {
+      getTopTen(msg.chat.id.toString());
+    } else {
+      var errMessage = '[Error] Permission Denied';
+      log.e('err: ' + errMessage);
+      bot.sendMessage(msg.chat.id, errMessage);
+    }
+  }
 });
 
 bot.on('message', function (msg) {
