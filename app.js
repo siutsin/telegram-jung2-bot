@@ -47,10 +47,6 @@ bot.onText(/\/topTen/, function (msg, match) {
 
 bot.on('message', function (msg) {
   log.i('msg: ' + JSON.stringify(msg));
-  // skip command
-  if (_.isString(msg.text) && msg.text.match(/^\//)) {
-    return;
-  }
   MessageController.addMessage(msg, function (err) {
     if (err) {
       log.e('err: ' + JSON.stringify(err));
