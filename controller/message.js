@@ -15,7 +15,7 @@ exports.addMessage = function (msg, callback) {
   message.save(callback);
 };
 
-exports.getTopTen = function (chatId, callback) {
+var getJung = function(chatId, limit, callback) {
   var greaterThanOrEqualToSevenDaysQuery = {
     chatId: chatId.toString(),
     dateCreated: {
@@ -24,29 +24,31 @@ exports.getTopTen = function (chatId, callback) {
   };
   Message.count(greaterThanOrEqualToSevenDaysQuery, function (err, total) {
     log.i('Number of messages: ' + total);
-    Message.aggregate(
-      [
-        {
-          $match: greaterThanOrEqualToSevenDaysQuery
-        },
-        {
-          $group: {
-            _id: '$userId',
-            username: {$first: '$username'},
-            firstName: {$first: '$firstName'},
-            lastName: {$first: '$lastName'},
-            count: {$sum: 1}
-          }
-        },
-        {
-          $sort: {
-            count: -1
-          }
-        },
-        {
-          $limit: 10
+    var query = [
+      {
+        $match: greaterThanOrEqualToSevenDaysQuery
+      },
+      {
+        $group: {
+          _id: '$userId',
+          username: {$first: '$username'},
+          firstName: {$first: '$firstName'},
+          lastName: {$first: '$lastName'},
+          count: {$sum: 1}
         }
-      ], function (err, result) {
+      },
+      {
+        $sort: {
+          count: -1
+        }
+      }
+    ];
+    if (limit && limit > 0) {
+      query.push({
+        $limit: limit
+      });
+    }
+    Message.aggregate(query, function (err, result) {
         if (!err && result && _.isArray(result)) {
           for (var i = 0, l = result.length; i < l; i++) {
             result[i].total = total;
@@ -56,4 +58,12 @@ exports.getTopTen = function (chatId, callback) {
         callback(err, result);
       });
   });
+};
+
+exports.getAllJung = function (chatId, callback) {
+  getJung(chatId, null, callback);
+};
+
+exports.getTopTen = function (chatId, callback) {
+  getJung(chatId, 10, callback);
 };
