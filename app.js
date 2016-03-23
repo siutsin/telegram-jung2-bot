@@ -32,9 +32,14 @@ var getTopTen = function(chatId) {
       bot.sendMessage(chatId, '[Error] ' + err.message);
     } else {
       var message = 'Top 10 冗員 in the last 7 days:\n';
+      var total;
       message += '\n';
       for (var i = 0, l = topTens.length; i < l; i++) {
+        total = topTens[i].total;
         message += topTens[i].firstName + ' ' + topTens[i].lastName + ' ' + topTens[i].percent + '\n';
+      }
+      if (total) {
+        message += '\nTotal message: ' + total;
       }
       bot.sendMessage(chatId, message);
     }
@@ -67,6 +72,7 @@ if (process.env.DEFAULT_CRON_JOB_GROUP_ID) {
   var job = new CronJob({
     cronTime: '00 00 18 * * 1-5',
     onTick: function() {
+      bot.sendMessage(process.env.DEFAULT_CRON_JOB_GROUP_ID, '夠鐘收工~~');
       getTopTen(process.env.DEFAULT_CRON_JOB_GROUP_ID);
     },
     start: false,
