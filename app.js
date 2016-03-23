@@ -25,29 +25,41 @@ mongoose.connect(connectionString);
 app.use(morgan('combined', {'stream': log.stream}));
 app.use(bodyParser.json());
 
-var getTopTen = function(chatId) {
-  MessageController.getTopTen(chatId, function (err, topTens) {
+var getJung = function(chatId, isAll) {
+  var message = isAll ?
+    'All 冗員s in the last 7 days:\n\n' :
+    'Top 10 冗員s in the last 7 days:\n\n';
+  var callback = function (err, results) {
+    var total;
     if (err) {
       log.e('err: ' + JSON.stringify(err));
       bot.sendMessage(chatId, '[Error] ' + err.message);
     } else {
-      var message = 'Top 10 冗員 in the last 7 days:\n';
-      var total;
-      message += '\n';
-      for (var i = 0, l = topTens.length; i < l; i++) {
-        total = topTens[i].total;
-        message += topTens[i].firstName + ' ' + topTens[i].lastName + ' ' + topTens[i].percent + '\n';
+      for (var i = 0, l = results.length; i < l; i++) {
+        total = results[i].total;
+        message += results[i].firstName + ' ' + results[i].lastName + ' ' + results[i].percent + '\n';
       }
       if (total) {
         message += '\nTotal message: ' + total;
       }
       bot.sendMessage(chatId, message);
     }
-  });
+  };
+  if (isAll) {
+    MessageController.getAllJung(chatId, callback);
+  } else {
+    MessageController.getTopTen(chatId, callback);
+  }
 };
+
 bot.onText(/\/topTen/, function (msg, match) {
   log.i('/topTen: ' + JSON.stringify(msg));
-  getTopTen(msg.chat.id.toString());
+  getJung(msg.chat.id.toString());
+});
+
+bot.onText(/\/allJung/, function (msg, match) {
+  log.i('/allJung: ' + JSON.stringify(msg));
+  getJung(msg.chat.id.toString(), true);
 });
 
 bot.on('message', function (msg) {
@@ -73,7 +85,7 @@ if (process.env.DEFAULT_CRON_JOB_GROUP_ID) {
     cronTime: '00 00 18 * * 1-5',
     onTick: function() {
       bot.sendMessage(process.env.DEFAULT_CRON_JOB_GROUP_ID, '夠鐘收工~~');
-      getTopTen(process.env.DEFAULT_CRON_JOB_GROUP_ID);
+      getJung(process.env.DEFAULT_CRON_JOB_GROUP_ID);
     },
     start: false,
     timeZone: 'Asia/Hong_Kong'
