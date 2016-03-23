@@ -42,17 +42,7 @@ var getTopTen = function(chatId) {
 };
 bot.onText(/\/topTen/, function (msg, match) {
   log.i('/topTen: ' + JSON.stringify(msg));
-  if (process.env.ADMIN_TELEGRAM_IDS) {
-    var adminsString = process.env.ADMIN_TELEGRAM_IDS || '';
-    var admins = adminsString.split(',');
-    if (_.includes(admins, msg.from.id.toString())) {
-      getTopTen(msg.chat.id.toString());
-    } else {
-      var errMessage = '[Error] Permission Denied';
-      log.e('err: ' + errMessage);
-      bot.sendMessage(msg.chat.id, errMessage);
-    }
-  }
+  getTopTen(msg.chat.id.toString());
 });
 
 bot.on('message', function (msg) {
