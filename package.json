@@ -1,0 +1,41 @@
+{
+  "name": "telegram-jung2-bot",
+  "version": "0.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/siutsin/telegram-jung2-bot.git"
+  },
+  "author": "Simon Li",
+  "license": "MIT",
+  "scripts": {
+    "start": "node ./bin/www",
+    "test": "gulp",
+    "nodemon": "nodemon ./bin/www",
+    "debug": "node-debug ./bin/www",
+    "coveralls": "cat ./coverage/lcov.info | ./node_modules/.bin/coveralls"
+  },
+  "dependencies": {
+    "body-parser": "~1.15.0",
+    "dotenv": "^2.0.0",
+    "express": "~4.13.4",
+    "lodash": "^4.6.1",
+    "log-to-file-and-console-node": "~0.0.2",
+    "moment": "^2.12.0",
+    "morgan": "~1.7.0",
+    "node-telegram-bot-api": "^0.21.1"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "coveralls": "^2.11.8",
+    "gulp": "^3.9.1",
+    "gulp-istanbul": "^0.10.3",
+    "gulp-jshint": "^2.0.0",
+    "gulp-mocha": "^2.2.0",
+    "jshint": "^2.9.1",
+    "jshint-stylish": "^2.1.0",
+    "mocha": "^2.4.5",
+    "run-sequence": "^1.1.5",
+    "should": "^8.2.2",
+    "supertest": "^1.2.0"
+  }
+}
