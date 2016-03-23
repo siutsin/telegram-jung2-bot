@@ -1,0 +1,1 @@
+var Message = require('../../model/message');

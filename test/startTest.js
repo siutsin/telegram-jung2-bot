@@ -1,1 +1,2 @@
-require('./database/testDatabase');
+require('./model/testMessage');
+require('./controller/testMessage');
