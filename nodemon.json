@@ -8,7 +8,7 @@
   ],
   "verbose": false,
   "execMap": {
-    "js": "node"
+    "js": "node --use_strict"
   },
   "events": {
     "restart": "osascript -e 'display notification \"'$FILENAME'\" with title \"nodemon - Restarted due to:\"'"
