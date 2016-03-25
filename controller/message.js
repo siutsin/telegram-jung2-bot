@@ -1,3 +1,5 @@
+'use strict';
+
 var log = require('log-to-file-and-console-node');
 var Message = require('../model/message');
 var moment = require('moment');

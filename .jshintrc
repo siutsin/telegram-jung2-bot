@@ -20,6 +20,6 @@
   "indent": 2,
   "nonbsp": true,
   "quotmark": "single",
-  "esnext": true,
-  "node": true
+  "node": true,
+  "strict": true
 }
