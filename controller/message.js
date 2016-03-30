@@ -1,7 +1,13 @@
+'use strict';
+
 var log = require('log-to-file-and-console-node');
 var Message = require('../model/message');
 var moment = require('moment');
 var _ = require('lodash');
+
+exports.getAllGroupIds = function (callback) {
+  Message.find().distinct('chatId', callback);
+};
 
 exports.addMessage = function (msg, callback) {
   var message = new Message();
