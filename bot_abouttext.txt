@@ -1,0 +1,5 @@
+冗員[jung2jyun4]
+
+This bot will count the no. of msg in the group.
+
+Source Code: siutsin/telegram-jung2-bot
