@@ -1,6 +1,6 @@
 {
   "name": "telegram-jung2-bot",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "repository": {
     "type": "git",
     "url": "https://github.com/siutsin/telegram-jung2-bot.git"
@@ -8,7 +8,7 @@
   "author": "Simon Li",
   "license": "MIT",
   "scripts": {
-    "start": "node ./bin/www",
+    "start": "node --use_strict ./bin/www",
     "test": "gulp",
     "nodemon": "nodemon ./bin/www",
     "debug": "node-debug ./bin/www",
