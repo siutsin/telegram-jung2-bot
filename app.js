@@ -34,8 +34,7 @@ var getJung = function(chatId, isAll) {
   var callback = function (err, results) {
     var total;
     if (err) {
-      log.e('err: ' + JSON.stringify(err));
-      bot.sendMessage(chatId, '[Error] ' + err.message);
+      log.e('getJung err: ' + JSON.stringify(err));
     } else {
       for (var i = 0, l = results.length; i < l; i++) {
         total = results[i].total;
@@ -82,17 +81,24 @@ app.route('/')
     });
   });
 
-if (process.env.DEFAULT_CRON_JOB_GROUP_ID) {
-  var job = new CronJob({
-    cronTime: '00 00 18 * * 1-5',
-    onTick: function() {
-      bot.sendMessage(process.env.DEFAULT_CRON_JOB_GROUP_ID, '夠鐘收工~~');
-      getJung(process.env.DEFAULT_CRON_JOB_GROUP_ID);
-    },
-    start: false,
-    timeZone: 'Asia/Hong_Kong'
-  });
-  job.start();
-}
+var job = new CronJob({
+  cronTime: '00 00 18 * * 1-5',
+  onTick: function() {
+    MessageController.getAllGroupIds(function(error, chatIds) {
+      if (error) {
+        log.e('cronJob error: ' + JSON.stringify(error));
+      } else {
+        for (var i = 0, l = chatIds.length; i < l; i++) {
+          var chatId = chatIds[i];
+          bot.sendMessage(chatId, '夠鐘收工~~');
+          getJung(chatId);
+        }
+      }
+    });
+  },
+  start: false,
+  timeZone: 'Asia/Hong_Kong'
+});
+job.start();
 
 module.exports = app;
