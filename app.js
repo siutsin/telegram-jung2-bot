@@ -54,12 +54,12 @@ var getJung = function(chatId, isAll) {
 };
 
 bot.onText(/\/top(t|T)en/, function (msg, match) {
-  log.i('/topTen: ' + JSON.stringify(msg));
+  log.i('/topten: ' + JSON.stringify(msg));
   getJung(msg.chat.id.toString());
 });
 
 bot.onText(/\/all(j|J)ung/, function (msg, match) {
-  log.i('/allJung: ' + JSON.stringify(msg));
+  log.i('/alljung: ' + JSON.stringify(msg));
   getJung(msg.chat.id.toString(), true);
 });
 
