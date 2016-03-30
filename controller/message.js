@@ -35,17 +35,17 @@ var getJung = function(chatId, limit, callback) {
         $match: greaterThanOrEqualToSevenDaysQuery
       },
       {
-        $group: {
-          _id: '$userId',
-          username: {$first: '$username'},
-          firstName: {$first: '$firstName'},
-          lastName: {$first: '$lastName'},
-          count: {$sum: 1}
+        $sort: {
+          count: -1
         }
       },
       {
-        $sort: {
-          count: -1
+        $group: {
+          _id: '$userId',
+          username: {$last: '$username'},
+          firstName: {$last: '$firstName'},
+          lastName: {$last: '$lastName'},
+          count: {$sum: 1}
         }
       }
     ];
