@@ -21,7 +21,7 @@ exports.addMessage = function (msg, callback) {
   message.save(callback);
 };
 
-var getJung = function(chatId, limit, callback) {
+var getJungFromDB = function(chatId, limit, callback) {
   var greaterThanOrEqualToSevenDaysQuery = {
     chatId: chatId.toString(),
     dateCreated: {
@@ -66,10 +66,29 @@ var getJung = function(chatId, limit, callback) {
   });
 };
 
+var getJungMessage = function(chatId, limit, callback) {
+  var message = limit ?
+    'Top 10 冗員s in the last 7 days:\n\n' :
+    'All 冗員s in the last 7 days:\n\n';
+  getJungFromDB(chatId, limit, function(err, results) {
+    var total;
+    if (!err) {
+      for (var i = 0, l = results.length; i < l; i++) {
+        total = results[i].total;
+        message += results[i].firstName + ' ' + results[i].lastName + ' ' + results[i].percent + '\n';
+      }
+      if (total) {
+        message += '\nTotal message: ' + total;
+      }
+      callback(message);
+    }
+  });
+};
+
 exports.getAllJung = function (chatId, callback) {
-  getJung(chatId, null, callback);
+  getJungMessage(chatId, null, callback);
 };
 
 exports.getTopTen = function (chatId, callback) {
-  getJung(chatId, 10, callback);
+  getJungMessage(chatId, 10, callback);
 };
