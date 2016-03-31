@@ -27,40 +27,18 @@ mongoose.connect(connectionString);
 app.use(morgan('combined', {'stream': log.stream}));
 app.use(bodyParser.json());
 
-var getJung = function(chatId, isAll) {
-  var message = isAll ?
-    'All 冗員s in the last 7 days:\n\n' :
-    'Top 10 冗員s in the last 7 days:\n\n';
-  var callback = function (err, results) {
-    var total;
-    if (err) {
-      log.e('getJung err: ' + JSON.stringify(err));
-    } else {
-      for (var i = 0, l = results.length; i < l; i++) {
-        total = results[i].total;
-        message += results[i].firstName + ' ' + results[i].lastName + ' ' + results[i].percent + '\n';
-      }
-      if (total) {
-        message += '\nTotal message: ' + total;
-      }
-      bot.sendMessage(chatId, message);
-    }
-  };
-  if (isAll) {
-    MessageController.getAllJung(chatId, callback);
-  } else {
-    MessageController.getTopTen(chatId, callback);
-  }
-};
-
 bot.onText(/\/top(t|T)en/, function (msg, match) {
-  log.i('/topten: ' + JSON.stringify(msg));
-  getJung(msg.chat.id.toString());
+  var chatId = msg.chat.id.toString();
+  MessageController.getTopTen(chatId, function (message) {
+    bot.sendMessage(chatId, message);
+  });
 });
 
 bot.onText(/\/all(j|J)ung/, function (msg, match) {
-  log.i('/alljung: ' + JSON.stringify(msg));
-  getJung(msg.chat.id.toString(), true);
+  var chatId = msg.chat.id.toString();
+  MessageController.getAllJung(chatId, function (message) {
+    bot.sendMessage(chatId, message);
+  });
 });
 
 bot.on('message', function (msg) {
@@ -91,7 +69,11 @@ var job = new CronJob({
         for (var i = 0, l = chatIds.length; i < l; i++) {
           var chatId = chatIds[i];
           bot.sendMessage(chatId, '夠鐘收工~~');
-          getJung(chatId);
+          /*jshint loopfunc: true */
+          MessageController.getTopTen(chatId, function (message) {
+            bot.sendMessage(chatId, message);
+          });
+          /*jshint loopfunc: false */
         }
       }
     });
