@@ -29,9 +29,7 @@ gulp.task('jshint', function () {
 
 gulp.task('preIstanbul', function () {
   return gulp.src(jsFiles)
-    // Covering files
     .pipe(istanbul())
-    // Force `require` to return covered files
     .pipe(istanbul.hookRequire());
 });
 
@@ -43,7 +41,6 @@ gulp.task('mochaAndIstanbul', function () {
       reporter: 'spec'
     }))
     .pipe(istanbul.writeReports())
-    // Enforce a coverage of 100%
     .pipe(istanbul.enforceThresholds({thresholds: {global: 0}}))
     .on('error', function (error) {
       throw error;
