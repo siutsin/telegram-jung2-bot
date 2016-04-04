@@ -5,23 +5,7 @@ var Message = require('../model/message');
 var moment = require('moment');
 var _ = require('lodash');
 
-exports.getAllGroupIds = function (callback) {
-  Message.find().distinct('chatId', callback);
-};
-
-exports.addMessage = function (msg, callback) {
-  var message = new Message();
-  message.chatId = msg.chat.id || '';
-  message.userId = msg.from.id || '';
-  message.username = msg.from.username || '';
-  /*jshint camelcase: false */
-  message.firstName = msg.from.first_name || '';
-  message.lastName = msg.from.last_name || '';
-  /*jshint camelcase: true */
-  message.save(callback);
-};
-
-var getJung = function(chatId, limit, callback) {
+var getJungFromDB = function (chatId, limit, callback) {
   var greaterThanOrEqualToSevenDaysQuery = {
     chatId: chatId.toString(),
     dateCreated: {
@@ -55,21 +39,56 @@ var getJung = function(chatId, limit, callback) {
       });
     }
     Message.aggregate(query, function (err, result) {
-        if (!err && result && _.isArray(result)) {
-          for (var i = 0, l = result.length; i < l; i++) {
-            result[i].total = total;
-            result[i].percent = ((result[i].count / total) * 100).toFixed(2) + '%';
-          }
+      if (!err && result && _.isArray(result)) {
+        for (var i = 0, l = result.length; i < l; i++) {
+          result[i].total = total;
+          result[i].percent = ((result[i].count / total) * 100).toFixed(2) + '%';
         }
-        callback(err, result);
-      });
+      }
+      callback(err, result);
+    });
   });
 };
 
+var getJungMessage = function (chatId, limit, callback) {
+  var message = limit ?
+    'Top 10 冗員s in the last 7 days:\n\n' :
+    'All 冗員s in the last 7 days:\n\n';
+  getJungFromDB(chatId, limit, function (err, results) {
+    var total;
+    if (!err) {
+      for (var i = 0, l = results.length; i < l; i++) {
+        total = results[i].total;
+        message += (i + 1) + '. ' + results[i].firstName + ' ' + results[i].lastName + ' ' + results[i].percent + '\n';
+      }
+      if (total) {
+        message += '\nTotal message: ' + total;
+      }
+      callback(message);
+    }
+  });
+};
+
+exports.getAllGroupIds = function (callback) {
+  Message.find().distinct('chatId', callback);
+};
+
+exports.addMessage = function (msg, callback) {
+  var message = new Message();
+  message.chatId = msg.chat.id || '';
+  message.userId = msg.from.id || '';
+  message.username = msg.from.username || '';
+  /*jshint camelcase: false */
+  message.firstName = msg.from.first_name || '';
+  message.lastName = msg.from.last_name || '';
+  /*jshint camelcase: true */
+  message.save(callback);
+};
+
 exports.getAllJung = function (chatId, callback) {
-  getJung(chatId, null, callback);
+  getJungMessage(chatId, null, callback);
 };
 
 exports.getTopTen = function (chatId, callback) {
-  getJung(chatId, 10, callback);
+  getJungMessage(chatId, 10, callback);
 };
