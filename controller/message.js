@@ -69,6 +69,22 @@ var getJungMessage = function (chatId, limit, callback) {
   });
 };
 
+exports.isSameAsPreviousSender = function (chatId, userId, callback) {
+  Message.find({})
+    .where('chatId').equals(chatId.toString())
+    .sort('-dateCreated')
+    .limit(1)
+    .exec(function (err, messages) {
+      if (!err && messages && !_.isEmpty(messages)) {
+        var msg = messages[0];
+        var result = (msg.userId === userId);
+        callback(result);
+      } else {
+        callback(false);
+      }
+    });
+};
+
 exports.getAllGroupIds = function (callback) {
   Message.find().distinct('chatId', callback);
 };
