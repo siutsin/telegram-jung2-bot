@@ -1,22 +1,40 @@
 'use strict';
 
 var log = require('log-to-file-and-console-node');
+var mongoose = require('mongoose');
 var Message = require('../model/message');
 var moment = require('moment');
 var _ = require('lodash');
 
-var getJungFromDB = function (chatId, limit, callback) {
-  var greaterThanOrEqualToSevenDaysQuery = {
+var getCount = function (msg) {
+  var promise = new mongoose.Promise();
+  var chatId = msg.chat.id.toString();
+  Message.count({
     chatId: chatId.toString(),
     dateCreated: {
       $gte: new Date(moment().subtract(7, 'day').toISOString())
     }
-  };
-  Message.count(greaterThanOrEqualToSevenDaysQuery, function (err, total) {
-    log.i('Number of messages: ' + total);
-    var query = [
+  }, function (err, total) {
+    if (err) {
+      promise.error(err);
+    } else {
+      promise.complete(total);
+    }
+  });
+  return promise;
+};
+
+var getJung = function (msg, limit) {
+  var promise = new mongoose.Promise();
+  var chatId = msg.chat.id.toString();
+  var query = Message.aggregate([
       {
-        $match: greaterThanOrEqualToSevenDaysQuery
+        $match: {
+          chatId: chatId.toString(),
+          dateCreated: {
+            $gte: new Date(moment().subtract(7, 'day').toISOString())
+          }
+        }
       },
       {
         $group: {
@@ -26,46 +44,51 @@ var getJungFromDB = function (chatId, limit, callback) {
           lastName: {$last: '$lastName'},
           count: {$sum: 1}
         }
-      },
-      {
-        $sort: {
-          count: -1
-        }
-      }
-    ];
-    if (limit && limit > 0) {
-      query.push({
-        $limit: limit
-      });
+      }])
+    .sort('-count');
+  if (_.isNumber(limit) && limit > 0) {
+    query = query.limit(limit);
+  }
+  query.exec(function (err, results) {
+    if (err) {
+      promise.error(err);
+    } else {
+      promise.complete(results);
     }
-    Message.aggregate(query, function (err, result) {
-      if (!err && result && _.isArray(result)) {
-        for (var i = 0, l = result.length; i < l; i++) {
-          result[i].total = total;
-          result[i].percent = ((result[i].count / total) * 100).toFixed(2) + '%';
-        }
-      }
-      callback(err, result);
-    });
+  });
+  return promise;
+};
+
+var getCountAndGetJung = function (msg, limit) {
+  var promises = [
+    getCount(msg),
+    getJung(msg, limit)
+  ];
+  return Promise.all(promises).then(function onSuccess(results) {
+    var total = results[0];
+    var getJungResults = results[1];
+    for (var i = 0, l = getJungResults.length; i < l; i++) {
+      getJungResults[i].total = total;
+      getJungResults[i].percent = ((getJungResults[i].count / total) * 100).toFixed(2) + '%';
+    }
+    return getJungResults;
   });
 };
 
-var getJungMessage = function (chatId, limit, callback) {
+var getJungMessage = function (msg, limit) {
   var message = limit ?
     'Top 10 冗員s in the last 7 days:\n\n' :
     'All 冗員s in the last 7 days:\n\n';
-  getJungFromDB(chatId, limit, function (err, results) {
+  return getCountAndGetJung(msg, limit).then(function (results) {
     var total;
-    if (!err) {
-      for (var i = 0, l = results.length; i < l; i++) {
-        total = results[i].total;
-        message += (i + 1) + '. ' + results[i].firstName + ' ' + results[i].lastName + ' ' + results[i].percent + '\n';
-      }
-      if (total) {
-        message += '\nTotal message: ' + total;
-      }
-      callback(message);
+    for (var i = 0, l = results.length; i < l; i++) {
+      total = results[i].total;
+      message += (i + 1) + '. ' + results[i].firstName + ' ' + results[i].lastName + ' ' + results[i].percent + '\n';
     }
+    if (total) {
+      message += '\nTotal message: ' + total;
+    }
+    return message;
   });
 };
 
@@ -105,10 +128,10 @@ exports.addMessage = function (msg, callback) {
   message.save(callback);
 };
 
-exports.getAllJung = function (chatId, callback) {
-  getJungMessage(chatId, null, callback);
+exports.getAllJung = function (msg) {
+  return getJungMessage(msg);
 };
 
-exports.getTopTen = function (chatId, callback) {
-  getJungMessage(chatId, 10, callback);
+exports.getTopTen = function (msg) {
+  return getJungMessage(msg, 10);
 };
