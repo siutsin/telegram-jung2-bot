@@ -361,5 +361,4 @@ describe('MessageController', function () {
 
   });
 
-})
-;
+});
