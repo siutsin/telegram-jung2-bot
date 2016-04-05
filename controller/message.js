@@ -69,6 +69,26 @@ var getJungMessage = function (chatId, limit, callback) {
   });
 };
 
+exports.shouldAddMessage = function (msg, callback) {
+  var chatId = msg.chat.id.toString();
+  var userId = msg.from.id.toString();
+  /*jshint camelcase: false */
+  var isReplyingToMsg = !!msg.reply_to_message;
+  /*jshint camelcase: true */
+  Message.find({chatId: chatId.toString()})
+    .sort('-dateCreated')
+    .limit(1)
+    .exec(function (err, messages) {
+      if (!err && messages && !_.isEmpty(messages)) {
+        var msg = messages[0];
+        var result = isReplyingToMsg || (msg.userId !== userId);
+        callback(result);
+      } else {
+        callback(false);
+      }
+    });
+};
+
 exports.getAllGroupIds = function (callback) {
   Message.find().distinct('chatId', callback);
 };
