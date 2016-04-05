@@ -154,8 +154,170 @@ describe('MessageController', function () {
     });
   });
 
-  // TODO: getAllJung
+  describe('getAllJung', function () {
 
-  // TODO: getTopTen
+    it('can get all yung', function (done) {
+      var MessageMock = sinon.mock(Message);
+      var sinonCountStub = sinon.stub(Message, 'count', function (err, callback) {
+        callback(null, 123);
+      });
+      var sinonAggregateStub = sinon.stub(Object.getPrototypeOf(Message), 'aggregate', function (query) {
+        return {
+          sort: function () {
+            return {
+              exec: function (callback) {
+                callback(null, [{
+                  "_id": "stubFromId",
+                  "username": "stubUsername",
+                  "firstName": "stubFirstName",
+                  "lastName": "stubLastName",
+                  "count": 12
+                }]);
+              }
+            }
+          }
+        };
+      });
+      MessageController.getAllJung(stubMsg).then(function onSuccess(message) {
+        (message === 'All 冗員s in the last 7 days:\n\n1. stubFirstName stubLastName 9.76%\n\nTotal message: 123').should.equal(true);
+      }).catch(function (err) {
+        log.e('getAllJung err: ' + err.message);
+        false.should.equal(true); // should fail
+      }).then(function always() {
+        MessageMock.verify();
+        MessageMock.restore();
+        sinonCountStub.restore();
+        sinonAggregateStub.restore();
+        done();
+      });
+    });
 
-});
+  });
+
+  describe('getTopTen', function () {
+
+    it('can get all yung', function (done) {
+      var MessageMock = sinon.mock(Message);
+      var sinonCountStub = sinon.stub(Message, 'count', function (err, callback) {
+        callback(null, 123);
+      });
+      var sinonAggregateStub = sinon.stub(Object.getPrototypeOf(Message), 'aggregate', function (query) {
+        var exec = function (callback) {
+          callback(null, [{
+            "_id": "stubFromId",
+            "username": "stubUsername",
+            "firstName": "stubFirstName",
+            "lastName": "stubLastName",
+            "count": 12
+          }]);
+        };
+        var limit = function () {
+          return {
+            exec: exec
+          }
+        };
+        var sort = function () {
+          return {
+            limit: limit
+          }
+        };
+        return {
+          sort: sort
+        }
+      });
+      MessageController.getTopTen(stubMsg).then(function onSuccess(message) {
+        (message === 'Top 10 冗員s in the last 7 days:\n\n1. stubFirstName stubLastName 9.76%\n\nTotal message: 123').should.equal(true);
+      }).catch(function (err) {
+        log.e('getTopTen err: ' + err.message);
+        false.should.equal(true); // should fail
+      }).then(function always() {
+        MessageMock.verify();
+        MessageMock.restore();
+        sinonCountStub.restore();
+        sinonAggregateStub.restore();
+        done();
+      });
+    });
+
+    it('can handle error in aggregate', function (done) {
+      var MessageMock = sinon.mock(Message);
+      var sinonCountStub = sinon.stub(Message, 'count', function (err, callback) {
+        callback(null, 123);
+      });
+      var sinonAggregateStub = sinon.stub(Object.getPrototypeOf(Message), 'aggregate', function (query) {
+        var exec = function (callback) {
+          callback(new Error('error'));
+        };
+        var limit = function () {
+          return {
+            exec: exec
+          }
+        };
+        var sort = function () {
+          return {
+            limit: limit
+          }
+        };
+        return {
+          sort: sort
+        }
+      });
+      MessageController.getTopTen(stubMsg).then(function onSuccess(message) {
+        false.should.equal(true); // should fail
+      }).catch(function (err) {
+        err.message.should.equal('error');
+      }).then(function always() {
+        MessageMock.verify();
+        MessageMock.restore();
+        sinonCountStub.restore();
+        sinonAggregateStub.restore();
+        done();
+      });
+    });
+
+    it('can handle error in count', function (done) {
+      var MessageMock = sinon.mock(Message);
+      var sinonCountStub = sinon.stub(Message, 'count', function (err, callback) {
+        callback(new Error('anotherError'));
+      });
+      var sinonAggregateStub = sinon.stub(Object.getPrototypeOf(Message), 'aggregate', function (query) {
+        var exec = function (callback) {
+          callback(null, [{
+            "_id": "stubFromId",
+            "username": "stubUsername",
+            "firstName": "stubFirstName",
+            "lastName": "stubLastName",
+            "count": 12
+          }]);
+        };
+        var limit = function () {
+          return {
+            exec: exec
+          }
+        };
+        var sort = function () {
+          return {
+            limit: limit
+          }
+        };
+        return {
+          sort: sort
+        }
+      });
+      MessageController.getTopTen(stubMsg).then(function onSuccess(message) {
+        false.should.equal(true); // should fail
+      }).catch(function (err) {
+        err.message.should.equal('anotherError');
+      }).then(function always() {
+        MessageMock.verify();
+        MessageMock.restore();
+        sinonCountStub.restore();
+        sinonAggregateStub.restore();
+        done();
+      });
+    });
+
+  });
+
+})
+;
