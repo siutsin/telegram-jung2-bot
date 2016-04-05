@@ -15,7 +15,7 @@ var app = express();
 var bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, {polling: true});
 
 var connectionString = '127.0.0.1:27017/telegram-jung2-bot';
-if(process.env.OPENSHIFT_MONGODB_DB_PASSWORD){
+if (process.env.OPENSHIFT_MONGODB_DB_PASSWORD) {
   connectionString = process.env.OPENSHIFT_MONGODB_DB_USERNAME + ':' +
     process.env.OPENSHIFT_MONGODB_DB_PASSWORD + '@' +
     process.env.OPENSHIFT_MONGODB_DB_HOST + ':' +
@@ -43,10 +43,13 @@ bot.onText(/\/all(j|J)ung/, function (msg, match) {
 
 bot.on('message', function (msg) {
   log.i('msg: ' + JSON.stringify(msg));
-  MessageController.addMessage(msg, function (err) {
-    if (err) {
-      log.e('err: ' + JSON.stringify(err));
-      bot.sendMessage(msg.chat.id, '[Error] ' + err.message);
+  var chatId = msg.chat.id.toString();
+  var userId = msg.from.id.toString();
+  MessageController.isSameAsPreviousSender(chatId, userId, function (isSame) {
+    if (!isSame) {
+      MessageController.addMessage(msg);
+    } else {
+      log.e('isSameAsPreviousSender');
     }
   });
 });
@@ -61,8 +64,8 @@ app.route('/')
 
 var job = new CronJob({
   cronTime: '00 00 18 * * 1-5',
-  onTick: function() {
-    MessageController.getAllGroupIds(function(error, chatIds) {
+  onTick: function () {
+    MessageController.getAllGroupIds(function (error, chatIds) {
       if (error) {
         log.e('cronJob error: ' + JSON.stringify(error));
       } else {
