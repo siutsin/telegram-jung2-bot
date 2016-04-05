@@ -72,11 +72,18 @@ var job = new CronJob({
         log.e('cronJob error: ' + JSON.stringify(error));
       } else {
         for (var i = 0, l = chatIds.length; i < l; i++) {
-          var chatId = chatIds[i];
+          const chatId = chatIds[i];
+          var msg = {
+            chat: {
+              id: chatId
+            }
+          };
           bot.sendMessage(chatId, '夠鐘收工~~');
           /*jshint loopfunc: true */
-          MessageController.getTopTen(chatId, function (message) {
+          MessageController.getTopTen(msg).then(function onSuccess(message) {
             bot.sendMessage(chatId, message);
+          }, function onFailure(err) {
+            bot.sendMessage(chatId, err.message);
           });
           /*jshint loopfunc: false */
         }
