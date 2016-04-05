@@ -15,7 +15,7 @@ var app = express();
 var bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, {polling: true});
 
 var connectionString = '127.0.0.1:27017/telegram-jung2-bot';
-if(process.env.OPENSHIFT_MONGODB_DB_PASSWORD){
+if (process.env.OPENSHIFT_MONGODB_DB_PASSWORD) {
   connectionString = process.env.OPENSHIFT_MONGODB_DB_USERNAME + ':' +
     process.env.OPENSHIFT_MONGODB_DB_PASSWORD + '@' +
     process.env.OPENSHIFT_MONGODB_DB_HOST + ':' +
@@ -28,25 +28,30 @@ app.use(morgan('combined', {'stream': log.stream}));
 app.use(bodyParser.json());
 
 bot.onText(/\/top(t|T)en/, function (msg, match) {
-  var chatId = msg.chat.id.toString();
-  MessageController.getTopTen(chatId, function (message) {
-    bot.sendMessage(chatId, message);
+  log.i('/topten msg: ' + JSON.stringify(msg));
+  MessageController.getTopTen(msg).then(function onSuccess(message) {
+    bot.sendMessage(msg.chat.id, message);
+  }, function onFailure(err) {
+    bot.sendMessage(msg.chat.id, err.message);
   });
 });
 
 bot.onText(/\/all(j|J)ung/, function (msg, match) {
-  var chatId = msg.chat.id.toString();
-  MessageController.getAllJung(chatId, function (message) {
-    bot.sendMessage(chatId, message);
+  log.i('/alljung msg: ' + JSON.stringify(msg));
+  MessageController.getAllJung(msg).then(function onSuccess(message) {
+    bot.sendMessage(msg.chat.id, message);
+  }, function onFailure(err) {
+    bot.sendMessage(msg.chat.id, err.message);
   });
 });
 
 bot.on('message', function (msg) {
   log.i('msg: ' + JSON.stringify(msg));
-  MessageController.addMessage(msg, function (err) {
-    if (err) {
-      log.e('err: ' + JSON.stringify(err));
-      bot.sendMessage(msg.chat.id, '[Error] ' + err.message);
+  MessageController.shouldAddMessage(msg).then(function (shouldAdd) {
+    if (shouldAdd) {
+      MessageController.addMessage(msg);
+    } else {
+      log.e('shouldAdd: ' + shouldAdd);
     }
   });
 });
@@ -61,17 +66,24 @@ app.route('/')
 
 var job = new CronJob({
   cronTime: '00 00 18 * * 1-5',
-  onTick: function() {
-    MessageController.getAllGroupIds(function(error, chatIds) {
+  onTick: function () {
+    MessageController.getAllGroupIds(function (error, chatIds) {
       if (error) {
         log.e('cronJob error: ' + JSON.stringify(error));
       } else {
         for (var i = 0, l = chatIds.length; i < l; i++) {
-          var chatId = chatIds[i];
+          const chatId = chatIds[i];
+          var msg = {
+            chat: {
+              id: chatId
+            }
+          };
           bot.sendMessage(chatId, '夠鐘收工~~');
           /*jshint loopfunc: true */
-          MessageController.getTopTen(chatId, function (message) {
+          MessageController.getTopTen(msg).then(function onSuccess(message) {
             bot.sendMessage(chatId, message);
+          }, function onFailure(err) {
+            bot.sendMessage(chatId, err.message);
           });
           /*jshint loopfunc: false */
         }
