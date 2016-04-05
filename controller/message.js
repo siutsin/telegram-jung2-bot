@@ -107,7 +107,7 @@ exports.shouldAddMessage = function (msg, callback) {
         var result = isReplyingToMsg || (msg.userId !== userId);
         callback(result);
       } else {
-        callback(false);
+        callback(true);
       }
     });
 };

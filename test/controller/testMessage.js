@@ -120,6 +120,22 @@ describe('MessageController', function () {
       });
     });
 
+    it('allows to add record if encountered error', function (done) {
+      var MessageMock = sinon.mock(Message);
+      MessageMock
+        .expects('find').withArgs({chatId: 'stubChatId'})
+        .chain('sort').withArgs('-dateCreated')
+        .chain('limit').withArgs(1)
+        .chain('exec')
+        .yields(new Error('someError'));
+      MessageController.shouldAddMessage(stubMsg, function (result) {
+        MessageMock.verify();
+        MessageMock.restore();
+        result.should.equal(true);
+        done();
+      });
+    });
+
   });
 
   it('can get all group id', function (done) {
