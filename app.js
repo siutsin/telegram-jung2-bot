@@ -43,13 +43,11 @@ bot.onText(/\/all(j|J)ung/, function (msg, match) {
 
 bot.on('message', function (msg) {
   log.i('msg: ' + JSON.stringify(msg));
-  var chatId = msg.chat.id.toString();
-  var userId = msg.from.id.toString();
-  MessageController.isSameAsPreviousSender(chatId, userId, function (isSame) {
-    if (!isSame) {
+  MessageController.shouldAddMessage(msg, function (shouldAdd) {
+    if (shouldAdd) {
       MessageController.addMessage(msg);
     } else {
-      log.e('isSameAsPreviousSender');
+      log.e('shouldAdd: ' + shouldAdd);
     }
   });
 });

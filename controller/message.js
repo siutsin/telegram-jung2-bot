@@ -69,15 +69,19 @@ var getJungMessage = function (chatId, limit, callback) {
   });
 };
 
-exports.isSameAsPreviousSender = function (chatId, userId, callback) {
-  Message.find({})
-    .where('chatId').equals(chatId.toString())
+exports.shouldAddMessage = function (msg, callback) {
+  var chatId = msg.chat.id.toString();
+  var userId = msg.from.id.toString();
+  /*jshint camelcase: false */
+  var isReplyingToMsg = !!msg.reply_to_message;
+  /*jshint camelcase: true */
+  Message.find({chatId: chatId.toString()})
     .sort('-dateCreated')
     .limit(1)
     .exec(function (err, messages) {
       if (!err && messages && !_.isEmpty(messages)) {
         var msg = messages[0];
-        var result = (msg.userId === userId);
+        var result = isReplyingToMsg || (msg.userId !== userId);
         callback(result);
       } else {
         callback(false);
