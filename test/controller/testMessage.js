@@ -4,6 +4,7 @@ require('chai').should();
 var sinon = require('sinon');
 require('sinon-mongoose');
 var log = require('log-to-file-and-console-node');
+var _ = require('lodash');
 
 var MessageController = require('../../controller/message');
 var Message = require('../../model/message');
@@ -121,10 +122,24 @@ describe('MessageController', function () {
 
   });
 
+  it('can get all group id', function (done) {
+    var MessageMock = sinon.mock(Message);
+    MessageMock
+      .expects('find')
+      .chain('distinct').withArgs('chatId')
+      .yields(null, ['123', '234']);
+    MessageController.getAllGroupIds(function (err, result) {
+      MessageMock.verify();
+      MessageMock.restore();
+      _.isArray(result).should.equal(true);
+      result[0].should.equal('123');
+      result[1].should.equal('234');
+      done();
+    });
+  });
+
   // TODO: getAllJung
 
   // TODO: getTopTen
-
-  // TODO: getAllGroupIds
 
 });
