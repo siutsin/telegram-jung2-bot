@@ -47,7 +47,7 @@ bot.onText(/\/all(j|J)ung/, function (msg, match) {
 
 bot.on('message', function (msg) {
   log.i('msg: ' + JSON.stringify(msg));
-  MessageController.shouldAddMessage(msg, function (shouldAdd) {
+  MessageController.shouldAddMessage(msg).then(function (shouldAdd) {
     if (shouldAdd) {
       MessageController.addMessage(msg);
     } else {
