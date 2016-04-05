@@ -46,7 +46,7 @@ var getJung = function (msg, limit) {
         }
       }])
     .sort('-count');
-  if (_.isNumber(limit) && limit > 0) {
+  if (limit > 0) {
     query = query.limit(limit);
   }
   query.exec(function (err, results) {
@@ -64,7 +64,7 @@ var getCountAndGetJung = function (msg, limit) {
     getCount(msg),
     getJung(msg, limit)
   ];
-  return Promise.all(promises).then(function onSuccess(results) {
+  return Promise.all(promises).then(function (results) {
     var total = results[0];
     var getJungResults = results[1];
     for (var i = 0, l = getJungResults.length; i < l; i++) {
@@ -80,19 +80,18 @@ var getJungMessage = function (msg, limit) {
     'Top 10 冗員s in the last 7 days:\n\n' :
     'All 冗員s in the last 7 days:\n\n';
   return getCountAndGetJung(msg, limit).then(function (results) {
-    var total;
+    var total = '';
     for (var i = 0, l = results.length; i < l; i++) {
       total = results[i].total;
       message += (i + 1) + '. ' + results[i].firstName + ' ' + results[i].lastName + ' ' + results[i].percent + '\n';
     }
-    if (total) {
-      message += '\nTotal message: ' + total;
-    }
+    message += '\nTotal message: ' + total;
     return message;
   });
 };
 
-exports.shouldAddMessage = function (msg, callback) {
+exports.shouldAddMessage = function (msg) {
+  var promise = new mongoose.Promise();
   var chatId = msg.chat.id.toString();
   var userId = msg.from.id.toString();
   /*jshint camelcase: false */
@@ -102,14 +101,15 @@ exports.shouldAddMessage = function (msg, callback) {
     .sort('-dateCreated')
     .limit(1)
     .exec(function (err, messages) {
-      if (!err && messages && !_.isEmpty(messages)) {
+      if (!_.isEmpty(messages)) {
         var msg = messages[0];
         var result = isReplyingToMsg || (msg.userId !== userId);
-        callback(result);
+        promise.complete(result);
       } else {
-        callback(true);
+        promise.complete(true);
       }
     });
+  return promise;
 };
 
 exports.getAllGroupIds = function (callback) {
