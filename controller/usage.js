@@ -6,6 +6,12 @@ var Usage = require('../model/usage');
 var moment = require('moment');
 var _ = require('lodash');
 
+exports.addUsage = function (msg, callback) {
+  var usage = new Usage();
+  usage.chatId = msg.chat.id || '';
+  usage.save(callback);
+};
+
 exports.isAllowCommand = function (msg) {
   var promise = new mongoose.Promise();
   var chatId = msg.chat.id.toString();
@@ -17,7 +23,7 @@ exports.isAllowCommand = function (msg) {
         var usage = usages[0];
         var diff = Math.abs(moment(usage.dateCreated).diff(moment(), 'minute', true));
         if (diff < 3) {
-          promise.error(new Error('less then 3 minute'));
+          promise.reject(moment(usage.dateCreated));
         } else {
           promise.complete();
         }

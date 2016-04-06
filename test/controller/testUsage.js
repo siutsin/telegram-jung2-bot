@@ -5,6 +5,7 @@ var sinon = require('sinon');
 require('sinon-mongoose');
 var log = require('log-to-file-and-console-node');
 var _ = require('lodash');
+var moment = require('moment');
 
 var UsageController = require('../../controller/usage');
 var Usage = require('../../model/usage');
@@ -62,9 +63,10 @@ describe('UsageController', function () {
       UsageController.isAllowCommand(stubMsg).then(function onSuccess() {
         false.should.equal(true); // should fail
         done();
-      }, function onFailure() {
+      }, function onFailure(dateCreatedMoment) {
         UsageMock.verify();
         UsageMock.restore();
+        (dateCreatedMoment instanceof moment).should.equal(true);
         done();
       });
     });
@@ -83,6 +85,62 @@ describe('UsageController', function () {
         done();
       }, function onFailure() {
         false.should.equal(true); // should fail
+        done();
+      });
+    });
+
+  });
+
+  describe('addUsage', function () {
+
+    it('can save a usage', function (done) {
+      var sinonStub = sinon.stub(Usage.prototype, 'save', function (callback) {
+        callback( // err, product, numAffected
+          null,
+          {
+            '__v': 0,
+            'notified': false,
+            'chatId': 'stubChatId',
+            '_id': '56fccf467b5633c02fb4eb7e',
+            'dateCreated': '2016-03-31T07:18:30.806Z'
+          },
+          1
+        );
+      });
+      UsageController.addUsage(stubMsg, function (err, usage, numAffected) {
+        (err === null).should.equal(true);
+        (usage.notified).should.equal(false);
+        (usage.chatId).should.equal('stubChatId');
+        numAffected.should.equal(1);
+        sinonStub.restore();
+        done();
+      });
+    });
+
+    it('can save a empty usage', function (done) {
+      var stubEmptyMsg = {
+        chat: {},
+        from: {}
+      };
+      var sinonStub = sinon.stub(Usage.prototype, 'save', function (callback) {
+        callback( // err, product, numAffected
+          null,
+          {
+            '__v': 0,
+            'notified': false,
+            'chatId': '',
+            '_id': '56fccf467b5633c02fb4eb7e',
+            'dateCreated': '2016-03-31T07:18:30.806Z'
+          },
+          1
+        );
+      });
+      UsageController.addUsage(stubEmptyMsg, function (err, usage, numAffected) {
+        (err === null).should.equal(true);
+        (usage.notified).should.equal(false);
+        (usage.chatId).should.equal('');
+        numAffected.should.equal(1);
+        sinonStub.restore();
         done();
       });
     });

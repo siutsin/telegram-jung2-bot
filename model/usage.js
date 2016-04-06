@@ -4,7 +4,10 @@ var mongoose = require('mongoose');
 
 var UsageSchema = new mongoose.Schema({
   chatId: String,
-  notified: Boolean,
+  notified: {
+    type: Boolean,
+    default: false
+  },
   dateCreated: {
     type: Date,
     default: Date.now
