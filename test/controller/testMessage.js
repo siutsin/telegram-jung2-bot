@@ -8,6 +8,7 @@ var _ = require('lodash');
 
 var MessageController = require('../../controller/message');
 var Message = require('../../model/message');
+var Usage = require('../../model/usage');
 
 describe('MessageController', function () {
 
@@ -199,6 +200,41 @@ describe('MessageController', function () {
   describe('getAllJung', function () {
 
     it('can get all yung', function (done) {
+      var UsageMock = sinon.mock(Usage);
+      UsageMock
+        .expects('find').withArgs({chatId: 'stubChatId'})
+        .chain('sort').withArgs('-dateCreated')
+        .chain('limit').withArgs(1)
+        .chain('exec')
+        .yields(null, [{
+          chatId: 'stubChatId',
+          notified: false,
+          dateCreated: new Date('2016-01-01T0:00:00')
+        }]);
+      var findOneAndUpdateSinonStub = sinon.stub(Usage, 'findOneAndUpdate', function (conditions, update, options, callback) {
+        callback( // err, foundObject
+          null,
+          {
+            '__v': 0,
+            'chatId': 'stubChatId',
+            '_id': '5705c45f6c3467f672cdff50',
+            'dateCreated': '2016-04-07T02:22:23.185Z',
+            'notified': false
+          }
+        );
+      });
+      var usageSavesinonStub = sinon.stub(Usage.prototype, 'save', function (callback) {
+        callback( // err, savedObject, numAffected
+          null,
+          {
+            '__v': 0,
+            'chatId': 'stubChatId',
+            '_id': '5705c45f6c3467f672cdff50',
+            'dateCreated': '2016-04-07T02:22:23.185Z',
+            'notified': false
+          },
+          1);
+      });
       var MessageMock = sinon.mock(Message);
       var sinonCountStub = sinon.stub(Message, 'count', function (err, callback) {
         callback(null, 123);
@@ -222,14 +258,18 @@ describe('MessageController', function () {
       });
       MessageController.getAllJung(stubMsg).then(function onSuccess(message) {
         (message === 'All 冗員s in the last 7 days:\n\n1. stubFirstName stubLastName 9.76%\n\nTotal message: 123').should.equal(true);
+      }, function onFailure() {
       }).catch(function (err) {
-        log.e('getAllJung err: ' + err.message);
         false.should.equal(true); // should fail
       }).then(function always() {
         MessageMock.verify();
         MessageMock.restore();
+        UsageMock.verify();
+        UsageMock.restore();
         sinonCountStub.restore();
         sinonAggregateStub.restore();
+        findOneAndUpdateSinonStub.restore();
+        usageSavesinonStub.restore();
         done();
       });
     });
@@ -238,7 +278,42 @@ describe('MessageController', function () {
 
   describe('getTopTen', function () {
 
-    it('can get all yung', function (done) {
+    it('can get top ten', function (done) {
+      var UsageMock = sinon.mock(Usage);
+      UsageMock
+        .expects('find').withArgs({chatId: 'stubChatId'})
+        .chain('sort').withArgs('-dateCreated')
+        .chain('limit').withArgs(1)
+        .chain('exec')
+        .yields(null, [{
+          chatId: 'stubChatId',
+          notified: false,
+          dateCreated: new Date('2016-01-01T0:00:00')
+        }]);
+      var findOneAndUpdateSinonStub = sinon.stub(Usage, 'findOneAndUpdate', function (conditions, update, options, callback) {
+        callback( // err, foundObject
+          null,
+          {
+            '__v': 0,
+            'chatId': 'stubChatId',
+            '_id': '5705c45f6c3467f672cdff50',
+            'dateCreated': '2016-04-07T02:22:23.185Z',
+            'notified': false
+          }
+        );
+      });
+      var usageSavesinonStub = sinon.stub(Usage.prototype, 'save', function (callback) {
+        callback( // err, savedObject, numAffected
+          null,
+          {
+            '__v': 0,
+            'chatId': 'stubChatId',
+            '_id': '5705c45f6c3467f672cdff50',
+            'dateCreated': '2016-04-07T02:22:23.185Z',
+            'notified': false
+          },
+          1);
+      });
       var MessageMock = sinon.mock(Message);
       var sinonCountStub = sinon.stub(Message, 'count', function (err, callback) {
         callback(null, 123);
@@ -269,19 +344,219 @@ describe('MessageController', function () {
       });
       MessageController.getTopTen(stubMsg).then(function onSuccess(message) {
         (message === 'Top 10 冗員s in the last 7 days:\n\n1. stubFirstName stubLastName 9.76%\n\nTotal message: 123').should.equal(true);
-      }).catch(function (err) {
-        log.e('getTopTen err: ' + err.message);
-        false.should.equal(true); // should fail
-      }).then(function always() {
+        UsageMock.verify();
+        UsageMock.restore();
+        findOneAndUpdateSinonStub.restore();
+        usageSavesinonStub.restore();
         MessageMock.verify();
         MessageMock.restore();
         sinonCountStub.restore();
         sinonAggregateStub.restore();
         done();
+      }, function onFailure(err) {
+        false.should.equal(true); // should fail
+        done();
+      });
+    });
+
+    it('should block command request', function (done) {
+      var UsageMock = sinon.mock(Usage);
+      UsageMock
+        .expects('find').withArgs({chatId: 'stubChatId'})
+        .chain('sort').withArgs('-dateCreated')
+        .chain('limit').withArgs(1)
+        .chain('exec')
+        .yields(null, [{
+          chatId: 'stubChatId',
+          notified: true,
+          dateCreated: new Date()
+        }]);
+      var findOneAndUpdateSinonStub = sinon.stub(Usage, 'findOneAndUpdate', function (conditions, update, options, callback) {
+        callback( // err, foundObject
+          null,
+          {
+            '__v': 0,
+            'chatId': 'stubChatId',
+            '_id': '5705c45f6c3467f672cdff50',
+            'dateCreated': '2016-04-07T02:22:23.185Z',
+            'notified': false
+          }
+        );
+      });
+      var usageSavesinonStub = sinon.stub(Usage.prototype, 'save', function (callback) {
+        callback( // err, savedObject, numAffected
+          null,
+          {
+            '__v': 0,
+            'chatId': 'stubChatId',
+            '_id': '5705c45f6c3467f672cdff50',
+            'dateCreated': '2016-04-07T02:22:23.185Z',
+            'notified': false
+          },
+          1);
+      });
+      var MessageMock = sinon.mock(Message);
+      var sinonCountStub = sinon.stub(Message, 'count', function (err, callback) {
+        callback(null, 123);
+      });
+      var sinonAggregateStub = sinon.stub(Object.getPrototypeOf(Message), 'aggregate', function (query) {
+        var exec = function (callback) {
+          callback(null, [{
+            "_id": "stubFromId",
+            "username": "stubUsername",
+            "firstName": "stubFirstName",
+            "lastName": "stubLastName",
+            "count": 12
+          }]);
+        };
+        var limit = function () {
+          return {
+            exec: exec
+          }
+        };
+        var sort = function () {
+          return {
+            limit: limit
+          }
+        };
+        return {
+          sort: sort
+        }
+      });
+      MessageController.getTopTen(stubMsg).then(function onSuccess(message) {
+        (message === '').should.equal(true);
+        UsageMock.verify();
+        UsageMock.restore();
+        findOneAndUpdateSinonStub.restore();
+        usageSavesinonStub.restore();
+        MessageMock.verify();
+        MessageMock.restore();
+        sinonCountStub.restore();
+        sinonAggregateStub.restore();
+        done();
+      }, function onFailure(err) {
+        false.should.equal(true); // should fail
+        done();
+      });
+    });
+
+    it('should return message indicating that the user should wait at least 3 mins for another command', function (done) {
+      var UsageMock = sinon.mock(Usage);
+      UsageMock
+        .expects('find').withArgs({chatId: 'stubChatId'})
+        .chain('sort').withArgs('-dateCreated')
+        .chain('limit').withArgs(1)
+        .chain('exec')
+        .yields(null, [{
+          chatId: 'stubChatId',
+          notified: false,
+          dateCreated: new Date()
+        }]);
+      var findOneAndUpdateSinonStub = sinon.stub(Usage, 'findOneAndUpdate', function (conditions, update, options, callback) {
+        callback( // err, foundObject
+          null,
+          {
+            '__v': 0,
+            'chatId': 'stubChatId',
+            '_id': '5705c45f6c3467f672cdff50',
+            'dateCreated': '2016-04-07T02:22:23.185Z',
+            'notified': false
+          }
+        );
+      });
+      var usageSavesinonStub = sinon.stub(Usage.prototype, 'save', function (callback) {
+        callback( // err, savedObject, numAffected
+          null,
+          {
+            '__v': 0,
+            'chatId': 'stubChatId',
+            '_id': '5705c45f6c3467f672cdff50',
+            'dateCreated': '2016-04-07T02:22:23.185Z',
+            'notified': false
+          },
+          1);
+      });
+      var MessageMock = sinon.mock(Message);
+      var sinonCountStub = sinon.stub(Message, 'count', function (err, callback) {
+        callback(null, 123);
+      });
+      var sinonAggregateStub = sinon.stub(Object.getPrototypeOf(Message), 'aggregate', function (query) {
+        var exec = function (callback) {
+          callback(null, [{
+            "_id": "stubFromId",
+            "username": "stubUsername",
+            "firstName": "stubFirstName",
+            "lastName": "stubLastName",
+            "count": 12
+          }]);
+        };
+        var limit = function () {
+          return {
+            exec: exec
+          }
+        };
+        var sort = function () {
+          return {
+            limit: limit
+          }
+        };
+        return {
+          sort: sort
+        }
+      });
+      MessageController.getTopTen(stubMsg).then(function onSuccess(message) {
+        (message.indexOf('[Error] Commands will be available in') >= 0).should.equal(true);
+        UsageMock.verify();
+        UsageMock.restore();
+        findOneAndUpdateSinonStub.restore();
+        usageSavesinonStub.restore();
+        MessageMock.verify();
+        MessageMock.restore();
+        sinonCountStub.restore();
+        sinonAggregateStub.restore();
+        done();
+      }, function onFailure(err) {
+        false.should.equal(true); // should fail
+        done();
       });
     });
 
     it('can handle error in aggregate', function (done) {
+      var UsageMock = sinon.mock(Usage);
+      UsageMock
+        .expects('find').withArgs({chatId: 'stubChatId'})
+        .chain('sort').withArgs('-dateCreated')
+        .chain('limit').withArgs(1)
+        .chain('exec')
+        .yields(null, [{
+          chatId: 'stubChatId',
+          notified: false,
+          dateCreated: new Date('2016-01-01T0:00:00')
+        }]);
+      var findOneAndUpdateSinonStub = sinon.stub(Usage, 'findOneAndUpdate', function (conditions, update, options, callback) {
+        callback( // err, foundObject
+          null,
+          {
+            '__v': 0,
+            'chatId': 'stubChatId',
+            '_id': '5705c45f6c3467f672cdff50',
+            'dateCreated': '2016-04-07T02:22:23.185Z',
+            'notified': false
+          }
+        );
+      });
+      var usageSavesinonStub = sinon.stub(Usage.prototype, 'save', function (callback) {
+        callback( // err, savedObject, numAffected
+          null,
+          {
+            '__v': 0,
+            'chatId': 'stubChatId',
+            '_id': '5705c45f6c3467f672cdff50',
+            'dateCreated': '2016-04-07T02:22:23.185Z',
+            'notified': false
+          },
+          1);
+      });
       var MessageMock = sinon.mock(Message);
       var sinonCountStub = sinon.stub(Message, 'count', function (err, callback) {
         callback(null, 123);
@@ -306,9 +581,12 @@ describe('MessageController', function () {
       });
       MessageController.getTopTen(stubMsg).then(function onSuccess(message) {
         false.should.equal(true); // should fail
-      }).catch(function (err) {
+      }, function onFailure (err) {
         err.message.should.equal('error');
-      }).then(function always() {
+        UsageMock.verify();
+        UsageMock.restore();
+        findOneAndUpdateSinonStub.restore();
+        usageSavesinonStub.restore();
         MessageMock.verify();
         MessageMock.restore();
         sinonCountStub.restore();
@@ -318,6 +596,41 @@ describe('MessageController', function () {
     });
 
     it('can handle error in count', function (done) {
+      var UsageMock = sinon.mock(Usage);
+      UsageMock
+        .expects('find').withArgs({chatId: 'stubChatId'})
+        .chain('sort').withArgs('-dateCreated')
+        .chain('limit').withArgs(1)
+        .chain('exec')
+        .yields(null, [{
+          chatId: 'stubChatId',
+          notified: false,
+          dateCreated: new Date('2016-01-01T0:00:00')
+        }]);
+      var findOneAndUpdateSinonStub = sinon.stub(Usage, 'findOneAndUpdate', function (conditions, update, options, callback) {
+        callback( // err, foundObject
+          null,
+          {
+            '__v': 0,
+            'chatId': 'stubChatId',
+            '_id': '5705c45f6c3467f672cdff50',
+            'dateCreated': '2016-04-07T02:22:23.185Z',
+            'notified': false
+          }
+        );
+      });
+      var usageSavesinonStub = sinon.stub(Usage.prototype, 'save', function (callback) {
+        callback( // err, savedObject, numAffected
+          null,
+          {
+            '__v': 0,
+            'chatId': 'stubChatId',
+            '_id': '5705c45f6c3467f672cdff50',
+            'dateCreated': '2016-04-07T02:22:23.185Z',
+            'notified': false
+          },
+          1);
+      });
       var MessageMock = sinon.mock(Message);
       var sinonCountStub = sinon.stub(Message, 'count', function (err, callback) {
         callback(new Error('anotherError'));
@@ -348,9 +661,13 @@ describe('MessageController', function () {
       });
       MessageController.getTopTen(stubMsg).then(function onSuccess(message) {
         false.should.equal(true); // should fail
-      }).catch(function (err) {
+        done();
+      }, function onFailure (err) {
         err.message.should.equal('anotherError');
-      }).then(function always() {
+        UsageMock.verify();
+        UsageMock.restore();
+        findOneAndUpdateSinonStub.restore();
+        usageSavesinonStub.restore();
         MessageMock.verify();
         MessageMock.restore();
         sinonCountStub.restore();
@@ -361,5 +678,4 @@ describe('MessageController', function () {
 
   });
 
-})
-;
+});
