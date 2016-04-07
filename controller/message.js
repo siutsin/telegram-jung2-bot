@@ -97,8 +97,14 @@ var getJungMessage = function (msg, limit) {
       var message = results[1];
       return message;
     });
-  }, function onFailure(dateCreatedMoment) {
-    message = '[Error] Commands will be available ' + dateCreatedMoment.add(3, 'minute').fromNow();
+  }, function onFailure(usage) {
+    if (usage.notified) {
+      message = '';
+    } else {
+      var threeMinutesLater = moment(usage.dateCreated).add(3, 'minute');
+      message = '[Error] Commands will be available ' + threeMinutesLater.fromNow() +
+        ' (' + threeMinutesLater.format('h:mm:ss a') + ').';
+    }
     return message;
   });
 };
