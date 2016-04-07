@@ -86,12 +86,17 @@ var job = new CronJob({
               id: chatId
             }
           };
-          bot.sendMessage(chatId, '夠鐘收工~~');
           /*jshint loopfunc: true */
-          MessageController.getTopTen(msg).then(function onSuccess(message) {
-            bot.sendMessage(chatId, message);
+          MessageController.getTopTen(msg, true).then(function onSuccess(message) {
+            if (!_.isEmpty(message)) {
+              bot.sendMessage(msg.chat.id, message);
+            } else {
+              log.e('/topten: message is empty');
+            }
           }, function onFailure(err) {
-            bot.sendMessage(chatId, err.message);
+            bot.sendMessage(msg.chat.id, err.message);
+          }).then(function () {
+            bot.sendMessage(chatId, '夠鐘收工~~');
           });
           /*jshint loopfunc: false */
         }

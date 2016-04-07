@@ -26,8 +26,11 @@ var updateUsageNotice = function (chatId) {
   return promise;
 };
 
-exports.isAllowCommand = function (msg) {
+exports.isAllowCommand = function (msg, force) {
   var promise = new mongoose.Promise();
+  if (force) {
+    return promise.complete();
+  }
   var chatId = msg.chat.id.toString();
   Usage.find({chatId: chatId.toString()})
     .sort('-dateCreated')
