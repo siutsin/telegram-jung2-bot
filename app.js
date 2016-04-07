@@ -30,7 +30,11 @@ app.use(bodyParser.json());
 bot.onText(/\/top(t|T)en/, function (msg, match) {
   log.i('/topten msg: ' + JSON.stringify(msg));
   MessageController.getTopTen(msg).then(function onSuccess(message) {
-    bot.sendMessage(msg.chat.id, message);
+    if (!_.isEmpty(message)) {
+      bot.sendMessage(msg.chat.id, message);
+    } else {
+      log.e('/topten: message is empty');
+    }
   }, function onFailure(err) {
     bot.sendMessage(msg.chat.id, err.message);
   });
@@ -39,7 +43,11 @@ bot.onText(/\/top(t|T)en/, function (msg, match) {
 bot.onText(/\/all(j|J)ung/, function (msg, match) {
   log.i('/alljung msg: ' + JSON.stringify(msg));
   MessageController.getAllJung(msg).then(function onSuccess(message) {
-    bot.sendMessage(msg.chat.id, message);
+    if (!_.isEmpty(message)) {
+      bot.sendMessage(msg.chat.id, message);
+    } else {
+      log.e('/alljung: message is empty');
+    }
   }, function onFailure(err) {
     bot.sendMessage(msg.chat.id, err.message);
   });
@@ -78,12 +86,17 @@ var job = new CronJob({
               id: chatId
             }
           };
-          bot.sendMessage(chatId, '夠鐘收工~~');
           /*jshint loopfunc: true */
-          MessageController.getTopTen(msg).then(function onSuccess(message) {
-            bot.sendMessage(chatId, message);
+          MessageController.getTopTen(msg, true).then(function onSuccess(message) {
+            if (!_.isEmpty(message)) {
+              bot.sendMessage(msg.chat.id, message);
+            } else {
+              log.e('/topten: message is empty');
+            }
           }, function onFailure(err) {
-            bot.sendMessage(chatId, err.message);
+            bot.sendMessage(msg.chat.id, err.message);
+          }).then(function () {
+            bot.sendMessage(chatId, '夠鐘收工~~');
           });
           /*jshint loopfunc: false */
         }
