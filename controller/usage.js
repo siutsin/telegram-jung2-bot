@@ -6,10 +6,10 @@ var Usage = require('../model/usage');
 var moment = require('moment');
 var _ = require('lodash');
 
-exports.addUsage = function (msg, callback) {
+exports.addUsage = function (msg) {
   var usage = new Usage();
   usage.chatId = msg.chat.id || '';
-  usage.save(callback);
+  return usage.save();
 };
 
 exports.isAllowCommand = function (msg) {

@@ -1,6 +1,7 @@
 'use strict';
 
 require('chai').should();
+var mongoose = require('mongoose');
 var sinon = require('sinon');
 require('sinon-mongoose');
 var log = require('log-to-file-and-console-node');
@@ -95,23 +96,20 @@ describe('UsageController', function () {
 
     it('can save a usage', function (done) {
       var sinonStub = sinon.stub(Usage.prototype, 'save', function (callback) {
-        callback( // err, product, numAffected
+        callback( // err, savedObject, numAffected
           null,
           {
             '__v': 0,
-            'notified': false,
             'chatId': 'stubChatId',
-            '_id': '56fccf467b5633c02fb4eb7e',
-            'dateCreated': '2016-03-31T07:18:30.806Z'
+            '_id': '5705c45f6c3467f672cdff50',
+            'dateCreated': '2016-04-07T02:22:23.185Z',
+            'notified': false
           },
-          1
-        );
+          1);
       });
-      UsageController.addUsage(stubMsg, function (err, usage, numAffected) {
-        (err === null).should.equal(true);
-        (usage.notified).should.equal(false);
-        (usage.chatId).should.equal('stubChatId');
-        numAffected.should.equal(1);
+      UsageController.addUsage(stubMsg).then(function onSuccess(savedObject) {
+        savedObject.chatId.should.equal('stubChatId');
+        savedObject.notified.should.equal(false);
         sinonStub.restore();
         done();
       });
@@ -123,7 +121,7 @@ describe('UsageController', function () {
         from: {}
       };
       var sinonStub = sinon.stub(Usage.prototype, 'save', function (callback) {
-        callback( // err, product, numAffected
+        callback( // err, savedObject, numAffected
           null,
           {
             '__v': 0,
@@ -135,11 +133,9 @@ describe('UsageController', function () {
           1
         );
       });
-      UsageController.addUsage(stubEmptyMsg, function (err, usage, numAffected) {
-        (err === null).should.equal(true);
-        (usage.notified).should.equal(false);
-        (usage.chatId).should.equal('');
-        numAffected.should.equal(1);
+      UsageController.addUsage(stubEmptyMsg).then(function (savedObject) {
+        savedObject.chatId.should.equal('');
+        savedObject.notified.should.equal(false);
         sinonStub.restore();
         done();
       });
