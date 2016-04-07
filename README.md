@@ -12,6 +12,18 @@ Add the bot to your group at [@jung2_bot](https://telegram.me/jung2_bot)
 
 This bot is created for counting the number of message per participant in the group.
 
+## Usage
+
+Show the percentage of `top ten` participants for the past 7 days
+```javascript
+/topten
+```
+
+Show the percentage of `all` participants for the past 7 days
+```javascript
+/alljung
+```
+
 ## Author
 
 [@Simon__Li](https://twitter.com/Simon__LI)
