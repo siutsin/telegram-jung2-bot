@@ -3,6 +3,8 @@
 var log = require('log-to-file-and-console-node');
 var mongoose = require('mongoose');
 var Message = require('../model/message');
+var UsageController = require('./usage');
+var Constants = require('../model/constants');
 var moment = require('moment');
 var _ = require('lodash');
 
@@ -79,13 +81,31 @@ var getJungMessage = function (msg, limit) {
   var message = limit ?
     'Top 10 冗員s in the last 7 days:\n\n' :
     'All 冗員s in the last 7 days:\n\n';
-  return getCountAndGetJung(msg, limit).then(function (results) {
-    var total = '';
-    for (var i = 0, l = results.length; i < l; i++) {
-      total = results[i].total;
-      message += (i + 1) + '. ' + results[i].firstName + ' ' + results[i].lastName + ' ' + results[i].percent + '\n';
+  return UsageController.isAllowCommand(msg).then(function onSuccess() {
+    var promises = [
+      UsageController.addUsage(msg),
+      getCountAndGetJung(msg, limit).then(function (results) {
+        var total = '';
+        for (var i = 0, l = results.length; i < l; i++) {
+          total = results[i].total;
+          message += (i + 1) + '. ' + results[i].firstName + ' ' + results[i].lastName + ' ' + results[i].percent + '\n';
+        }
+        message += '\nTotal message: ' + total;
+        return message;
+      })
+    ];
+    return Promise.all(promises).then(function (results) {
+      var message = results[1];
+      return message;
+    });
+  }, function onFailure(usage) {
+    if (usage.notified) {
+      message = '';
+    } else {
+      var oneMinutesLater = moment(usage.dateCreated).add(Constants.COMMAND_COOLDOWN_TIME, 'minute');
+      message = '[Error] Commands will be available ' + oneMinutesLater.fromNow() +
+        ' (' + oneMinutesLater.format('h:mm:ss a') + ').';
     }
-    message += '\nTotal message: ' + total;
     return message;
   });
 };
