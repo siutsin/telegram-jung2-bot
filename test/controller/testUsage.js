@@ -27,7 +27,7 @@ describe('UsageController', function () {
 
   describe('isAllowCommand', function () {
 
-    it('should allow if time diff is greater than or equal to 3 mins', function (done) {
+    it('should allow if time diff is greater than or equal to cooldown mins', function (done) {
       var findOneAndUpdateSinonStub = sinon.stub(Usage, 'findOneAndUpdate', function (conditions, update, options, callback) {
         callback( // err, foundObject
           null,
@@ -62,7 +62,7 @@ describe('UsageController', function () {
       });
     });
 
-    it('should not allow if time diff is smaller than 3 mins', function (done) {
+    it('should not allow if time diff is smaller than cooldown mins', function (done) {
       var findOneAndUpdateSinonStub = sinon.stub(Usage, 'findOneAndUpdate', function (conditions, update, options, callback) {
         callback( // err, foundObject
           null,
@@ -98,7 +98,7 @@ describe('UsageController', function () {
       });
     });
 
-    it('should not allow if time diff is smaller than 3 mins and notified', function (done) {
+    it('should not allow if time diff is smaller than cooldown min and notified', function (done) {
       var findOneAndUpdateSinonStub = sinon.stub(Usage, 'findOneAndUpdate', function (conditions, update, options, callback) {
         callback( // err, foundObject
           null,
