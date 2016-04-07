@@ -28,6 +28,18 @@ describe('UsageController', function () {
   describe('isAllowCommand', function () {
 
     it('should allow if time diff is greater than or equal to 3 mins', function (done) {
+      var findOneAndUpdateSinonStub = sinon.stub(Usage, 'findOneAndUpdate', function (conditions, update, options, callback) {
+        callback( // err, foundObject
+          null,
+          {
+            '__v': 0,
+            'chatId': 'stubChatId',
+            '_id': '5705c45f6c3467f672cdff50',
+            'dateCreated': '2016-04-07T02:22:23.185Z',
+            'notified': false
+          }
+        );
+      });
       var UsageMock = sinon.mock(Usage);
       UsageMock
         .expects('find').withArgs({chatId: 'stubChatId'})
@@ -42,6 +54,7 @@ describe('UsageController', function () {
       UsageController.isAllowCommand(stubMsg).then(function onSuccess() {
         UsageMock.verify();
         UsageMock.restore();
+        findOneAndUpdateSinonStub.restore();
         done();
       }, function onFailure() {
         false.should.equal(true); // should fail
@@ -50,6 +63,18 @@ describe('UsageController', function () {
     });
 
     it('should not allow if time diff is smaller than 3 mins', function (done) {
+      var findOneAndUpdateSinonStub = sinon.stub(Usage, 'findOneAndUpdate', function (conditions, update, options, callback) {
+        callback( // err, foundObject
+          null,
+          {
+            '__v': 0,
+            'chatId': 'stubChatId',
+            '_id': '5705c45f6c3467f672cdff50',
+            'dateCreated': '2016-04-07T02:22:23.185Z',
+            'notified': false
+          }
+        );
+      });
       var UsageMock = sinon.mock(Usage);
       UsageMock
         .expects('find').withArgs({chatId: 'stubChatId'})
@@ -64,15 +89,94 @@ describe('UsageController', function () {
       UsageController.isAllowCommand(stubMsg).then(function onSuccess() {
         false.should.equal(true); // should fail
         done();
-      }, function onFailure(dateCreatedMoment) {
+      }, function onFailure(usage) {
         UsageMock.verify();
         UsageMock.restore();
-        (dateCreatedMoment instanceof moment).should.equal(true);
+        findOneAndUpdateSinonStub.restore();
+        usage.chatId.should.equal('stubChatId');
+        done();
+      });
+    });
+
+    it('should not allow if time diff is smaller than 3 mins and notified', function (done) {
+      var findOneAndUpdateSinonStub = sinon.stub(Usage, 'findOneAndUpdate', function (conditions, update, options, callback) {
+        callback( // err, foundObject
+          null,
+          {
+            '__v': 0,
+            'chatId': 'stubChatId',
+            '_id': '5705c45f6c3467f672cdff50',
+            'dateCreated': '2016-04-07T02:22:23.185Z',
+            'notified': false
+          }
+        );
+      });
+      var UsageMock = sinon.mock(Usage);
+      UsageMock
+        .expects('find').withArgs({chatId: 'stubChatId'})
+        .chain('sort').withArgs('-dateCreated')
+        .chain('limit').withArgs(1)
+        .chain('exec')
+        .yields(null, [{
+          chatId: 'stubChatId',
+          notified: true,
+          dateCreated: new Date()
+        }]);
+      UsageController.isAllowCommand(stubMsg).then(function onSuccess() {
+        false.should.equal(true); // should fail
+        done();
+      }, function onFailure(usage) {
+        UsageMock.verify();
+        UsageMock.restore();
+        findOneAndUpdateSinonStub.restore();
+        usage.chatId.should.equal('stubChatId');
+        done();
+      });
+    });
+
+    it('can handle not found error in findOneAndUpdate', function (done) {
+      var findOneAndUpdateSinonStub = sinon.stub(Usage, 'findOneAndUpdate', function (conditions, update, options, callback) {
+        callback( // err, foundObject
+          null,
+          null
+        );
+      });
+      var UsageMock = sinon.mock(Usage);
+      UsageMock
+        .expects('find').withArgs({chatId: 'stubChatId'})
+        .chain('sort').withArgs('-dateCreated')
+        .chain('limit').withArgs(1)
+        .chain('exec')
+        .yields(null, [{
+          chatId: 'stubChatId',
+          notified: false,
+          dateCreated: new Date()
+        }]);
+      UsageController.isAllowCommand(stubMsg).then(function onSuccess(usage) {
+        false.should.equal(true); // should fail
+        done();
+      }, function onFailure(usage) {
+        UsageMock.verify();
+        UsageMock.restore();
+        findOneAndUpdateSinonStub.restore();
+        usage.chatId.should.equal('stubChatId');
         done();
       });
     });
 
     it('should allow if no record', function (done) {
+      var findOneAndUpdateSinonStub = sinon.stub(Usage, 'findOneAndUpdate', function (conditions, update, options, callback) {
+        callback( // err, foundObject
+          null,
+          {
+            '__v': 0,
+            'chatId': 'stubChatId',
+            '_id': '5705c45f6c3467f672cdff50',
+            'dateCreated': '2016-04-07T02:22:23.185Z',
+            'notified': false
+          }
+        );
+      });
       var UsageMock = sinon.mock(Usage);
       UsageMock
         .expects('find').withArgs({chatId: 'stubChatId'})
@@ -83,6 +187,7 @@ describe('UsageController', function () {
       UsageController.isAllowCommand(stubMsg).then(function onSuccess() {
         UsageMock.verify();
         UsageMock.restore();
+        findOneAndUpdateSinonStub.restore();
         done();
       }, function onFailure() {
         false.should.equal(true); // should fail

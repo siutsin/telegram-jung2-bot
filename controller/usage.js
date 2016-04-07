@@ -19,11 +19,7 @@ var updateUsageNotice = function (chatId) {
     {notified: true},
     {sort: '-dateCreated'},
     function callback(err, foundUsage) {
-      if (foundUsage) {
-        promise.complete();
-      } else {
-        promise.error(new Error('usage not found'));
-      }
+      promise.complete(foundUsage);
     }
   );
   return promise;
@@ -40,11 +36,13 @@ exports.isAllowCommand = function (msg) {
         var usage = usages[0];
         var diff = Math.abs(moment(usage.dateCreated).diff(moment(), 'minute', true));
         if (diff < 3) {
-          updateUsageNotice(chatId).then(function () {
+          if (usage.notified) {
             promise.reject(usage);
-          });
-        } else if (usage.notified && diff < 3) {
-          promise.reject(usage);
+          } else {
+            updateUsageNotice(chatId).then(function () {
+              promise.reject(usage);
+            });
+          }
         } else {
           promise.complete();
         }
