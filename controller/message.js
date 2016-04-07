@@ -77,11 +77,11 @@ var getCountAndGetJung = function (msg, limit) {
   });
 };
 
-var getJungMessage = function (msg, limit) {
+var getJungMessage = function (msg, limit, force) {
   var message = limit ?
     'Top 10 冗員s in the last 7 days:\n\n' :
     'All 冗員s in the last 7 days:\n\n';
-  return UsageController.isAllowCommand(msg).then(function onSuccess() {
+  return UsageController.isAllowCommand(msg, force).then(function onSuccess() {
     var promises = [
       UsageController.addUsage(msg),
       getCountAndGetJung(msg, limit).then(function (results) {
@@ -152,6 +152,6 @@ exports.getAllJung = function (msg) {
   return getJungMessage(msg);
 };
 
-exports.getTopTen = function (msg) {
-  return getJungMessage(msg, 10);
+exports.getTopTen = function (msg, force) {
+  return getJungMessage(msg, 10, force);
 };

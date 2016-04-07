@@ -27,6 +27,15 @@ describe('UsageController', function () {
 
   describe('isAllowCommand', function () {
 
+    it('should always return success if force is true', function (done) {
+      UsageController.isAllowCommand(stubMsg, true).then(function onSuccess() {
+        done();
+      }, function onFailure() {
+        false.should.equal(true); // should fail
+        done();
+      });
+    });
+
     it('should allow if time diff is greater than or equal to cooldown mins', function (done) {
       var findOneAndUpdateSinonStub = sinon.stub(Usage, 'findOneAndUpdate', function (conditions, update, options, callback) {
         callback( // err, foundObject
