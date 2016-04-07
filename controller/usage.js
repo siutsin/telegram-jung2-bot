@@ -3,6 +3,7 @@
 var log = require('log-to-file-and-console-node');
 var mongoose = require('mongoose');
 var Usage = require('../model/usage');
+var Constants = require('../model/constants');
 var moment = require('moment');
 var _ = require('lodash');
 
@@ -35,7 +36,7 @@ exports.isAllowCommand = function (msg) {
       if (_.isArray(usages) && !_.isEmpty(usages)) {
         var usage = usages[0];
         var diff = Math.abs(moment(usage.dateCreated).diff(moment(), 'minute', true));
-        if (diff < 3) {
+        if (diff < Constants.COMMAND_COOLDOWN_TIME) {
           if (usage.notified) {
             promise.reject(usage);
           } else {

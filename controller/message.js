@@ -4,6 +4,7 @@ var log = require('log-to-file-and-console-node');
 var mongoose = require('mongoose');
 var Message = require('../model/message');
 var UsageController = require('./usage');
+var Constants = require('../model/constants');
 var moment = require('moment');
 var _ = require('lodash');
 
@@ -101,9 +102,9 @@ var getJungMessage = function (msg, limit) {
     if (usage.notified) {
       message = '';
     } else {
-      var threeMinutesLater = moment(usage.dateCreated).add(3, 'minute');
-      message = '[Error] Commands will be available ' + threeMinutesLater.fromNow() +
-        ' (' + threeMinutesLater.format('h:mm:ss a') + ').';
+      var oneMinutesLater = moment(usage.dateCreated).add(Constants.COMMAND_COOLDOWN_TIME, 'minute');
+      message = '[Error] Commands will be available ' + oneMinutesLater.fromNow() +
+        ' (' + oneMinutesLater.format('h:mm:ss a') + ').';
     }
     return message;
   });
