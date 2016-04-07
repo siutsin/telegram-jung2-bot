@@ -12,6 +12,23 @@ exports.addUsage = function (msg) {
   return usage.save();
 };
 
+var updateUsageNotice = function (chatId) {
+  var promise = new mongoose.Promise();
+  Usage.findOneAndUpdate(
+    {chatId: chatId},
+    {notified: true},
+    {sort: '-dateCreated'},
+    function callback(err, foundUsage) {
+      if (foundUsage) {
+        promise.complete();
+      } else {
+        promise.error(new Error('usage not found'));
+      }
+    }
+  );
+  return promise;
+};
+
 exports.isAllowCommand = function (msg) {
   var promise = new mongoose.Promise();
   var chatId = msg.chat.id.toString();
@@ -23,7 +40,11 @@ exports.isAllowCommand = function (msg) {
         var usage = usages[0];
         var diff = Math.abs(moment(usage.dateCreated).diff(moment(), 'minute', true));
         if (diff < 3) {
-          promise.reject(moment(usage.dateCreated));
+          updateUsageNotice(chatId).then(function () {
+            promise.reject(usage);
+          });
+        } else if (usage.notified && diff < 3) {
+          promise.reject(usage);
         } else {
           promise.complete();
         }
