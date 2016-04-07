@@ -1,6 +1,6 @@
 {
   "name": "telegram-jung2-bot",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "repository": {
     "type": "git",
     "url": "https://github.com/siutsin/telegram-jung2-bot.git"
@@ -22,6 +22,7 @@
     "lodash": "^4.8.2",
     "log-to-file-and-console-node": "^1.0.0",
     "moment": "^2.12.0",
+    "moment-timezone": "^0.5.3",
     "mongoose": "^4.4.11",
     "morgan": "~1.7.0",
     "node-telegram-bot-api": "^0.21.1"
