@@ -5,7 +5,7 @@ var mongoose = require('mongoose');
 var Message = require('../model/message');
 var UsageController = require('./usage');
 var Constants = require('../model/constants');
-var moment = require('moment');
+var moment = require('moment-timezone');
 var _ = require('lodash');
 
 var getCount = function (msg) {
@@ -102,9 +102,9 @@ var getJungMessage = function (msg, limit, force) {
     if (usage.notified) {
       message = '';
     } else {
-      var oneMinutesLater = moment(usage.dateCreated).add(Constants.COMMAND_COOLDOWN_TIME, 'minute');
+      var oneMinutesLater = moment(usage.dateCreated).add(Constants.COMMAND_COOLDOWN_TIME, 'minute').tz('Asia/Hong_Kong');
       message = '[Error] Commands will be available ' + oneMinutesLater.fromNow() +
-        ' (' + oneMinutesLater.format('h:mm:ss a') + ').';
+        ' (' + oneMinutesLater.format('h:mm:ss a') + ' HKT).';
     }
     return message;
   });
