@@ -86,17 +86,12 @@ var job = new CronJob({
               id: chatId
             }
           };
+          bot.sendMessage(chatId, '夠鐘收工~~');
           /*jshint loopfunc: true */
           MessageController.getTopTen(msg, true).then(function onSuccess(message) {
             if (!_.isEmpty(message)) {
-              bot.sendMessage(msg.chat.id, message);
-            } else {
-              log.e('/topten: message is empty');
+              bot.sendMessage(chatId, message);
             }
-          }, function onFailure(err) {
-            bot.sendMessage(msg.chat.id, err.message);
-          }).then(function () {
-            bot.sendMessage(chatId, '夠鐘收工~~');
           });
           /*jshint loopfunc: false */
         }
