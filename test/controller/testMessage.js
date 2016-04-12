@@ -257,7 +257,7 @@ describe('MessageController', function () {
         };
       });
       MessageController.getAllJung(stubMsg).then(function onSuccess(message) {
-        (message === 'All 冗員s in the last 7 days:\n\n1. stubFirstName stubLastName 9.76%\n\nTotal message: 123').should.equal(true);
+        (message === 'All 冗員s in the last 7 days (last 上水 time):\n\n1. stubFirstName stubLastName 9.76% (a few seconds ago)\n\nTotal message: 123').should.equal(true);
       }, function onFailure() {
       }).catch(function (err) {
         false.should.equal(true); // should fail
@@ -343,7 +343,7 @@ describe('MessageController', function () {
         }
       });
       MessageController.getTopTen(stubMsg).then(function onSuccess(message) {
-        (message === 'Top 10 冗員s in the last 7 days:\n\n1. stubFirstName stubLastName 9.76%\n\nTotal message: 123').should.equal(true);
+        (message === 'Top 10 冗員s in the last 7 days (last 上水 time):\n\n1. stubFirstName stubLastName 9.76% (a few seconds ago)\n\nTotal message: 123').should.equal(true);
         UsageMock.verify();
         UsageMock.restore();
         findOneAndUpdateSinonStub.restore();

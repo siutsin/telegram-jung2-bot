@@ -4,6 +4,7 @@ var log = require('log-to-file-and-console-node');
 var mongoose = require('mongoose');
 var Usage = require('../model/usage');
 var Constants = require('../model/constants');
+require('moment');
 var moment = require('moment-timezone');
 var _ = require('lodash');
 

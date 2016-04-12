@@ -5,6 +5,7 @@ var mongoose = require('mongoose');
 var Message = require('../model/message');
 var UsageController = require('./usage');
 var Constants = require('../model/constants');
+require('moment');
 var moment = require('moment-timezone');
 var _ = require('lodash');
 
@@ -44,6 +45,7 @@ var getJung = function (msg, limit) {
           username: {$last: '$username'},
           firstName: {$last: '$firstName'},
           lastName: {$last: '$lastName'},
+          dateCreated: {$last: '$dateCreated'},
           count: {$sum: 1}
         }
       }])
@@ -79,8 +81,8 @@ var getCountAndGetJung = function (msg, limit) {
 
 var getJungMessage = function (msg, limit, force) {
   var message = limit ?
-    'Top 10 冗員s in the last 7 days:\n\n' :
-    'All 冗員s in the last 7 days:\n\n';
+    'Top 10 冗員s in the last 7 days (last 上水 time):\n\n' :
+    'All 冗員s in the last 7 days (last 上水 time):\n\n';
   return UsageController.isAllowCommand(msg, force).then(function onSuccess() {
     var promises = [
       UsageController.addUsage(msg),
@@ -88,7 +90,8 @@ var getJungMessage = function (msg, limit, force) {
         var total = '';
         for (var i = 0, l = results.length; i < l; i++) {
           total = results[i].total;
-          message += (i + 1) + '. ' + results[i].firstName + ' ' + results[i].lastName + ' ' + results[i].percent + '\n';
+          message += (i + 1) + '. ' + results[i].firstName + ' ' + results[i].lastName + ' ' + results[i].percent +
+            ' (' + moment(results[i].dateCreated).fromNow() + ')' + '\n';
         }
         message += '\nTotal message: ' + total;
         return message;
