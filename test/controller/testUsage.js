@@ -6,6 +6,7 @@ var sinon = require('sinon');
 require('sinon-mongoose');
 var log = require('log-to-file-and-console-node');
 var _ = require('lodash');
+require('moment');
 var moment = require('moment-timezone');
 
 var UsageController = require('../../controller/usage');

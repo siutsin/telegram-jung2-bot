@@ -5,6 +5,7 @@ var mongoose = require('mongoose');
 var Message = require('../model/message');
 var UsageController = require('./usage');
 var Constants = require('../model/constants');
+require('moment');
 var moment = require('moment-timezone');
 var _ = require('lodash');
 
