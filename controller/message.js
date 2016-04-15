@@ -113,33 +113,35 @@ var getJungMessage = function (msg, limit, force) {
   });
 };
 
+var cachedLastSender = {
+  //chatId: 'userId'
+};
+
+exports.clearCachedLastSender = function () {
+  cachedLastSender = {};
+};
+
+exports.setCachedLastSender = function (chatId, userId) {
+  cachedLastSender[chatId] = userId;
+};
+
 exports.shouldAddMessage = function (msg) {
-  var promise = new mongoose.Promise();
+  var result = true;
   var chatId = msg.chat.id.toString();
   var userId = msg.from.id.toString();
   /*jshint camelcase: false */
   var isReplyingToMsg = !!msg.reply_to_message;
   /*jshint camelcase: true */
-  Message.find({chatId: chatId.toString()})
-    .sort('-dateCreated')
-    .limit(1)
-    .exec(function (err, messages) {
-      if (!_.isEmpty(messages)) {
-        var msg = messages[0];
-        var result = isReplyingToMsg || (msg.userId !== userId);
-        promise.complete(result);
-      } else {
-        promise.complete(true);
-      }
-    });
-  return promise;
-};
-
-exports.getAllGroupIds = function (callback) {
-  Message.find().distinct('chatId', callback);
+  if (isReplyingToMsg || !cachedLastSender[chatId]) {
+    cachedLastSender[chatId] = userId;
+  } else if (cachedLastSender[chatId] === userId) {
+    result = false;
+  }
+  return result;
 };
 
 exports.addMessage = function (msg, callback) {
+  cachedLastSender[msg.chat.id] = msg.from.id;
   var message = new Message();
   message.chatId = msg.chat.id || '';
   message.userId = msg.from.id || '';
@@ -149,6 +151,10 @@ exports.addMessage = function (msg, callback) {
   message.lastName = msg.from.last_name || '';
   /*jshint camelcase: true */
   message.save(callback);
+};
+
+exports.getAllGroupIds = function (callback) {
+  Message.find().distinct('chatId', callback);
 };
 
 exports.getAllJung = function (msg) {

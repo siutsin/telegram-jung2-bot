@@ -57,15 +57,13 @@ bot.onText(/\/all(j|J)ung/, function (msg, match) {
 
 bot.on('message', function (msg) {
   log.i('msg: ' + JSON.stringify(msg));
-  MessageController.shouldAddMessage(msg).then(function (shouldAdd) {
-    if (shouldAdd) {
-      MessageController.addMessage(msg, function () {
-        log.i('add message success');
-      });
-    } else {
-      log.e('skip repeated message');
-    }
-  });
+  if (MessageController.shouldAddMessage(msg)) {
+    MessageController.addMessage(msg, function () {
+      log.i('add message success');
+    });
+  } else {
+    log.e('skip repeated message');
+  }
 });
 
 app.route('/')
