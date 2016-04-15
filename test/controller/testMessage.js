@@ -91,43 +91,28 @@ describe('MessageController', function () {
 
   describe('shouldAddMessage', function () {
 
-    it('can determine the record should not be added if the user id is same', function (done) {
-      var MessageMock = sinon.mock(Message);
-      MessageMock
-        .expects('find').withArgs({chatId: 'stubChatId'})
-        .chain('sort').withArgs('-dateCreated')
-        .chain('limit').withArgs(1)
-        .chain('exec')
-        .yields(null, [{
-          'userId': 'stubFromId'
-        }]);
-      MessageController.shouldAddMessage(stubMsg).then(function (result) {
-        MessageMock.verify();
-        MessageMock.restore();
-        result.should.equal(false);
-        done();
-      });
+    beforeEach(function () {
+      MessageController.clearCachedLastSender();
     });
 
-    it('can determine the record should be added if the user id is not the same', function (done) {
-      var MessageMock = sinon.mock(Message);
-      MessageMock
-        .expects('find').withArgs({chatId: 'stubChatId'})
-        .chain('sort').withArgs('-dateCreated')
-        .chain('limit').withArgs(1)
-        .chain('exec')
-        .yields(null, [{
-          'userId': 'anotherId'
-        }]);
-      MessageController.shouldAddMessage(stubMsg).then(function (result) {
-        MessageMock.verify();
-        MessageMock.restore();
-        result.should.equal(true);
-        done();
-      });
+    it('allows adding msg if chatId is not exist', function (done) {
+      MessageController.shouldAddMessage(stubMsg).should.equal(true);
+      done();
     });
 
-    it('can determine the record should be added if it is replying to message even if the sender id is the same', function (done) {
+    it('allows adding msg if chatId\'s sender is not the same', function (done) {
+      MessageController.setCachedLastSender('stubChatId', 'randomPeople');
+      MessageController.shouldAddMessage(stubMsg).should.equal(true);
+      done();
+    });
+
+    it('doest not allow adding msg if chatId\'s sender is same as msg.from.id', function (done) {
+      MessageController.setCachedLastSender('stubChatId', 'stubFromId');
+      MessageController.shouldAddMessage(stubMsg).should.equal(false);
+      done();
+    });
+
+    it('allows adding replying msg even if chatId\'s sender is same as msg.from.id', function (done) {
       var stubReplyingMsg = {
         chat: {
           id: 'stubChatId'
@@ -142,37 +127,9 @@ describe('MessageController', function () {
           "message_id": 123
         }
       };
-      var MessageMock = sinon.mock(Message);
-      MessageMock
-        .expects('find').withArgs({chatId: 'stubChatId'})
-        .chain('sort').withArgs('-dateCreated')
-        .chain('limit').withArgs(1)
-        .chain('exec')
-        .yields(null, [{
-          'userId': 'stubFromId'
-        }]);
-      MessageController.shouldAddMessage(stubReplyingMsg).then(function (result) {
-        MessageMock.verify();
-        MessageMock.restore();
-        result.should.equal(true);
-        done();
-      });
-    });
-
-    it('allows to add record if encountered error', function (done) {
-      var MessageMock = sinon.mock(Message);
-      MessageMock
-        .expects('find').withArgs({chatId: 'stubChatId'})
-        .chain('sort').withArgs('-dateCreated')
-        .chain('limit').withArgs(1)
-        .chain('exec')
-        .yields(new Error('someError'));
-      MessageController.shouldAddMessage(stubMsg).then(function (result) {
-        MessageMock.verify();
-        MessageMock.restore();
-        result.should.equal(true);
-        done();
-      });
+      MessageController.setCachedLastSender('stubChatId', 'stubFromId');
+      MessageController.shouldAddMessage(stubReplyingMsg).should.equal(true);
+      done();
     });
 
   });
