@@ -31,6 +31,7 @@ bot.onText(/\/top(t|T)en/, function (msg, match) {
   log.i('/topten msg: ' + JSON.stringify(msg));
   MessageController.getTopTen(msg).then(function onSuccess(message) {
     if (!_.isEmpty(message)) {
+      log.i('/topten sendBot to ' + msg.chat.id + ' message: ' + message);
       bot.sendMessage(msg.chat.id, message);
     } else {
       log.e('/topten: message is empty');
@@ -44,6 +45,7 @@ bot.onText(/\/all(j|J)ung/, function (msg, match) {
   log.i('/alljung msg: ' + JSON.stringify(msg));
   MessageController.getAllJung(msg).then(function onSuccess(message) {
     if (!_.isEmpty(message)) {
+      log.i('/alljung sendBot to ' + msg.chat.id + ' message: ' + message);
       bot.sendMessage(msg.chat.id, message);
     } else {
       log.e('/alljung: message is empty');
@@ -55,17 +57,18 @@ bot.onText(/\/all(j|J)ung/, function (msg, match) {
 
 bot.on('message', function (msg) {
   log.i('msg: ' + JSON.stringify(msg));
-  MessageController.shouldAddMessage(msg).then(function (shouldAdd) {
-    if (shouldAdd) {
-      MessageController.addMessage(msg);
-    } else {
-      log.e('shouldAdd: ' + shouldAdd);
-    }
-  });
+  if (MessageController.shouldAddMessage(msg)) {
+    MessageController.addMessage(msg, function () {
+      log.i('add message success');
+    });
+  } else {
+    log.e('skip repeated message');
+  }
 });
 
 app.route('/')
   .get(function (req, res) {
+    log.i('up time robot log');
     res.json({
       status: 'OK',
       desc: 'For UpTimeRobot'
@@ -86,10 +89,10 @@ var job = new CronJob({
               id: chatId
             }
           };
-          bot.sendMessage(chatId, '夠鐘收工~~');
           /*jshint loopfunc: true */
           MessageController.getTopTen(msg, true).then(function onSuccess(message) {
             if (!_.isEmpty(message)) {
+              message = '夠鐘收工~~\n\n' + message;
               bot.sendMessage(chatId, message);
             }
           });
