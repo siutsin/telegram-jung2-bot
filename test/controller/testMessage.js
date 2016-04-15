@@ -56,7 +56,9 @@ describe('MessageController', function () {
     it('can save a message with missing properties', function (done) {
       var stubEmptyMsg = {
         chat: {},
-        from: {}
+        from: {
+          id: ''
+        }
       };
       var sinonStub = sinon.stub(Message.prototype, 'save', function (callback) {
         callback( // err, product, numAffected

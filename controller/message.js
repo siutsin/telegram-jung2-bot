@@ -141,7 +141,7 @@ exports.shouldAddMessage = function (msg) {
 };
 
 exports.addMessage = function (msg, callback) {
-  cachedLastSender[msg.chat.id] = msg.from.id;
+  cachedLastSender[msg.chat.id] = msg.from.id.toString();
   var message = new Message();
   message.chatId = msg.chat.id || '';
   message.userId = msg.from.id || '';
