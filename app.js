@@ -86,10 +86,10 @@ var job = new CronJob({
               id: chatId
             }
           };
-          bot.sendMessage(chatId, '夠鐘收工~~');
           /*jshint loopfunc: true */
           MessageController.getTopTen(msg, true).then(function onSuccess(message) {
             if (!_.isEmpty(message)) {
+              message = '夠鐘收工~~\n\n' + message;
               bot.sendMessage(chatId, message);
             }
           });
