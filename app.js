@@ -39,6 +39,10 @@ bot.onText(/\/all(j|J)ung/, function (msg, match) {
   BotHandler.onAllJung(msg, bot);
 });
 
+bot.onText(/\/help/, function (msg, match) {
+  BotHandler.onHelp(msg, bot);
+});
+
 bot.on('message', function (msg) {
   BotHandler.onMessage(msg);
 });

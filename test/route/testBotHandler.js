@@ -95,6 +95,15 @@ describe('BotHandler', function () {
 
   });
 
+  describe('onHelp', function () {
+
+    it('can send help message', function (done) {
+      BotHandler.onHelp(stubMsg, stubBot);
+      done();
+    });
+
+  });
+
   describe('onMessage', function () {
 
     beforeEach(function () {
