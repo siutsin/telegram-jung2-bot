@@ -80,9 +80,7 @@ var getCountAndGetJung = function (msg, limit) {
 };
 
 var getJungMessage = function (msg, limit, force) {
-  var message = limit ?
-    'Top 10 冗員s in the last 7 days (last 上水 time):\n\n' :
-    'All 冗員s in the last 7 days (last 上水 time):\n\n';
+  var message = limit ? Constants.MESSAGE.TOP_TEN_TITLE : Constants.MESSAGE.ALL_JUNG_TITLE;
   return UsageController.isAllowCommand(msg, force).then(function onSuccess() {
     var promises = [
       UsageController.addUsage(msg),
@@ -105,7 +103,7 @@ var getJungMessage = function (msg, limit, force) {
     if (usage.notified) {
       message = '';
     } else {
-      var oneMinutesLater = moment(usage.dateCreated).add(Constants.COMMAND_COOLDOWN_TIME, 'minute').tz('Asia/Hong_Kong');
+      var oneMinutesLater = moment(usage.dateCreated).add(Constants.CONFIG.COMMAND_COOLDOWN_TIME, 'minute').tz('Asia/Hong_Kong');
       message = '[Error] Commands will be available ' + oneMinutesLater.fromNow() +
         ' (' + oneMinutesLater.format('h:mm:ss a') + ' HKT).';
     }
