@@ -1,0 +1,1 @@
+var Router = require('../../route/router');
