@@ -9,7 +9,7 @@ var _ = require('lodash');
 var CronJob = require('cron').CronJob;
 var log = require('log-to-file-and-console-node');
 var MessageController = require('./controller/message');
-var Router = require('./route/router');
+var BotHandler = require('./route/botHandler');
 var TelegramBot = require('node-telegram-bot-api');
 
 var app = express();
@@ -29,15 +29,15 @@ app.use(morgan('combined', {'stream': log.stream}));
 app.use(bodyParser.json());
 
 bot.onText(/\/top(t|T)en/, function (msg, match) {
-  Router.onTopTen(msg, bot);
+  BotHandler.onTopTen(msg, bot);
 });
 
 bot.onText(/\/all(j|J)ung/, function (msg, match) {
-  Router.onAllJung(msg, bot);
+  BotHandler.onAllJung(msg, bot);
 });
 
 bot.on('message', function (msg) {
-  Router.onMessage(msg);
+  BotHandler.onMessage(msg);
 });
 
 app.route('/')
