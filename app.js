@@ -78,27 +78,25 @@ app.route('/')
 var job = new CronJob({
   cronTime: '00 00 18 * * 1-5',
   onTick: function () {
-    MessageController.getAllGroupIds(function (error, chatIds) {
-      if (error) {
-        log.e('cronJob error: ' + JSON.stringify(error));
-      } else {
-        for (var i = 0, l = chatIds.length; i < l; i++) {
-          const chatId = chatIds[i];
-          var msg = {
-            chat: {
-              id: chatId
-            }
-          };
-          /*jshint loopfunc: true */
-          MessageController.getTopTen(msg, true).then(function onSuccess(message) {
-            if (!_.isEmpty(message)) {
-              message = '夠鐘收工~~\n\n' + message;
-              bot.sendMessage(chatId, message);
-            }
-          });
-          /*jshint loopfunc: false */
-        }
+    MessageController.getAllGroupIds().then(function onSuccess(chatIds) {
+      for (var i = 0, l = chatIds.length; i < l; i++) {
+        const chatId = chatIds[i];
+        var msg = {
+          chat: {
+            id: chatId
+          }
+        };
+        bot.sendMessage(chatId, '夠鐘收工~~');
+        /*jshint loopfunc: true */
+        MessageController.getTopTen(msg, true).then(function onSuccess(message) {
+          if (!_.isEmpty(message)) {
+            bot.sendMessage(chatId, message);
+          }
+        });
+        /*jshint loopfunc: false */
       }
+    }, function onFailure(err) {
+      log.e('cronJob error: ' + JSON.stringify(err));
     });
   },
   start: false,

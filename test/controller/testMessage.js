@@ -138,18 +138,34 @@ describe('MessageController', function () {
 
   describe('getAllGroupIds', function () {
 
-    it('can get all group id', function (done) {
+    it('can get all group id within 7 days', function (done) {
       var MessageMock = sinon.mock(Message);
       MessageMock
         .expects('find')
         .chain('distinct').withArgs('chatId')
         .yields(null, ['123', '234']);
-      MessageController.getAllGroupIds(function (err, result) {
+      MessageController.getAllGroupIds().then(function (chatIds) {
         MessageMock.verify();
         MessageMock.restore();
-        _.isArray(result).should.equal(true);
-        result[0].should.equal('123');
-        result[1].should.equal('234');
+        _.isArray(chatIds).should.equal(true);
+        chatIds[0].should.equal('123');
+        chatIds[1].should.equal('234');
+        done();
+      });
+    });
+
+    it('can get handle error', function (done) {
+      var MessageMock = sinon.mock(Message);
+      MessageMock
+        .expects('find')
+        .chain('distinct').withArgs('chatId')
+        .yields(new Error('getAllGroudIdsError'));
+      MessageController.getAllGroupIds().then(function onSuccess() {
+        false.should.equal(true); // should fail
+      }, function onFailure(err) {
+        MessageMock.verify();
+        MessageMock.restore();
+        err.message.should.equal('getAllGroudIdsError');
         done();
       });
     });
