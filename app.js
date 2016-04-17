@@ -42,7 +42,6 @@ bot.on('message', function (msg) {
 
 app.route('/')
   .get(function (req, res) {
-    log.i('up time robot log');
     res.json({
       status: 'OK',
       desc: 'For UpTimeRobot'
