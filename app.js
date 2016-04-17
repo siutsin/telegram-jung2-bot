@@ -28,6 +28,9 @@ mongoose.connect(connectionString);
 app.use(morgan('combined', {'stream': log.stream}));
 app.use(bodyParser.json());
 
+var root = require('./route/root');
+app.use('/', root);
+
 bot.onText(/\/top(t|T)en/, function (msg, match) {
   BotHandler.onTopTen(msg, bot);
 });
@@ -39,14 +42,6 @@ bot.onText(/\/all(j|J)ung/, function (msg, match) {
 bot.on('message', function (msg) {
   BotHandler.onMessage(msg);
 });
-
-app.route('/')
-  .get(function (req, res) {
-    res.json({
-      status: 'OK',
-      desc: 'For UpTimeRobot'
-    });
-  });
 
 var job = new CronJob({
   cronTime: '00 00 18 * * 1-5',
