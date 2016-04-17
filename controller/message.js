@@ -153,8 +153,20 @@ exports.addMessage = function (msg, callback) {
   message.save(callback);
 };
 
-exports.getAllGroupIds = function (callback) {
-  Message.find().distinct('chatId', callback);
+exports.getAllGroupIds = function () {
+  var promise = new mongoose.Promise();
+  Message.find({
+    dateCreated: {
+      $gte: new Date(moment().subtract(7, 'day').toISOString())
+    }}
+  ).distinct('chatId', function (err, chatIds) {
+    if (err) {
+      promise.error(err);
+    } else {
+      promise.complete(chatIds);
+    }
+  });
+  return promise;
 };
 
 exports.getAllJung = function (msg) {
