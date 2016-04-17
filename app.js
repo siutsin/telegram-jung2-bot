@@ -9,6 +9,7 @@ var _ = require('lodash');
 var CronJob = require('cron').CronJob;
 var log = require('log-to-file-and-console-node');
 var MessageController = require('./controller/message');
+var Router = require('./route/router');
 var TelegramBot = require('node-telegram-bot-api');
 
 var app = express();
@@ -28,42 +29,15 @@ app.use(morgan('combined', {'stream': log.stream}));
 app.use(bodyParser.json());
 
 bot.onText(/\/top(t|T)en/, function (msg, match) {
-  log.i('/topten msg: ' + JSON.stringify(msg));
-  MessageController.getTopTen(msg).then(function onSuccess(message) {
-    if (!_.isEmpty(message)) {
-      log.i('/topten sendBot to ' + msg.chat.id + ' message: ' + message);
-      bot.sendMessage(msg.chat.id, message);
-    } else {
-      log.e('/topten: message is empty');
-    }
-  }, function onFailure(err) {
-    bot.sendMessage(msg.chat.id, err.message);
-  });
+  Router.onTopTen(msg, bot);
 });
 
 bot.onText(/\/all(j|J)ung/, function (msg, match) {
-  log.i('/alljung msg: ' + JSON.stringify(msg));
-  MessageController.getAllJung(msg).then(function onSuccess(message) {
-    if (!_.isEmpty(message)) {
-      log.i('/alljung sendBot to ' + msg.chat.id + ' message: ' + message);
-      bot.sendMessage(msg.chat.id, message);
-    } else {
-      log.e('/alljung: message is empty');
-    }
-  }, function onFailure(err) {
-    bot.sendMessage(msg.chat.id, err.message);
-  });
+  Router.onAllJung(msg, bot);
 });
 
 bot.on('message', function (msg) {
-  log.i('msg: ' + JSON.stringify(msg));
-  if (MessageController.shouldAddMessage(msg)) {
-    MessageController.addMessage(msg, function () {
-      log.i('add message success');
-    });
-  } else {
-    log.e('skip repeated message');
-  }
+  Router.onMessage(msg);
 });
 
 app.route('/')
