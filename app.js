@@ -9,6 +9,7 @@ var _ = require('lodash');
 var CronJob = require('cron').CronJob;
 var log = require('log-to-file-and-console-node');
 var MessageController = require('./controller/message');
+var BotHandler = require('./route/botHandler');
 var TelegramBot = require('node-telegram-bot-api');
 
 var app = express();
@@ -27,78 +28,47 @@ mongoose.connect(connectionString);
 app.use(morgan('combined', {'stream': log.stream}));
 app.use(bodyParser.json());
 
+var root = require('./route/root');
+app.use('/', root);
+
 bot.onText(/\/top(t|T)en/, function (msg, match) {
-  log.i('/topten msg: ' + JSON.stringify(msg));
-  MessageController.getTopTen(msg).then(function onSuccess(message) {
-    if (!_.isEmpty(message)) {
-      log.i('/topten sendBot to ' + msg.chat.id + ' message: ' + message);
-      bot.sendMessage(msg.chat.id, message);
-    } else {
-      log.e('/topten: message is empty');
-    }
-  }, function onFailure(err) {
-    bot.sendMessage(msg.chat.id, err.message);
-  });
+  BotHandler.onTopTen(msg, bot);
 });
 
 bot.onText(/\/all(j|J)ung/, function (msg, match) {
-  log.i('/alljung msg: ' + JSON.stringify(msg));
-  MessageController.getAllJung(msg).then(function onSuccess(message) {
-    if (!_.isEmpty(message)) {
-      log.i('/alljung sendBot to ' + msg.chat.id + ' message: ' + message);
-      bot.sendMessage(msg.chat.id, message);
-    } else {
-      log.e('/alljung: message is empty');
-    }
-  }, function onFailure(err) {
-    bot.sendMessage(msg.chat.id, err.message);
-  });
+  BotHandler.onAllJung(msg, bot);
+});
+
+bot.onText(/\/help/, function (msg, match) {
+  BotHandler.onHelp(msg, bot);
 });
 
 bot.on('message', function (msg) {
-  log.i('msg: ' + JSON.stringify(msg));
-  if (MessageController.shouldAddMessage(msg)) {
-    MessageController.addMessage(msg, function () {
-      log.i('add message success');
-    });
-  } else {
-    log.e('skip repeated message');
-  }
+  BotHandler.onMessage(msg);
 });
-
-app.route('/')
-  .get(function (req, res) {
-    log.i('up time robot log');
-    res.json({
-      status: 'OK',
-      desc: 'For UpTimeRobot'
-    });
-  });
 
 var job = new CronJob({
   cronTime: '00 00 18 * * 1-5',
   onTick: function () {
-    MessageController.getAllGroupIds(function (error, chatIds) {
-      if (error) {
-        log.e('cronJob error: ' + JSON.stringify(error));
-      } else {
-        for (var i = 0, l = chatIds.length; i < l; i++) {
-          const chatId = chatIds[i];
-          var msg = {
-            chat: {
-              id: chatId
-            }
-          };
-          /*jshint loopfunc: true */
-          MessageController.getTopTen(msg, true).then(function onSuccess(message) {
-            if (!_.isEmpty(message)) {
-              message = '夠鐘收工~~\n\n' + message;
-              bot.sendMessage(chatId, message);
-            }
-          });
-          /*jshint loopfunc: false */
-        }
+    MessageController.getAllGroupIds().then(function onSuccess(chatIds) {
+      for (var i = 0, l = chatIds.length; i < l; i++) {
+        const chatId = chatIds[i];
+        var msg = {
+          chat: {
+            id: chatId
+          }
+        };
+        bot.sendMessage(chatId, '夠鐘收工~~');
+        /*jshint loopfunc: true */
+        MessageController.getTopTen(msg, true).then(function onSuccess(message) {
+          if (!_.isEmpty(message)) {
+            bot.sendMessage(chatId, message);
+          }
+        });
+        /*jshint loopfunc: false */
       }
+    }, function onFailure(err) {
+      log.e('cronJob error: ' + JSON.stringify(err));
     });
   },
   start: false,
