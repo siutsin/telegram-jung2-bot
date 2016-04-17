@@ -11,6 +11,7 @@ var _ = require('lodash');
 var jsFiles = [
   '*.js',
   './model/**.js',
+  './route/**.js',
   './controller/**.js'
 ];
 var checkForJSHint = _.union(jsFiles, ['./test/**.js']);

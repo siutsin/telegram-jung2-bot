@@ -40,7 +40,7 @@ exports.isAllowCommand = function (msg, force) {
       if (_.isArray(usages) && !_.isEmpty(usages)) {
         var usage = usages[0];
         var diff = Math.abs(moment(usage.dateCreated).diff(moment(), 'minute', true));
-        if (diff < Constants.COMMAND_COOLDOWN_TIME) {
+        if (diff < Constants.CONFIG.COMMAND_COOLDOWN_TIME) {
           if (usage.notified) {
             promise.reject(usage);
           } else {
