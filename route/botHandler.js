@@ -2,6 +2,7 @@
 
 var log = require('log-to-file-and-console-node');
 var MessageController = require('../controller/message');
+var HelpController = require('../controller/help');
 var _ = require('lodash');
 
 exports.onTopTen = function (msg, bot) {
@@ -32,6 +33,10 @@ exports.onAllJung = function (msg, bot) {
     log.e('/alljung err: ' + err.message);
     bot.sendMessage(msg.chat.id, err.message);
   });
+};
+
+exports.onHelp = function (msg, bot) {
+  bot.sendMessage(msg.chat.id, HelpController.getHelp());
 };
 
 exports.onMessage = function (msg) {
