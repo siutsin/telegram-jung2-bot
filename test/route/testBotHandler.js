@@ -1,14 +1,14 @@
 'use strict';
 
 require('chai').should();
-var Router = require('../../route/router');
+var BotHandler = require('../../route/botHandler');
 var MessageController = require('../../controller/message');
 var log = require('log-to-file-and-console-node');
 var _ = require('lodash');
 var sinon = require('sinon');
 require('sinon-as-promised');
 
-describe('Router', function () {
+describe('BotHandler', function () {
 
   var stubMsg = {
     chat: {
@@ -34,7 +34,7 @@ describe('Router', function () {
         var stubPromise = sinon.stub().resolves('message');
         return stubPromise();
       });
-      Router.onTopTen(stubMsg, stubBot);
+      BotHandler.onTopTen(stubMsg, stubBot);
       sinonStub.restore();
       done();
     });
@@ -44,7 +44,7 @@ describe('Router', function () {
         var stubPromise = sinon.stub().resolves('');
         return stubPromise();
       });
-      Router.onTopTen(stubMsg, stubBot);
+      BotHandler.onTopTen(stubMsg, stubBot);
       sinonStub.restore();
       done();
     });
@@ -54,7 +54,7 @@ describe('Router', function () {
         var stubPromise = sinon.stub().rejects(new Error('topTenError'));
         return stubPromise();
       });
-      Router.onTopTen(stubMsg, stubBot);
+      BotHandler.onTopTen(stubMsg, stubBot);
       sinonStub.restore();
       done();
     });
@@ -68,7 +68,7 @@ describe('Router', function () {
         var stubPromise = sinon.stub().resolves('message');
         return stubPromise();
       });
-      Router.onAllJung(stubMsg, stubBot);
+      BotHandler.onAllJung(stubMsg, stubBot);
       sinonStub.restore();
       done();
     });
@@ -78,7 +78,7 @@ describe('Router', function () {
         var stubPromise = sinon.stub().resolves('');
         return stubPromise();
       });
-      Router.onAllJung(stubMsg, stubBot);
+      BotHandler.onAllJung(stubMsg, stubBot);
       sinonStub.restore();
       done();
     });
@@ -88,7 +88,7 @@ describe('Router', function () {
         var stubPromise = sinon.stub().rejects(new Error('allJungError'));
         return stubPromise();
       });
-      Router.onAllJung(stubMsg, stubBot);
+      BotHandler.onAllJung(stubMsg, stubBot);
       sinonStub.restore();
       done();
     });
@@ -105,14 +105,14 @@ describe('Router', function () {
       var sinonStub = sinon.stub(MessageController, 'addMessage', function (msg, callback) {
         callback();
       });
-      Router.onMessage(stubMsg);
+      BotHandler.onMessage(stubMsg);
       sinonStub.restore();
       done();
     });
 
     it('can skip repeated message', function (done) {
       MessageController.setCachedLastSender('stubChatId', 'stubFromId');
-      Router.onMessage(stubMsg);
+      BotHandler.onMessage(stubMsg);
       done();
     });
 

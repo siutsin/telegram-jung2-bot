@@ -1,5 +1,5 @@
 // route
-require('./route/testRouter');
+require('./route/testBotHandler');
 // model
 require('./model/testMessage');
 require('./model/testUsage');
