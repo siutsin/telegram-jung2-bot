@@ -1,6 +1,6 @@
 {
   "name": "telegram-jung2-bot",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "repository": {
     "type": "git",
     "url": "https://github.com/siutsin/telegram-jung2-bot.git"
@@ -15,15 +15,16 @@
     "coveralls": "cat ./coverage/lcov.info | ./node_modules/.bin/coveralls"
   },
   "dependencies": {
+    "async": "^2.0.0-rc.3",
     "body-parser": "~1.15.0",
     "cron": "^1.1.0",
     "dotenv": "^2.0.0",
     "express": "~4.13.4",
     "lodash": "^4.11.1",
     "log-to-file-and-console-node": "^1.0.0",
-    "moment": "^2.12.0",
+    "moment": "^2.13.0",
     "moment-timezone": "^0.5.3",
-    "mongoose": "^4.4.12",
+    "mongoose": "^4.4.13",
     "morgan": "~1.7.0",
     "node-telegram-bot-api": "^0.21.1"
   },
@@ -34,7 +35,7 @@
     "gulp-istanbul": "^0.10.4",
     "gulp-jshint": "^2.0.0",
     "gulp-mocha": "^2.2.0",
-    "jshint": "^2.9.1",
+    "jshint": "^2.9.2",
     "jshint-stylish": "^2.1.0",
     "mocha": "^2.4.5",
     "run-sequence": "^1.1.5",
