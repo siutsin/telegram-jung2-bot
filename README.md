@@ -24,6 +24,11 @@ Show the percentage of `all` participants for the past 7 days
 /alljung
 ```
 
+Show help message
+```javascript
+/help
+```
+
 ## Author
 
 [@Simon__Li](https://twitter.com/Simon__LI)

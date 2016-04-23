@@ -11,6 +11,7 @@ var log = require('log-to-file-and-console-node');
 var MessageController = require('./controller/message');
 var BotHandler = require('./route/botHandler');
 var TelegramBot = require('node-telegram-bot-api');
+var async = require('async');
 
 var app = express();
 var bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, {polling: true});
@@ -49,26 +50,23 @@ bot.on('message', function (msg) {
 
 var job = new CronJob({
   cronTime: '00 00 18 * * 1-5',
+  //cronTime: '*/5 * * * * *',
   onTick: function () {
-    MessageController.getAllGroupIds().then(function onSuccess(chatIds) {
-      for (var i = 0, l = chatIds.length; i < l; i++) {
-        const chatId = chatIds[i];
+    MessageController.getAllGroupIds().then(function (chatIds) {
+      async.each(chatIds, function (chatId, callback) {
         var msg = {
           chat: {
             id: chatId
           }
         };
         bot.sendMessage(chatId, '夠鐘收工~~');
-        /*jshint loopfunc: true */
-        MessageController.getTopTen(msg, true).then(function onSuccess(message) {
+        MessageController.getTopTen(msg, true).then(function (message) {
           if (!_.isEmpty(message)) {
             bot.sendMessage(chatId, message);
           }
+          callback();
         });
-        /*jshint loopfunc: false */
-      }
-    }, function onFailure(err) {
-      log.e('cronJob error: ' + JSON.stringify(err));
+      });
     });
   },
   start: false,
