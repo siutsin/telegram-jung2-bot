@@ -1,3 +1,5 @@
+var log = require('log-to-file-and-console-node');
+log.removeConsole();
 // route
 require('./route/testBotHandler');
 // TODO: add test case for route/root
