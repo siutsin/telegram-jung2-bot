@@ -30,6 +30,7 @@
   },
   "devDependencies": {
     "chai": "^3.5.0",
+    "codecov": "^1.0.1",
     "coveralls": "^2.11.8",
     "gulp": "^3.9.1",
     "gulp-istanbul": "^0.10.4",
