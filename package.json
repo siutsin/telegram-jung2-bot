@@ -15,6 +15,7 @@
     "coveralls": "cat ./coverage/lcov.info | ./node_modules/.bin/coveralls"
   },
   "dependencies": {
+    "async": "^2.0.0-rc.3",
     "body-parser": "~1.15.0",
     "cron": "^1.1.0",
     "dotenv": "^2.0.0",
