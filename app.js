@@ -46,6 +46,10 @@ bot.onText(/\/help/, function (msg, match) {
   BotHandler.onHelp(msg, bot);
 });
 
+bot.onText(/\/jungPremierLeagueTable/, function (msg, match) {
+  BotHandler.onJungPremierLeagueTable(msg, bot);
+});
+
 bot.on('message', function (msg) {
   BotHandler.onMessage(msg);
 });
