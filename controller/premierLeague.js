@@ -22,7 +22,7 @@ var getTable = function () {
       {
         $group: {
           _id: '$chatId',
-          title: {$last: '$title'},
+          title: {$last: '$chatTitle'},
           count: {$sum: 1}
         }
       }])
