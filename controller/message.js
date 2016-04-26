@@ -142,6 +142,7 @@ exports.addMessage = function (msg, callback) {
   cachedLastSender[msg.chat.id] = msg.from.id.toString();
   var message = new Message();
   message.chatId = msg.chat.id || '';
+  message.chatTitle = msg.chat.title || '';
   message.userId = msg.from.id || '';
   message.username = msg.from.username || '';
   /*jshint camelcase: false */

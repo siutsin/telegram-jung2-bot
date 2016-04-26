@@ -2,6 +2,7 @@
 
 var log = require('log-to-file-and-console-node');
 var MessageController = require('../controller/message');
+var PremierLeagueController = require('../controller/premierLeague');
 var HelpController = require('../controller/help');
 var _ = require('lodash');
 
@@ -37,6 +38,20 @@ exports.onAllJung = function (msg, bot) {
 
 exports.onHelp = function (msg, bot) {
   bot.sendMessage(msg.chat.id, HelpController.getHelp());
+};
+
+exports.onJungPremierLeagueTable = function (msg, bot) {
+  PremierLeagueController.getTable(msg).then(function onSuccess(message) {
+    if (!_.isEmpty(message)) {
+      log.i('/jungPremierLeagueTable sendBot to ' + msg.chat.id + ' message: ' + message);
+      bot.sendMessage(msg.chat.id, message);
+    } else {
+      log.e('/jungPremierLeagueTable: message is empty');
+    }
+  }, function onFailure(err) {
+    log.e('/jungPremierLeagueTable err: ' + err.message);
+    bot.sendMessage(msg.chat.id, err.message);
+  });
 };
 
 exports.onMessage = function (msg) {

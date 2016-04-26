@@ -4,6 +4,7 @@ var mongoose = require('mongoose');
 
 var MessageSchema = new mongoose.Schema({
   chatId: String,
+  chatTitle: String,
   userId: String,
   username: String,
   firstName: String,
