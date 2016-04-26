@@ -415,7 +415,7 @@ describe('MessageController', function () {
       });
     });
 
-    it('should return message indicating that the user should wait at least 3 mins for another command', function (done) {
+    it('should return message indicating that the user should wait at least 1 mins for another command', function (done) {
       var UsageMock = sinon.mock(Usage);
       UsageMock
         .expects('find').withArgs({chatId: 'stubChatId'})
