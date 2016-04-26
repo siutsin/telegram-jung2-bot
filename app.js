@@ -66,14 +66,12 @@ var job = new CronJob({
           if (!_.isEmpty(message)) {
             bot.sendMessage(chatId, message);
           }
-          callback();
         });
       });
     });
   },
-  start: false,
+  start: true,
   timeZone: 'Asia/Hong_Kong'
 });
-job.start();
 
 module.exports = app;
