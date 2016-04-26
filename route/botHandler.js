@@ -39,6 +39,10 @@ exports.onHelp = function (msg, bot) {
   bot.sendMessage(msg.chat.id, HelpController.getHelp());
 };
 
+exports.onJungPremierLeagueTable = function (msg, bot) {
+  // TODO: query jung premier league table
+};
+
 exports.onMessage = function (msg) {
   log.i('msg: ' + JSON.stringify(msg));
   if (MessageController.shouldAddMessage(msg)) {
