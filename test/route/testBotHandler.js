@@ -104,6 +104,15 @@ describe('BotHandler', function () {
 
   });
 
+  describe('onJungPremierLeagueTable', function () {
+
+    it('can send jung premier league message', function (done) {
+      BotHandler.onJungPremierLeagueTable(stubMsg, stubBot);
+      done();
+    });
+
+  });
+
   describe('onMessage', function () {
 
     beforeEach(function () {
