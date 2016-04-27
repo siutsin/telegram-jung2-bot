@@ -1,6 +1,8 @@
 module.exports = Object.freeze({
   CONFIG: {
-    COMMAND_COOLDOWN_TIME: 1.0
+    COMMAND_COOLDOWN_TIME: 1.0,
+    PREMIER_LEAGUE_SIZE: 20,
+    PREMIER_LEAGUE_RELEGATION_ZONE_SIZE: 3
   },
   MESSAGE: {
     TOP_TEN_TITLE: 'Top 10 冗員s in the last 7 days (last 上水 time):\n\n',
