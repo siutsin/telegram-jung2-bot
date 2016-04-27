@@ -93,6 +93,7 @@ var appendPromoteRelegateMessage = function (msg, leagueMessage, leagueTables, c
 };
 
 var getTableMessage = function (msg) {
+  const indexOfLastSafeGroup = Constants.CONFIG.PREMIER_LEAGUE_SIZE - Constants.CONFIG.PREMIER_LEAGUE_RELEGATION_ZONE_SIZE - 1; // 16
   var message = Constants.PREMIER_LEAGUE.TABLE_TITLE;
   return UsageController.isAllowCommand(msg).then(function onSuccess() {
     var promises = [
@@ -100,6 +101,9 @@ var getTableMessage = function (msg) {
       getTable().then(function (leagueTables) {
         for (var i = 0, l = leagueTables.length; i < l; i++) {
           message += (i + 1) + '. ' + leagueTables[i].title + ' ' + leagueTables[i].count + '\n';
+          if (i === 0 && leagueTables.length > 0 || i === indexOfLastSafeGroup) {
+            message += '-----------------------------------\n';
+          }
         }
         return {message: message, leagueTables: leagueTables};
       }),
