@@ -273,7 +273,7 @@ describe('PremierLeagueController', function () {
         }
       }).then(function onSuccess(message) {
         (message.indexOf(Constants.PREMIER_LEAGUE.TABLE_TITLE) >= 0).should.equal(true);
-        (message.indexOf(' to takeover') >= 0).should.equal(true);
+        (message.indexOf(' to overtake') >= 0).should.equal(true);
       }).catch(function (err) {
         false.should.equal(true); // should fail
       }).then(function always() {

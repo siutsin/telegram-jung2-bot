@@ -75,7 +75,7 @@ var appendPromoteRelegateMessage = function (msg, leagueMessage, leagueTables, c
     var titleOfPreviousGroup = leagueTables[index - 1].title;
     var numberOfMessageInPreviousGroup = leagueTables[index - 1].count;
     numberOfMessageNeeded = (numberOfMessageInPreviousGroup - leagueTables[index].count) + 1;
-    leagueMessage = leagueMessage + '\n' + numberOfMessageNeeded + ' messages required for ' + title + ' to takeover ' + titleOfPreviousGroup;
+    leagueMessage = leagueMessage + '\n' + numberOfMessageNeeded + ' messages required for ' + title + ' to overtake ' + titleOfPreviousGroup;
   } else if (index === 0 && leagueTables.length > 1) {
     // champion with more than one groups in the league, show number of message more than first runner-up group
     var titleOfFirstRunnerUpGroup = leagueTables[1].title;
