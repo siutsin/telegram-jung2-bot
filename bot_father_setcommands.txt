@@ -1,3 +1,4 @@
 topten - show top ten 冗員s
 alljung - show all 冗員s
+jungpremierleague - show 冗超聯
 help - show help message
