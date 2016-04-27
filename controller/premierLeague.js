@@ -68,19 +68,18 @@ var appendPromoteRelegateMessage = function (msg, leagueMessage, leagueTables, c
   if (index >= indexOfRelegationZoneStart && index <= indexOfRelegationZoneEnd) { // 17-19
     // relegation zone, show number of message needed in order to get rid of the relegation zone
     var numberOfMessageInLastSafeGroup = leagueTables[indexOfRelegationZoneStart - 1].count;
-    numberOfMessageNeeded = (numberOfMessageInLastSafeGroup - currentGroupMessageCount) + 1;
+    numberOfMessageNeeded = (numberOfMessageInLastSafeGroup - leagueTables[index].count) + 1;
     leagueMessage = leagueMessage + '\n' + numberOfMessageNeeded + ' messages required for ' + title + ' to stay in 冗超聯...';
   } else if (index >= 1 && index < indexOfRelegationZoneStart - 1) { // 1-16
     // mid table, show number of message needed in order to takeover the next group
     var titleOfPreviousGroup = leagueTables[index - 1].title;
     var numberOfMessageInPreviousGroup = leagueTables[index - 1].count;
-    numberOfMessageNeeded = (numberOfMessageInPreviousGroup - currentGroupMessageCount) + 1;
+    numberOfMessageNeeded = (numberOfMessageInPreviousGroup - leagueTables[index].count) + 1;
     leagueMessage = leagueMessage + '\n' + numberOfMessageNeeded + ' messages required for ' + title + ' to takeover ' + titleOfPreviousGroup;
   } else if (index === 0 && leagueTables.length > 1) {
     // champion with more than one groups in the league, show number of message more than first runner-up group
     var titleOfFirstRunnerUpGroup = leagueTables[1].title;
-    var numberOfMessageInFirstRunnerUpGroup = leagueTables[1].count;
-    var numberOfMessageAbove = currentGroupMessageCount - numberOfMessageInFirstRunnerUpGroup;
+    var numberOfMessageAbove = leagueTables[0].count - leagueTables[1].count;
     leagueMessage = leagueMessage + '\n' + 'CHAMPION!!! ' + numberOfMessageAbove + ' messages above ' + titleOfFirstRunnerUpGroup;
   } else if (index === 0 && leagueTables.length === 1) {
     // champion with only one group in the league, do not show message
