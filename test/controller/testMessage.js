@@ -198,7 +198,7 @@ describe('MessageController', function () {
           }
         );
       });
-      var usageSavesinonStub = sinon.stub(Usage.prototype, 'save', function (callback) {
+      var usageSaveSinonStub = sinon.stub(Usage.prototype, 'save', function (callback) {
         callback( // err, savedObject, numAffected
           null,
           {
@@ -244,7 +244,7 @@ describe('MessageController', function () {
         sinonCountStub.restore();
         sinonAggregateStub.restore();
         findOneAndUpdateSinonStub.restore();
-        usageSavesinonStub.restore();
+        usageSaveSinonStub.restore();
         done();
       });
     });
@@ -277,7 +277,7 @@ describe('MessageController', function () {
           }
         );
       });
-      var usageSavesinonStub = sinon.stub(Usage.prototype, 'save', function (callback) {
+      var usageSaveSinonStub = sinon.stub(Usage.prototype, 'save', function (callback) {
         callback( // err, savedObject, numAffected
           null,
           {
@@ -322,7 +322,7 @@ describe('MessageController', function () {
         UsageMock.verify();
         UsageMock.restore();
         findOneAndUpdateSinonStub.restore();
-        usageSavesinonStub.restore();
+        usageSaveSinonStub.restore();
         MessageMock.verify();
         MessageMock.restore();
         sinonCountStub.restore();
@@ -358,7 +358,7 @@ describe('MessageController', function () {
           }
         );
       });
-      var usageSavesinonStub = sinon.stub(Usage.prototype, 'save', function (callback) {
+      var usageSaveSinonStub = sinon.stub(Usage.prototype, 'save', function (callback) {
         callback( // err, savedObject, numAffected
           null,
           {
@@ -403,7 +403,7 @@ describe('MessageController', function () {
         UsageMock.verify();
         UsageMock.restore();
         findOneAndUpdateSinonStub.restore();
-        usageSavesinonStub.restore();
+        usageSaveSinonStub.restore();
         MessageMock.verify();
         MessageMock.restore();
         sinonCountStub.restore();
@@ -439,7 +439,7 @@ describe('MessageController', function () {
           }
         );
       });
-      var usageSavesinonStub = sinon.stub(Usage.prototype, 'save', function (callback) {
+      var usageSaveSinonStub = sinon.stub(Usage.prototype, 'save', function (callback) {
         callback( // err, savedObject, numAffected
           null,
           {
@@ -484,7 +484,7 @@ describe('MessageController', function () {
         UsageMock.verify();
         UsageMock.restore();
         findOneAndUpdateSinonStub.restore();
-        usageSavesinonStub.restore();
+        usageSaveSinonStub.restore();
         MessageMock.verify();
         MessageMock.restore();
         sinonCountStub.restore();
@@ -520,7 +520,7 @@ describe('MessageController', function () {
           }
         );
       });
-      var usageSavesinonStub = sinon.stub(Usage.prototype, 'save', function (callback) {
+      var usageSaveSinonStub = sinon.stub(Usage.prototype, 'save', function (callback) {
         callback( // err, savedObject, numAffected
           null,
           {
@@ -561,7 +561,7 @@ describe('MessageController', function () {
         UsageMock.verify();
         UsageMock.restore();
         findOneAndUpdateSinonStub.restore();
-        usageSavesinonStub.restore();
+        usageSaveSinonStub.restore();
         MessageMock.verify();
         MessageMock.restore();
         sinonCountStub.restore();
@@ -594,7 +594,7 @@ describe('MessageController', function () {
           }
         );
       });
-      var usageSavesinonStub = sinon.stub(Usage.prototype, 'save', function (callback) {
+      var usageSaveSinonStub = sinon.stub(Usage.prototype, 'save', function (callback) {
         callback( // err, savedObject, numAffected
           null,
           {
@@ -642,7 +642,7 @@ describe('MessageController', function () {
         UsageMock.verify();
         UsageMock.restore();
         findOneAndUpdateSinonStub.restore();
-        usageSavesinonStub.restore();
+        usageSaveSinonStub.restore();
         MessageMock.verify();
         MessageMock.restore();
         sinonCountStub.restore();
