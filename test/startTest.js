@@ -1,3 +1,4 @@
+require('codecov');
 var log = require('log-to-file-and-console-node');
 log.removeConsole();
 // express
