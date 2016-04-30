@@ -10,6 +10,8 @@
   "scripts": {
     "start": "node --use_strict ./bin/www",
     "test": "gulp",
+    "populate-database": "node ./test/stress/tool/populateDatabase.js",
+    "stress": "gulp stress",
     "nodemon": "nodemon ./bin/www",
     "debug": "node-debug ./bin/www",
     "coveralls": "cat ./coverage/lcov.info | ./node_modules/.bin/coveralls"
