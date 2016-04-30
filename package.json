@@ -17,6 +17,7 @@
   "dependencies": {
     "async": "^2.0.0-rc.3",
     "body-parser": "~1.15.0",
+    "co": "^4.6.0",
     "cron": "^1.1.0",
     "dotenv": "^2.0.0",
     "express": "~4.13.4",
@@ -32,6 +33,7 @@
     "chai": "^3.5.0",
     "codecov": "^1.0.1",
     "coveralls": "^2.11.8",
+    "faker": "^3.1.0",
     "gulp": "^3.9.1",
     "gulp-istanbul": "^0.10.4",
     "gulp-jshint": "^2.0.0",
