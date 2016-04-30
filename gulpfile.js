@@ -12,9 +12,13 @@ var jsFiles = [
   '*.js',
   './model/**.js',
   './route/**.js',
+  './route/**.js',
   './controller/**.js'
 ];
-var checkForJSHint = _.union(jsFiles, ['./test/**.js']);
+var checkForJSHint = _.union(jsFiles, [
+  './test/**.js',
+  './tool/**.js'
+]);
 
 gulp.on('stop', function () {
   process.nextTick(function () {
@@ -54,4 +58,16 @@ gulp.task('default', function (callback) {
     'preIstanbul',
     'mochaAndIstanbul',
     callback);
+});
+
+gulp.task('stress', function (callback) {
+  return gulp.src('./test/stress/testStress.js', {
+      read: false
+    })
+    .pipe(mocha({
+      reporter: 'spec'
+    }))
+    .on('error', function (error) {
+      throw error;
+    });
 });
