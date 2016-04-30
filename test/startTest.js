@@ -13,3 +13,5 @@ require('./model/testUsage');
 require('./controller/testMessage');
 require('./controller/testUsage');
 require('./controller/testPremierLeague');
+// stress test
+//require('./stress/testStressMessage');

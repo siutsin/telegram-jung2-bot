@@ -168,8 +168,8 @@ exports.getAllGroupIds = function () {
   return promise;
 };
 
-exports.getAllJung = function (msg) {
-  return getJungMessage(msg);
+exports.getAllJung = function (msg, force) {
+  return getJungMessage(msg, 0, force);
 };
 
 exports.getTopTen = function (msg, force) {
