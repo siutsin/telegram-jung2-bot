@@ -1,6 +1,6 @@
 {
   "name": "telegram-jung2-bot",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "repository": {
     "type": "git",
     "url": "https://github.com/siutsin/telegram-jung2-bot.git"
@@ -10,6 +10,8 @@
   "scripts": {
     "start": "node --use_strict ./bin/www",
     "test": "gulp",
+    "populate-database": "node ./test/stress/tool/populateDatabase.js",
+    "stress": "gulp stress",
     "nodemon": "nodemon ./bin/www",
     "debug": "node-debug ./bin/www",
     "coveralls": "cat ./coverage/lcov.info | ./node_modules/.bin/coveralls"
@@ -17,6 +19,7 @@
   "dependencies": {
     "async": "^2.0.0-rc.3",
     "body-parser": "~1.15.0",
+    "co": "^4.6.0",
     "cron": "^1.1.0",
     "dotenv": "^2.0.0",
     "express": "~4.13.4",
@@ -24,20 +27,22 @@
     "log-to-file-and-console-node": "^1.0.0",
     "moment": "^2.13.0",
     "moment-timezone": "^0.5.3",
-    "mongoose": "^4.4.13",
+    "mongoose": "^4.4.14",
     "morgan": "~1.7.0",
+    "newrelic": "^1.26.2",
     "node-telegram-bot-api": "^0.21.1"
   },
   "devDependencies": {
     "chai": "^3.5.0",
     "codecov": "^1.0.1",
     "coveralls": "^2.11.8",
+    "faker": "^3.1.0",
     "gulp": "^3.9.1",
     "gulp-istanbul": "^0.10.4",
     "gulp-jshint": "^2.0.0",
     "gulp-mocha": "^2.2.0",
     "jshint": "^2.9.2",
-    "jshint-stylish": "^2.1.0",
+    "jshint-stylish": "^2.2.0",
     "mocha": "^2.4.5",
     "run-sequence": "^1.1.5",
     "should": "^8.3.1",
