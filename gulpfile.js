@@ -12,12 +12,10 @@ var jsFiles = [
   '*.js',
   './model/**.js',
   './route/**.js',
-  './route/**.js',
   './controller/**.js'
 ];
 var checkForJSHint = _.union(jsFiles, [
-  './test/**.js',
-  './tool/**.js'
+  './test/**.js'
 ]);
 
 gulp.on('stop', function () {
