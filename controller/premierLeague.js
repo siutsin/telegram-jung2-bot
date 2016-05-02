@@ -124,7 +124,7 @@ var getTableMessage = function (msg) {
       message = '[Error] Commands will be available ' + oneMinutesLater.fromNow() +
         ' (' + oneMinutesLater.format('h:mm:ss a') + ' HKT).';
     }
-    return message;
+    return message.replace(/(@|#)/g, '');
   });
 };
 
