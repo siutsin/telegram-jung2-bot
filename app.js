@@ -70,8 +70,20 @@ var checkSpam = function (msg, callback) {
   }
 };
 
-var checkSpamJob = new CronJob({
+var checkSpamHourlyJob = new CronJob({
   cronTime: '00 00 */1 * * *',
+  onTick: function () {
+    _(spamRecord).forEach(function(group) {
+      group.hour = 0;
+      group.shouldNotify = true;
+    });
+  },
+  start: true,
+  timeZone: 'Asia/Hong_Kong'
+});
+
+var checkSpamDailyJob = new CronJob({
+  cronTime: '15 00 00 * * *',
   onTick: function () {
     spamRecord = {};
   },
