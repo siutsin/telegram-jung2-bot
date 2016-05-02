@@ -8,11 +8,13 @@ exports.config = {
   /**
    * Array of application names.
    */
+  /*jshint camelcase: false */
   app_name: [process.env.NEWRELIC_APP_NAME],
   /**
    * Your New Relic license key.
    */
   license_key: process.env.NEWRELIC_LICENSE_KEY,
+  /*jshint camelcase: true */
   logging: {
     /**
      * Level at which to log. 'trace' is most useful to New Relic when diagnosing
@@ -21,4 +23,4 @@ exports.config = {
      */
     level: process.env.NEWRELIC_LOGGING_LEVEL
   }
-}
+};
