@@ -49,8 +49,31 @@ bot.onText(/\/jung(p|P)remier(l|L)eague/, function (msg, match) {
   BotHandler.onJungPremierLeagueTable(msg, bot);
 });
 
+// TODO: code refactoring required
+var spamRecord = {};
+var checkSpam = function (msg) {
+  var chatId = msg.chat.id;
+  if (!spamRecord[chatId]) {
+    spamRecord[chatId] = 0;
+  }
+  spamRecord[chatId]++;
+  // assume max conversation rate = 0.2 msg/s
+  return spamRecord[chatId] < 720; // max 720 msg per hour in a group
+};
+
+var checkSpamJob = new CronJob({
+  cronTime: '00 00 */1 * * *',
+  onTick: function () {
+    spamRecord = {};
+  },
+  start: true,
+  timeZone: 'Asia/Hong_Kong'
+});
+
 bot.on('message', function (msg) {
-  BotHandler.onMessage(msg);
+  if (checkSpam(msg)) {
+    BotHandler.onMessage(msg);
+  }
 });
 
 var job = new CronJob({
