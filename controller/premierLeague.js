@@ -114,7 +114,7 @@ var getTableMessage = function (msg) {
       var leagueTables = results[1].leagueTables;
       var currentGroupMessageCount = results[2];
       message = appendPromoteRelegateMessage(msg, leagueMessage, leagueTables, currentGroupMessageCount);
-      return message;
+      return message.replace(/(@|#)/g, '');
     });
   }, function onFailure(usage) {
     if (usage.notified) {
@@ -124,7 +124,7 @@ var getTableMessage = function (msg) {
       message = '[Error] Commands will be available ' + oneMinutesLater.fromNow() +
         ' (' + oneMinutesLater.format('h:mm:ss a') + ' HKT).';
     }
-    return message.replace(/(@|#)/g, '');
+    return message;
   });
 };
 
