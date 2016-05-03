@@ -9,7 +9,7 @@ module.exports = Object.freeze({
     ALL_JUNG_TITLE: 'All 冗員s in the last 7 days (last 上水 time):\n\n'
   },
   PREMIER_LEAGUE: {
-    TABLE_TITLE: 'NOTICE: 請勿洗msg 方丈好小氣的 (好似係)\n\n冗超聯 in the last 7 days:\n\n'
+    TABLE_TITLE: '方丈: 已un-limit 你地自己互片啦...\n\n冗超聯 in the last 7 days:\n\n'
   },
   HELP: {
     MESSAGE: '冗員[jung2jyun4] Excess personnel in Cantonese' + '\n' +

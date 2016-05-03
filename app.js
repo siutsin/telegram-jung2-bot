@@ -49,58 +49,59 @@ bot.onText(/\/jung(p|P)remier(l|L)eague/, function (msg, match) {
   BotHandler.onJungPremierLeagueTable(msg, bot);
 });
 
-// TODO: code refactoring required
-var spamRecord = {
-  // chatId: { hour: 0, day: 0, shouldNotify: true };
-};
-var checkSpam = function (msg, callback) {
-  var chatId = msg.chat.id;
-  if (!spamRecord[chatId]) {
-    spamRecord[chatId] = { hour: 0, day: 0, shouldNotify: true };
-  }
-  spamRecord[chatId].hour++;
-  spamRecord[chatId].day++;
-  // max 720 msg per hour in a group
-  // max 4000 msg per day in a group
-  if (spamRecord[chatId].hour < 720 && spamRecord[chatId].day < 4000) {
-    callback(true);
-  } else {
-    callback(false, spamRecord[chatId].shouldNotify);
-    spamRecord[chatId].shouldNotify = false;
-  }
-};
+//// TODO: code refactoring required
+//var spamRecord = {
+//  // chatId: { hour: 0, day: 0, shouldNotify: true };
+//};
+//var checkSpam = function (msg, callback) {
+//  var chatId = msg.chat.id;
+//  if (!spamRecord[chatId]) {
+//    spamRecord[chatId] = { hour: 0, day: 0, shouldNotify: true };
+//  }
+//  spamRecord[chatId].hour++;
+//  spamRecord[chatId].day++;
+//  // max 720 msg per hour in a group
+//  // max 4000 msg per day in a group
+//  if (spamRecord[chatId].hour < 720 && spamRecord[chatId].day < 4000) {
+//    callback(true);
+//  } else {
+//    callback(false, spamRecord[chatId].shouldNotify);
+//    spamRecord[chatId].shouldNotify = false;
+//  }
+//};
 
-var checkSpamHourlyJob = new CronJob({
-  cronTime: '00 00 */1 * * *',
-  onTick: function () {
-    _(spamRecord).forEach(function(group) {
-      group.hour = 0;
-      group.shouldNotify = true;
-    });
-  },
-  start: true,
-  timeZone: 'Asia/Hong_Kong'
-});
+//var checkSpamHourlyJob = new CronJob({
+//  cronTime: '00 00 */1 * * *',
+//  onTick: function () {
+//    _(spamRecord).forEach(function(group) {
+//      group.hour = 0;
+//      group.shouldNotify = true;
+//    });
+//  },
+//  start: true,
+//  timeZone: 'Asia/Hong_Kong'
+//});
 
-var checkSpamDailyJob = new CronJob({
-  cronTime: '15 00 00 * * *',
-  onTick: function () {
-    spamRecord = {};
-  },
-  start: true,
-  timeZone: 'Asia/Hong_Kong'
-});
+//var checkSpamDailyJob = new CronJob({
+//  cronTime: '15 00 00 * * *',
+//  onTick: function () {
+//    spamRecord = {};
+//  },
+//  start: true,
+//  timeZone: 'Asia/Hong_Kong'
+//});
 
 bot.on('message', function (msg) {
-  checkSpam(msg, function (shouldAdd, shouldNotifySpam) {
-    if (shouldAdd) {
-      BotHandler.onMessage(msg);
-    } else if (shouldNotifySpam) {
-      // TODO: code refactoring required
-      bot.sendMessage(msg.chat.id, 'Spam detected, allowance 720 msg per hour / 4000 msg per day');
-      // TODO: add group to blacklist in db
-    }
-  });
+  BotHandler.onMessage(msg);
+  //checkSpam(msg, function (shouldAdd, shouldNotifySpam) {
+  //  if (shouldAdd) {
+  //    BotHandler.onMessage(msg);
+  //  } else if (shouldNotifySpam) {
+  //    // TODO: code refactoring required
+  //    bot.sendMessage(msg.chat.id, 'Spam detected, allowance 720 msg per hour / 4000 msg per day');
+  //    // TODO: add group to blacklist in db
+  //  }
+  //});
 });
 
 var job = new CronJob({
