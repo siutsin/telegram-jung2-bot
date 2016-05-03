@@ -62,6 +62,11 @@ bot.onText(/\/jung(p|P)remier(l|L)eague/, function (msg, match) {
   bot.sendMessage(msg.chat.id, message);
 });
 
+bot.on('message', function (msg) {
+  BotHandler.onMessage(msg);
+});
+
+
 var job = new CronJob({
   cronTime: '00 00 18 * * 1-5',
   onTick: function () {
