@@ -29,7 +29,6 @@
     "moment-timezone": "^0.5.4",
     "mongoose": "^4.4.15",
     "morgan": "~1.7.0",
-    "newrelic": "^1.27.2",
     "node-telegram-bot-api": "^0.21.1"
   },
   "devDependencies": {
