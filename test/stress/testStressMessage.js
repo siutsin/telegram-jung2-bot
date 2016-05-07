@@ -36,7 +36,7 @@ describe('MessageStressTest', function () {
   describe('getTopTen', function () {
 
     it('test 1: once', function (done) {
-      MessageController.getTopTen(sample, true).then(function (msg) {
+      MessageController.getTopTen(sample, true).then(function () {
         //console.log(msg);
         done();
       }, e => console.error(e.stack));
@@ -51,7 +51,7 @@ describe('MessageStressTest', function () {
   describe('getAllJung', function () {
 
     it('test 1: once', function (done) {
-      MessageController.getAllJung(sample, true).then(function (msg) {
+      MessageController.getAllJung(sample, true).then(function () {
         //console.log(msg);
         done();
       })

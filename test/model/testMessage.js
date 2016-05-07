@@ -1,1 +1,1 @@
-var Message = require('../../model/message');
+require('../../model/message');

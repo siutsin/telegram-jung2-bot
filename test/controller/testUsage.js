@@ -4,8 +4,6 @@ require('chai').should();
 var mongoose = require('mongoose');
 var sinon = require('sinon');
 require('sinon-mongoose');
-var log = require('log-to-file-and-console-node');
-var _ = require('lodash');
 require('moment');
 var moment = require('moment-timezone');
 
@@ -162,7 +160,7 @@ describe('UsageController', function () {
           notified: false,
           dateCreated: new Date()
         }]);
-      UsageController.isAllowCommand(stubMsg).then(function onSuccess(usage) {
+      UsageController.isAllowCommand(stubMsg).then(function onSuccess() {
         false.should.equal(true); // should fail
         done();
       }, function onFailure(usage) {
