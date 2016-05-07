@@ -18,18 +18,18 @@
   },
   "dependencies": {
     "async": "^2.0.0-rc.3",
-    "body-parser": "~1.15.0",
+    "body-parser": "^1.15.1",
     "co": "^4.6.0",
     "cron": "^1.1.0",
     "dotenv": "^2.0.0",
     "express": "~4.13.4",
-    "lodash": "^4.11.1",
+    "lodash": "^4.11.2",
     "log-to-file-and-console-node": "^1.0.0",
     "moment": "^2.13.0",
-    "moment-timezone": "^0.5.3",
-    "mongoose": "^4.4.14",
+    "moment-timezone": "^0.5.4",
+    "mongoose": "^4.4.15",
     "morgan": "~1.7.0",
-    "newrelic": "^1.26.2",
+    "newrelic": "^1.27.2",
     "node-telegram-bot-api": "^0.21.1"
   },
   "devDependencies": {
@@ -46,7 +46,7 @@
     "mocha": "^2.4.5",
     "run-sequence": "^1.1.5",
     "should": "^8.3.1",
-    "sinon": "^1.17.3",
+    "sinon": "^1.17.4",
     "sinon-as-promised": "^4.0.0",
     "sinon-mongoose": "^1.2.1"
   }
