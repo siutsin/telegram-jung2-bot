@@ -19,6 +19,9 @@ lib-cov
 # Coverage directory used by tools like istanbul
 coverage
 
+# nyc test coverage
+.nyc_output
+
 # Grunt intermediate storage (http://gruntjs.com/creating-plugins#storing-task-files)
 .grunt
 
@@ -84,3 +87,10 @@ com_crashlytics_export_strings.xml
 crashlytics.properties
 crashlytics-build.properties
 fabric.properties
+
+### Intellij Patch ###
+# Comment Reason: https://github.com/joeblau/gitignore.io/issues/186#issuecomment-215987721
+
+# *.iml
+# modules.xml
+
