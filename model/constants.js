@@ -1,15 +1,10 @@
 module.exports = Object.freeze({
   CONFIG: {
-    COMMAND_COOLDOWN_TIME: 1.0,
-    PREMIER_LEAGUE_SIZE: 20,
-    PREMIER_LEAGUE_RELEGATION_ZONE_SIZE: 3
+    COMMAND_COOLDOWN_TIME: 1.0
   },
   MESSAGE: {
     TOP_TEN_TITLE: 'Top 10 冗員s in the last 7 days (last 上水 time):\n\n',
     ALL_JUNG_TITLE: 'All 冗員s in the last 7 days (last 上水 time):\n\n'
-  },
-  PREMIER_LEAGUE: {
-    TABLE_TITLE: '方丈: 已un-limit 你地自己互片啦...\n\n冗超聯 in the last 7 days:\n\n'
   },
   HELP: {
     MESSAGE: '冗員[jung2jyun4] Excess personnel in Cantonese' + '\n' +

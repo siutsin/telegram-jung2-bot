@@ -3,7 +3,6 @@
 require('chai').should();
 var BotHandler = require('../../route/botHandler');
 var MessageController = require('../../controller/message');
-var PremierLeagueController = require('../../controller/premierLeague');
 var log = require('log-to-file-and-console-node');
 var _ = require('lodash');
 var sinon = require('sinon');
@@ -100,40 +99,6 @@ describe('BotHandler', function () {
 
     it('can send help message', function (done) {
       BotHandler.onHelp(stubMsg, stubBot);
-      done();
-    });
-
-  });
-
-  describe('onJungPremierLeagueTable', function () {
-
-    it('can handle /jungPremierLeagueTable', function (done) {
-      var sinonStub = sinon.stub(PremierLeagueController, 'getTable', function () {
-        var stubPromise = sinon.stub().resolves('message');
-        return stubPromise();
-      });
-      BotHandler.onJungPremierLeagueTable(stubMsg, stubBot);
-      sinonStub.restore();
-      done();
-    });
-
-    it('can handle empty message in /jungPremierLeagueTable', function (done) {
-      var sinonStub = sinon.stub(PremierLeagueController, 'getTable', function () {
-        var stubPromise = sinon.stub().resolves('');
-        return stubPromise();
-      });
-      BotHandler.onJungPremierLeagueTable(stubMsg, stubBot);
-      sinonStub.restore();
-      done();
-    });
-
-    it('can handle /jungPremierLeagueTable err', function (done) {
-      var sinonStub = sinon.stub(PremierLeagueController, 'getTable', function () {
-        var stubPromise = sinon.stub().rejects(new Error('jungPremierLeagueTableError'));
-        return stubPromise();
-      });
-      BotHandler.onJungPremierLeagueTable(stubMsg, stubBot);
-      sinonStub.restore();
       done();
     });
 

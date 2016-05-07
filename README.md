@@ -24,11 +24,6 @@ Show the percentage of `all` participants for the past 7 days
 /alljung
 ```
 
-Show the jung premier league for the past 7 days
-```javascript
-/jungpremierleague
-```
-
 Show help message
 ```javascript
 /help
