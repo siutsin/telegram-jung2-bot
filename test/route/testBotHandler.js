@@ -3,8 +3,6 @@
 require('chai').should();
 var BotHandler = require('../../route/botHandler');
 var MessageController = require('../../controller/message');
-var log = require('log-to-file-and-console-node');
-var _ = require('lodash');
 var sinon = require('sinon');
 require('sinon-as-promised');
 

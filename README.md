@@ -14,20 +14,11 @@ This bot is created for counting the number of message per participant in the gr
 
 ## Usage
 
-Show the percentage of `top ten` participants for the past 7 days
-```javascript
-/topten
-```
-
-Show the percentage of `all` participants for the past 7 days
-```javascript
-/alljung
-```
-
-Show help message
-```javascript
-/help
-```
+|command|info|
+|---|---|
+|`/topten`|Show the percentage of top ten participants for the past 7 days|
+|`/alljung`|Show the percentage of all participants for the past 7 days|
+|`/help`|Show help message|
 
 ## Author
 

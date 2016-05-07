@@ -33,15 +33,15 @@ app.use(bodyParser.json());
 var root = require('./route/root');
 app.use('/', root);
 
-bot.onText(/\/top(t|T)en/, function (msg, match) {
+bot.onText(/\/top(t|T)en/, function (msg) {
   BotHandler.onTopTen(msg, bot);
 });
 
-bot.onText(/\/all(j|J)ung/, function (msg, match) {
+bot.onText(/\/all(j|J)ung/, function (msg) {
   BotHandler.onAllJung(msg, bot);
 });
 
-bot.onText(/\/help/, function (msg, match) {
+bot.onText(/\/help/, function (msg) {
   BotHandler.onHelp(msg, bot);
 });
 
@@ -53,7 +53,7 @@ var job = new CronJob({
   cronTime: '00 00 18 * * 1-5',
   onTick: function () {
     MessageController.getAllGroupIds().then(function (chatIds) {
-      async.each(chatIds, function (chatId, callback) {
+      async.each(chatIds, function (chatId) {
         var msg = {
           chat: {
             id: chatId
