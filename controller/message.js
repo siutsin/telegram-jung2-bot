@@ -1,13 +1,11 @@
 'use strict';
 
-var log = require('log-to-file-and-console-node');
 var mongoose = require('mongoose');
 var Message = require('../model/message');
 var UsageController = require('./usage');
 var Constants = require('../model/constants');
 require('moment');
 var moment = require('moment-timezone');
-var _ = require('lodash');
 
 var getCount = function (msg) {
   var promise = new mongoose.Promise();
@@ -79,7 +77,8 @@ var getCountAndGetJung = function (msg, limit) {
   });
 };
 
-var getJungMessage = function (msg, limit, force) {
+var getJungMessage;
+getJungMessage = function (msg, limit, force) {
   var message = limit ? Constants.MESSAGE.TOP_TEN_TITLE : Constants.MESSAGE.ALL_JUNG_TITLE;
   return UsageController.isAllowCommand(msg, force).then(function onSuccess() {
     var promises = [
@@ -96,8 +95,7 @@ var getJungMessage = function (msg, limit, force) {
       })
     ];
     return Promise.all(promises).then(function (results) {
-      var message = results[1];
-      return message;
+      return results[1];
     });
   }, function onFailure(usage) {
     if (usage.notified) {

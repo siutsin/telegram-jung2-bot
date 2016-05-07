@@ -33,45 +33,27 @@ app.use(bodyParser.json());
 var root = require('./route/root');
 app.use('/', root);
 
-bot.onText(/\/top(t|T)en/, function (msg, match) {
+bot.onText(/\/top(t|T)en/, function (msg) {
   BotHandler.onTopTen(msg, bot);
 });
 
-bot.onText(/\/all(j|J)ung/, function (msg, match) {
+bot.onText(/\/all(j|J)ung/, function (msg) {
   BotHandler.onAllJung(msg, bot);
 });
 
-bot.onText(/\/help/, function (msg, match) {
+bot.onText(/\/help/, function (msg) {
   BotHandler.onHelp(msg, bot);
-});
-
-// TODO: to be removed
-bot.onText(/\/jung(p|P)remier(l|L)eague/, function (msg, match) {
-  //BotHandler.onJungPremierLeagueTable(msg, bot);
-  var message = 'NOTICE:\n\n' +
-    '因收到太多投訴 及冗超聯已脫離當初原意\n' +
-    '變成互相罵戰同人身攻擊既地方\n' +
-    '也同時令大部分用家反感\n' +
-    '即日起宣布永久取消冗超聯功能\n' +
-    '\n' +
-    '冗PowerBot係open source software\n' +
-    '如果你想繼續使用冗超聯\n' +
-    '歡迎自行fork + host冗PowerBot\n' +
-    '\n' +
-    'Simon';
-  bot.sendMessage(msg.chat.id, message);
 });
 
 bot.on('message', function (msg) {
   BotHandler.onMessage(msg);
 });
 
-
 var job = new CronJob({
   cronTime: '00 00 18 * * 1-5',
   onTick: function () {
     MessageController.getAllGroupIds().then(function (chatIds) {
-      async.each(chatIds, function (chatId, callback) {
+      async.each(chatIds, function (chatId) {
         var msg = {
           chat: {
             id: chatId

@@ -12,4 +12,3 @@ require('./model/testUsage');
 // controller
 require('./controller/testMessage');
 require('./controller/testUsage');
-require('./controller/testPremierLeague');

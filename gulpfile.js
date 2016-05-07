@@ -58,7 +58,7 @@ gulp.task('default', function (callback) {
     callback);
 });
 
-gulp.task('stress', function (callback) {
+gulp.task('stress', function () {
   return gulp.src('./test/stress/testStress.js', {
       read: false
     })

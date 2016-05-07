@@ -3,7 +3,6 @@
 require('chai').should();
 var sinon = require('sinon');
 require('sinon-mongoose');
-var log = require('log-to-file-and-console-node');
 var _ = require('lodash');
 
 var MessageController = require('../../controller/message');
@@ -214,7 +213,7 @@ describe('MessageController', function () {
       var sinonCountStub = sinon.stub(Message, 'count', function (err, callback) {
         callback(null, 123);
       });
-      var sinonAggregateStub = sinon.stub(Object.getPrototypeOf(Message), 'aggregate', function (query) {
+      var sinonAggregateStub = sinon.stub(Object.getPrototypeOf(Message), 'aggregate', function () {
         return {
           sort: function () {
             return {
@@ -234,7 +233,7 @@ describe('MessageController', function () {
       MessageController.getAllJung(stubMsg).then(function onSuccess(message) {
         (message === 'All 冗員s in the last 7 days (last 上水 time):\n\n1. stubFirstName stubLastName 9.76% (a few seconds ago)\n\nTotal message: 123').should.equal(true);
       }, function onFailure() {
-      }).catch(function (err) {
+      }).catch(function () {
         false.should.equal(true); // should fail
       }).then(function always() {
         MessageMock.verify();
@@ -293,7 +292,7 @@ describe('MessageController', function () {
       var sinonCountStub = sinon.stub(Message, 'count', function (err, callback) {
         callback(null, 123);
       });
-      var sinonAggregateStub = sinon.stub(Object.getPrototypeOf(Message), 'aggregate', function (query) {
+      var sinonAggregateStub = sinon.stub(Object.getPrototypeOf(Message), 'aggregate', function () {
         var exec = function (callback) {
           callback(null, [{
             "_id": "stubFromId",
@@ -328,7 +327,7 @@ describe('MessageController', function () {
         sinonCountStub.restore();
         sinonAggregateStub.restore();
         done();
-      }, function onFailure(err) {
+      }, function onFailure() {
         false.should.equal(true); // should fail
         done();
       });
@@ -374,7 +373,7 @@ describe('MessageController', function () {
       var sinonCountStub = sinon.stub(Message, 'count', function (err, callback) {
         callback(null, 123);
       });
-      var sinonAggregateStub = sinon.stub(Object.getPrototypeOf(Message), 'aggregate', function (query) {
+      var sinonAggregateStub = sinon.stub(Object.getPrototypeOf(Message), 'aggregate', function () {
         var exec = function (callback) {
           callback(null, [{
             "_id": "stubFromId",
@@ -409,7 +408,7 @@ describe('MessageController', function () {
         sinonCountStub.restore();
         sinonAggregateStub.restore();
         done();
-      }, function onFailure(err) {
+      }, function onFailure() {
         false.should.equal(true); // should fail
         done();
       });
@@ -455,7 +454,7 @@ describe('MessageController', function () {
       var sinonCountStub = sinon.stub(Message, 'count', function (err, callback) {
         callback(null, 123);
       });
-      var sinonAggregateStub = sinon.stub(Object.getPrototypeOf(Message), 'aggregate', function (query) {
+      var sinonAggregateStub = sinon.stub(Object.getPrototypeOf(Message), 'aggregate', function () {
         var exec = function (callback) {
           callback(null, [{
             "_id": "stubFromId",
@@ -490,7 +489,7 @@ describe('MessageController', function () {
         sinonCountStub.restore();
         sinonAggregateStub.restore();
         done();
-      }, function onFailure(err) {
+      }, function onFailure() {
         false.should.equal(true); // should fail
         done();
       });
@@ -536,7 +535,7 @@ describe('MessageController', function () {
       var sinonCountStub = sinon.stub(Message, 'count', function (err, callback) {
         callback(null, 123);
       });
-      var sinonAggregateStub = sinon.stub(Object.getPrototypeOf(Message), 'aggregate', function (query) {
+      var sinonAggregateStub = sinon.stub(Object.getPrototypeOf(Message), 'aggregate', function () {
         var exec = function (callback) {
           callback(new Error('error'));
         };
@@ -554,7 +553,7 @@ describe('MessageController', function () {
           sort: sort
         }
       });
-      MessageController.getTopTen(stubMsg).then(function onSuccess(message) {
+      MessageController.getTopTen(stubMsg).then(function onSuccess() {
         false.should.equal(true); // should fail
       }, function onFailure (err) {
         err.message.should.equal('error');
@@ -610,7 +609,7 @@ describe('MessageController', function () {
       var sinonCountStub = sinon.stub(Message, 'count', function (err, callback) {
         callback(new Error('anotherError'));
       });
-      var sinonAggregateStub = sinon.stub(Object.getPrototypeOf(Message), 'aggregate', function (query) {
+      var sinonAggregateStub = sinon.stub(Object.getPrototypeOf(Message), 'aggregate', function () {
         var exec = function (callback) {
           callback(null, [{
             "_id": "stubFromId",
@@ -634,7 +633,7 @@ describe('MessageController', function () {
           sort: sort
         }
       });
-      MessageController.getTopTen(stubMsg).then(function onSuccess(message) {
+      MessageController.getTopTen(stubMsg).then(function onSuccess() {
         false.should.equal(true); // should fail
         done();
       }, function onFailure (err) {
