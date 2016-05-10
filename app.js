@@ -3,7 +3,6 @@
 var express = require('express');
 var bodyParser = require('body-parser');
 var morgan = require('morgan');
-var mongoose = require('mongoose');
 var _ = require('lodash');
 var CronJob = require('cron').CronJob;
 var log = require('log-to-file-and-console-node');
@@ -15,17 +14,7 @@ var async = require('async');
 var app = express();
 var bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, {polling: true});
 
-var connectionString = '127.0.0.1:27017/jung2bot';
-if (process.env.MONGODB_URL) {
-  connectionString = process.env.MONGODB_URL + 'jung2bot';
-} else if (process.env.OPENSHIFT_MONGODB_DB_PASSWORD) {
-  connectionString = process.env.OPENSHIFT_MONGODB_DB_USERNAME + ':' +
-    process.env.OPENSHIFT_MONGODB_DB_PASSWORD + '@' +
-    process.env.OPENSHIFT_MONGODB_DB_HOST + ':' +
-    process.env.OPENSHIFT_MONGODB_DB_PORT + '/' +
-    process.env.OPENSHIFT_APP_NAME;
-}
-mongoose.connect(connectionString, {db: {nativeParser: true}});
+var ds = require('./ds/datastore');
 
 app.use(morgan('combined', {'stream': log.stream}));
 app.use(bodyParser.json());

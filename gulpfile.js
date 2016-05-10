@@ -12,7 +12,8 @@ var jsFiles = [
   '*.js',
   './model/**.js',
   './route/**.js',
-  './controller/**.js'
+  './controller/**.js',
+  './ds/**.js'
 ];
 var checkForJSHint = _.union(jsFiles, [
   './test/**.js'
