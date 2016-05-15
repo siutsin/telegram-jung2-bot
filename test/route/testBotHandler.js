@@ -2,7 +2,7 @@
 
 require('chai').should();
 var BotHandler = require('../../route/botHandler');
-var MessageController = require('../../controller/message');
+var MessageController = require('../../controller/messageFacade');
 var sinon = require('sinon');
 require('sinon-as-promised');
 

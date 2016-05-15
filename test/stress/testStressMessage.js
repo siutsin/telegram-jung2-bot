@@ -1,6 +1,6 @@
 'use strict';
 
-const MessageController = require('../../controller/message');
+const MessageController = require('../../controller/mongoMessage');
 const mongoose = require('mongoose');
 const Message = require('../../model/message');
 const co = require('co');

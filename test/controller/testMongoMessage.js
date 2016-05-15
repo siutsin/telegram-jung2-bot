@@ -5,9 +5,10 @@ var sinon = require('sinon');
 require('sinon-mongoose');
 var _ = require('lodash');
 
-var MessageController = require('../../controller/message');
+var MessageController = require('../../controller/mongoMessage');
 var Message = require('../../model/message');
 var Usage = require('../../model/usage');
+var Mongoose = require('mongoose');
 
 describe('MessageController', function () {
 
@@ -22,6 +23,32 @@ describe('MessageController', function () {
       last_name: 'stubLastName'
     }
   };
+
+  // The test sequence of the init function must be kept in this order
+  // because process.env.* seems to have caching effect that cannot be
+  // undone.
+  describe('init', function() {
+    it('test else', function (done) {
+      var mongooseStub = sinon.stub(Mongoose, 'connect', function () {});
+      MessageController.init();
+      mongooseStub.restore();
+      done();
+    });
+    it('test openshift mongo', function (done) {
+      var mongooseStub = sinon.stub(Mongoose, 'connect', function () {});
+      process.env.OPENSHIFT_MONGODB_DB_PASSWORD = true;
+      MessageController.init();
+      mongooseStub.restore();
+      done();
+    });
+    it('test local mongo', function (done) {
+      var mongooseStub = sinon.stub(Mongoose, 'connect', function () {});
+      process.env.MONGODB_URL = true;
+      MessageController.init();
+      mongooseStub.restore();
+      done();
+    });
+  });
 
   describe('addMessage', function () {
 
