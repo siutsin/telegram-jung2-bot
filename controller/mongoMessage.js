@@ -77,8 +77,22 @@ var getCountAndGetJung = function (msg, limit) {
   });
 };
 
-var getJungMessage;
-getJungMessage = function (msg, limit, force) {
+exports.init = function() {
+  var connectionString = '127.0.0.1:27017/jung2bot';
+  if (process.env.MONGODB_URL) {
+    connectionString = process.env.MONGODB_URL + 'jung2bot';
+  } else if (process.env.OPENSHIFT_MONGODB_DB_PASSWORD) {
+    connectionString = process.env.OPENSHIFT_MONGODB_DB_USERNAME + ':' +
+      process.env.OPENSHIFT_MONGODB_DB_PASSWORD + '@' +
+      process.env.OPENSHIFT_MONGODB_DB_HOST + ':' +
+      process.env.OPENSHIFT_MONGODB_DB_PORT + '/' +
+      process.env.OPENSHIFT_APP_NAME;
+  }
+
+  mongoose.connect(connectionString, {db: {nativeParser: true}});
+};
+
+var getJungMessage = function (msg, limit, force) {
   var message = limit ? Constants.MESSAGE.TOP_TEN_TITLE : Constants.MESSAGE.ALL_JUNG_TITLE;
   return UsageController.isAllowCommand(msg, force).then(function onSuccess() {
     var promises = [
@@ -108,6 +122,7 @@ getJungMessage = function (msg, limit, force) {
     return message;
   });
 };
+exports.getJungMessage = getJungMessage;
 
 var cachedLastSender = {
   //chatId: 'userId'
