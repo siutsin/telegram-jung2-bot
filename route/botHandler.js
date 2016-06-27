@@ -1,7 +1,7 @@
 'use strict';
 
 var log = require('log-to-file-and-console-node');
-var MessageController = require('../controller/message');
+var MessageController = require('../controller/messageFacade');
 var HelpController = require('../controller/help');
 var _ = require('lodash');
 
