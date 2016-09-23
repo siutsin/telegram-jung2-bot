@@ -20,4 +20,8 @@ MessageSchema.index({
   userId: 1
 });
 
+MessageSchema.statics.getSchema = function () {
+  return MessageSchema;
+};
+
 module.exports = mongoose.model('Message', MessageSchema);

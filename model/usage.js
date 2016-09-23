@@ -14,4 +14,8 @@ var UsageSchema = new mongoose.Schema({
   }
 });
 
-module.exports = mongoose.model('Usage', UsageSchema);
+UsageSchema.statics.getSchema = function () {
+  return UsageSchema;
+};
+
+module.exports = mongoose.model('UsageClass', UsageSchema);

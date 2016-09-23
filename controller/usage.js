@@ -1,21 +1,53 @@
 'use strict';
 
 var mongoose = require('mongoose');
-var Usage = require('../model/usage');
+var UsageClass = require('../model/usage');
+var UsageCache;
+var UsagePersistence;
+
 var Constants = require('../model/constants');
 require('moment');
 var moment = require('moment-timezone');
 var _ = require('lodash');
+var log = require('log-to-file-and-console-node');
+
+// TODO: refactoring required
+exports.init = function() {
+  var connectionStringCache = '127.0.0.1:27017/jung2botCache';
+  if (process.env.OPENSHIFT_MONGODB_DB_PASSWORD) {
+    connectionStringCache = process.env.OPENSHIFT_MONGODB_DB_USERNAME + ':' +
+      process.env.OPENSHIFT_MONGODB_DB_PASSWORD + '@' +
+      process.env.OPENSHIFT_MONGODB_DB_HOST + ':' +
+      process.env.OPENSHIFT_MONGODB_DB_PORT + '/' +
+      process.env.OPENSHIFT_APP_NAME;
+  }
+
+  var connectionStringPersistence = '127.0.0.1:27017/jung2bot';
+  if (process.env.MONGODB_URL) {
+    connectionStringPersistence = process.env.MONGODB_URL;
+  }
+
+  var cacheConnection = mongoose.createConnection(connectionStringCache);
+  var persistenceConnection = mongoose.createConnection(connectionStringPersistence);
+  UsageCache = cacheConnection.model('Usage', UsageClass.getSchema());
+  UsagePersistence = persistenceConnection.model('Usage', UsageClass.getSchema());
+};
 
 exports.addUsage = function (msg) {
-  var usage = new Usage();
-  usage.chatId = msg.chat.id || '';
-  return usage.save();
+  var usageCache = new UsageCache();
+  usageCache.chatId = msg.chat.id || '';
+  var usagePersistence = new UsagePersistence();
+  usagePersistence.chatId = msg.chat.id || '';
+  var promises = [
+    usageCache.save(),
+    usagePersistence.save()
+  ];
+  return Promise.all(promises);
 };
 
 var updateUsageNotice = function (chatId) {
   var promise = new mongoose.Promise();
-  Usage.findOneAndUpdate(
+  UsageCache.findOneAndUpdate(
     {chatId: chatId},
     {notified: true},
     {sort: '-dateCreated'},
@@ -32,7 +64,7 @@ exports.isAllowCommand = function (msg, force) {
     return promise.complete();
   }
   var chatId = msg.chat.id.toString();
-  Usage.find({chatId: chatId.toString()})
+  UsageCache.find({chatId: chatId.toString()})
     .sort('-dateCreated')
     .limit(1)
     .exec(function (err, usages) {
