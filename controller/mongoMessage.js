@@ -1,16 +1,20 @@
 'use strict';
 
 var mongoose = require('mongoose');
-var Message = require('../model/message');
+var MessageClass = require('../model/message');
+var MessageCache;
+var MessagePersistence;
+
 var UsageController = require('./usage');
 var Constants = require('../model/constants');
 require('moment');
 var moment = require('moment-timezone');
+var log = require('log-to-file-and-console-node');
 
 var getCount = function (msg) {
   var promise = new mongoose.Promise();
   var chatId = msg.chat.id.toString();
-  Message.count({
+  MessageCache.count({
     chatId: chatId.toString(),
     dateCreated: {
       $gte: new Date(moment().subtract(7, 'day').toISOString())
@@ -28,25 +32,25 @@ var getCount = function (msg) {
 var getJung = function (msg, limit) {
   var promise = new mongoose.Promise();
   var chatId = msg.chat.id.toString();
-  var query = Message.aggregate([
-      {
-        $match: {
-          chatId: chatId.toString(),
-          dateCreated: {
-            $gte: new Date(moment().subtract(7, 'day').toISOString())
-          }
+  var query = MessageCache.aggregate([
+    {
+      $match: {
+        chatId: chatId.toString(),
+        dateCreated: {
+          $gte: new Date(moment().subtract(7, 'day').toISOString())
         }
-      },
-      {
-        $group: {
-          _id: '$userId',
-          username: {$last: '$username'},
-          firstName: {$last: '$firstName'},
-          lastName: {$last: '$lastName'},
-          dateCreated: {$last: '$dateCreated'},
-          count: {$sum: 1}
-        }
-      }])
+      }
+    },
+    {
+      $group: {
+        _id: '$userId',
+        username: {$last: '$username'},
+        firstName: {$last: '$firstName'},
+        lastName: {$last: '$lastName'},
+        dateCreated: {$last: '$dateCreated'},
+        count: {$sum: 1}
+      }
+    }])
     .sort('-count');
   if (limit > 0) {
     query = query.limit(limit);
@@ -77,19 +81,26 @@ var getCountAndGetJung = function (msg, limit) {
   });
 };
 
+// TODO: refactoring required
 exports.init = function() {
-  var connectionString = '127.0.0.1:27017/jung2bot';
-  if (process.env.MONGODB_URL) {
-    connectionString = process.env.MONGODB_URL + 'jung2bot';
-  } else if (process.env.OPENSHIFT_MONGODB_DB_PASSWORD) {
-    connectionString = process.env.OPENSHIFT_MONGODB_DB_USERNAME + ':' +
+  var connectionStringCache = '127.0.0.1:27017/jung2botCache';
+  if (process.env.OPENSHIFT_MONGODB_DB_PASSWORD) {
+    connectionStringCache = process.env.OPENSHIFT_MONGODB_DB_USERNAME + ':' +
       process.env.OPENSHIFT_MONGODB_DB_PASSWORD + '@' +
       process.env.OPENSHIFT_MONGODB_DB_HOST + ':' +
       process.env.OPENSHIFT_MONGODB_DB_PORT + '/' +
       process.env.OPENSHIFT_APP_NAME;
   }
 
-  mongoose.connect(connectionString, {db: {nativeParser: true}});
+  var connectionStringPersistence = '127.0.0.1:27017/jung2bot';
+  if (process.env.MONGODB_URL) {
+    connectionStringPersistence = process.env.MONGODB_URL;
+  }
+
+  var cacheConnection = mongoose.createConnection(connectionStringCache);
+  var persistenceConnection = mongoose.createConnection(connectionStringPersistence);
+  MessageCache = cacheConnection.model('Message', MessageClass.getSchema());
+  MessagePersistence = persistenceConnection.model('Message', MessageClass.getSchema());
 };
 
 var getJungMessage = function (msg, limit, force) {
@@ -151,23 +162,44 @@ exports.shouldAddMessage = function (msg) {
   return result;
 };
 
+var saveToMessageCache = function (msg) {
+  var msgCache = new MessageCache();
+  msgCache.chatId = msg.chat.id || '';
+  msgCache.chatTitle = msg.chat.title || '';
+  msgCache.userId = msg.from.id || '';
+  msgCache.username = msg.from.username || '';
+  /*jshint camelcase: false */
+  msgCache.firstName = msg.from.first_name || '';
+  msgCache.lastName = msg.from.last_name || '';
+  /*jshint camelcase: true */
+  return msgCache.save();
+};
+
+var saveToMessagePersistence = function (msg) {
+  var msgPersistence = new MessagePersistence();
+  msgPersistence.chatId = msg.chat.id || '';
+  msgPersistence.chatTitle = msg.chat.title || '';
+  msgPersistence.userId = msg.from.id || '';
+  msgPersistence.username = msg.from.username || '';
+  /*jshint camelcase: false */
+  msgPersistence.firstName = msg.from.first_name || '';
+  msgPersistence.lastName = msg.from.last_name || '';
+  /*jshint camelcase: true */
+  return msgPersistence.save();
+};
+
 exports.addMessage = function (msg, callback) {
   cachedLastSender[msg.chat.id] = msg.from.id.toString();
-  var message = new Message();
-  message.chatId = msg.chat.id || '';
-  message.chatTitle = msg.chat.title || '';
-  message.userId = msg.from.id || '';
-  message.username = msg.from.username || '';
-  /*jshint camelcase: false */
-  message.firstName = msg.from.first_name || '';
-  message.lastName = msg.from.last_name || '';
-  /*jshint camelcase: true */
-  message.save(callback);
+  var promises = [
+    saveToMessageCache(msg),
+    saveToMessagePersistence(msg)
+  ];
+  return Promise.all(promises).then(callback);
 };
 
 exports.getAllGroupIds = function () {
   var promise = new mongoose.Promise();
-  Message.find({
+  MessageCache.find({
     dateCreated: {
       $gte: new Date(moment().subtract(7, 'day').toISOString())
     }}
