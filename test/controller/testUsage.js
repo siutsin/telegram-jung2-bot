@@ -10,7 +10,7 @@ var moment = require('moment-timezone');
 var UsageController = require('../../controller/usage');
 var Usage = require('../../model/usage');
 
-describe('UsageController', function () {
+xdescribe('UsageController', function () {
 
   var stubMsg = {
     chat: {
