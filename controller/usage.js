@@ -36,10 +36,13 @@ exports.init = function() {
 exports.addUsage = function (msg) {
   var usageCache = new UsageCache();
   usageCache.chatId = msg.chat.id || '';
-  usageCache.save();
   var usagePersistence = new UsagePersistence();
   usagePersistence.chatId = msg.chat.id || '';
-  usagePersistence.save();
+  var promises = [
+    usageCache.save(),
+    usagePersistence.save()
+  ];
+  return Promise.all(promises);
 };
 
 var updateUsageNotice = function (chatId) {
