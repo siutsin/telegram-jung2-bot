@@ -14,6 +14,11 @@ var UsageSchema = new mongoose.Schema({
   }
 });
 
+UsageSchema.index({
+  chatId: 1,
+  notified: 1
+});
+
 UsageSchema.statics.getSchema = function () {
   return UsageSchema;
 };
