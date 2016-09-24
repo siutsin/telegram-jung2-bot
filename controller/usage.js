@@ -10,9 +10,10 @@ require('moment');
 var moment = require('moment-timezone');
 var _ = require('lodash');
 var log = require('log-to-file-and-console-node');
+var async = require('async');
 
 // TODO: refactoring required
-exports.init = function() {
+exports.init = function () {
   var connectionStringCache = '127.0.0.1:27017/jung2botCache';
   if (process.env.OPENSHIFT_MONGODB_DB_PASSWORD) {
     connectionStringCache = process.env.OPENSHIFT_MONGODB_DB_USERNAME + ':' +
@@ -82,6 +83,50 @@ exports.isAllowCommand = function (msg, force) {
         } else {
           promise.complete();
         }
+      } else {
+        promise.complete();
+      }
+    });
+  return promise;
+};
+
+exports.cleanup = function () {
+  const numberToDelete = 10000;
+  var shouldRepeat = true;
+  var promise = new mongoose.Promise();
+  async.whilst(
+    function test() {
+      return shouldRepeat;
+    },
+    function iteratee(next) {
+      UsageCache.find({
+        dateCreated: {
+          $lt: new Date(moment().subtract(7, 'day').toISOString())
+        }
+      }).select('_id')
+        .sort({_id: 1})
+        .limit(numberToDelete)
+        .exec(function (err, docs) {
+            var ids = docs.map(function (doc) {
+              return doc._id;
+            });
+            UsageCache.remove({_id: {$in: ids}}, function (err, result) {
+              if (err) {
+                next(err);
+              } else {
+                var numberDeleted = result.result.n;
+                log.i('cleanup usage cache database, numberDeleted: ' + numberDeleted);
+                shouldRepeat = (numberDeleted === numberToDelete);
+                next();
+              }
+            });
+          }
+        );
+    },
+    function callback(err) {
+      if (err) {
+        log.e(err);
+        promise.error(err);
       } else {
         promise.complete();
       }
