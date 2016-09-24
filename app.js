@@ -63,18 +63,25 @@ var offJob = new CronJob({
   timeZone: 'Asia/Hong_Kong'
 });
 
+var databaseMaintenance = function () {
+  log.i('Cleanup message');
+  MessageController.cleanup();
+  log.i('Cleanup usage');
+  UsageController.cleanup();
+  log.i('Cleanup usage');
+
+};
+
 var cleanupJob = new CronJob({
   cronTime: '0 0 4 * * *',
   onTick: function () {
-    MessageController.cleanup();
-    UsageController.cleanup();
+    databaseMaintenance();
   },
   start: true,
   timeZone: 'Asia/Hong_Kong'
 });
 
 // cleanup when service start
-MessageController.cleanup();
-UsageController.cleanup();
+databaseMaintenance();
 
 module.exports = app;
