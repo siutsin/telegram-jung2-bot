@@ -250,7 +250,7 @@ exports.cleanup = function () {
                 next(err);
               } else {
                 var numberDeleted = result.result.n;
-                log.i('cleanup cache database, numberDeleted: ' + numberDeleted);
+                log.i('cleanup message cache database, numberDeleted: ' + numberDeleted);
                 shouldRepeat = (numberDeleted === numberToDelete);
                 next();
               }

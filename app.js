@@ -8,6 +8,7 @@ var _ = require('lodash');
 var CronJob = require('cron').CronJob;
 var log = require('log-to-file-and-console-node');
 var MessageController = require('./controller/messageFacade');
+var UsageController = require('./controller/usage');
 var BotHandler = require('./route/botHandler');
 var TelegramBot = require('node-telegram-bot-api');
 var async = require('async');
@@ -66,10 +67,14 @@ var cleanupJob = new CronJob({
   cronTime: '0 0 4 * * *',
   onTick: function () {
     MessageController.cleanup();
+    UsageController.cleanup();
   },
   start: true,
   timeZone: 'Asia/Hong_Kong'
 });
-MessageController.cleanup(); // cleanup when service start
+
+// cleanup when service start
+MessageController.cleanup();
+UsageController.cleanup();
 
 module.exports = app;
