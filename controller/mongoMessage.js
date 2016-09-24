@@ -2,7 +2,9 @@
 
 var mongoose = require('mongoose');
 var MessageClass = require('../model/message');
+var cacheConnection;
 var MessageCache;
+var persistenceConnection;
 var MessagePersistence;
 
 var UsageController = require('./usage');
@@ -100,8 +102,8 @@ exports.init = function () {
     connectionStringPersistence = process.env.MONGODB_URL;
   }
 
-  var cacheConnection = mongoose.createConnection(connectionStringCache);
-  var persistenceConnection = mongoose.createConnection(connectionStringPersistence);
+  cacheConnection = mongoose.createConnection(connectionStringCache);
+  persistenceConnection = mongoose.createConnection(connectionStringPersistence);
   MessageCache = cacheConnection.model('Message', MessageClass.getSchema());
   MessagePersistence = persistenceConnection.model('Message', MessageClass.getSchema());
 };
@@ -263,7 +265,15 @@ exports.cleanup = function () {
         log.e(err);
         promise.error(err);
       } else {
-        promise.complete();
+        cacheConnection.db.command({repairDatabase: 1}, function (repairErr, repairResult) {
+          if (repairErr) {
+            log.e(repairErr);
+            promise.error(repairErr);
+          } else {
+            log.i('repairDatabase: ' + JSON.stringify(repairResult));
+            promise.complete();
+          }
+        });
       }
     });
   return promise;
