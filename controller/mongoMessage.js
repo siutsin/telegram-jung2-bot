@@ -249,9 +249,9 @@ exports.cleanup = function () {
               if (err) {
                 next(err);
               } else {
-                var numberDeleted = result['result']['n'];
+                var numberDeleted = result.result.n;
                 log.i('cleanup cache database, numberDeleted: ' + numberDeleted);
-                shouldRepeat = (numberDeleted == numberToDelete);
+                shouldRepeat = (numberDeleted === numberToDelete);
                 next();
               }
             });
