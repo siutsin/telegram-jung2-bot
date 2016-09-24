@@ -24,3 +24,5 @@ exports.getAllGroupIds = MessageController.getAllGroupIds;
 exports.getAllJung = MessageController.getAllJung;
 
 exports.getTopTen = MessageController.getTopTen;
+
+exports.cleanup = MessageController.cleanup;
