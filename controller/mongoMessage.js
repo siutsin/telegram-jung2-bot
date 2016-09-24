@@ -10,6 +10,9 @@ var Constants = require('../model/constants');
 require('moment');
 var moment = require('moment-timezone');
 var log = require('log-to-file-and-console-node');
+var async = require('async');
+
+UsageController.init();
 
 var getCount = function (msg) {
   var promise = new mongoose.Promise();
@@ -82,7 +85,7 @@ var getCountAndGetJung = function (msg, limit) {
 };
 
 // TODO: refactoring required
-exports.init = function() {
+exports.init = function () {
   var connectionStringCache = '127.0.0.1:27017/jung2botCache';
   if (process.env.OPENSHIFT_MONGODB_DB_PASSWORD) {
     connectionStringCache = process.env.OPENSHIFT_MONGODB_DB_USERNAME + ':' +
@@ -200,9 +203,10 @@ exports.addMessage = function (msg, callback) {
 exports.getAllGroupIds = function () {
   var promise = new mongoose.Promise();
   MessageCache.find({
-    dateCreated: {
-      $gte: new Date(moment().subtract(7, 'day').toISOString())
-    }}
+      dateCreated: {
+        $gte: new Date(moment().subtract(7, 'day').toISOString())
+      }
+    }
   ).distinct('chatId', function (err, chatIds) {
     if (err) {
       promise.error(err);
@@ -219,4 +223,48 @@ exports.getAllJung = function (msg, force) {
 
 exports.getTopTen = function (msg, force) {
   return getJungMessage(msg, 10, force);
+};
+
+exports.cleanup = function () {
+  const numberToDelete = 10000;
+  var shouldRepeat = true;
+  var promise = new mongoose.Promise();
+  async.whilst(
+    function test() {
+      return shouldRepeat;
+    },
+    function iteratee(next) {
+      MessageCache.find({
+        dateCreated: {
+          $lt: new Date(moment().subtract(7, 'day').toISOString())
+        }
+      }).select('_id')
+        .sort({_id: 1})
+        .limit(numberToDelete)
+        .exec(function (err, docs) {
+            var ids = docs.map(function (doc) {
+              return doc._id;
+            });
+            MessageCache.remove({_id: {$in: ids}}, function (err, result) {
+              if (err) {
+                next(err);
+              } else {
+                var numberDeleted = result['result']['n'];
+                log.i('cleanup cache database, numberDeleted: ' + numberDeleted);
+                shouldRepeat = (numberDeleted == numberToDelete);
+                next();
+              }
+            });
+          }
+        );
+    },
+    function callback(err) {
+      if (err) {
+        log.e(err);
+        promise.error(err);
+      } else {
+        promise.complete();
+      }
+    });
+  return promise;
 };
