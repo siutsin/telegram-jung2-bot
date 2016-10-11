@@ -17,6 +17,7 @@
     "coveralls": "cat ./coverage/lcov.info | ./node_modules/.bin/coveralls"
   },
   "dependencies": {
+    "@risingstack/trace": "^2.23.4",
     "async": "^2.0.1",
     "body-parser": "^1.15.1",
     "co": "^4.6.0",
