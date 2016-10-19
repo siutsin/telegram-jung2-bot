@@ -244,19 +244,25 @@ exports.cleanup = function () {
         .sort({_id: 1})
         .limit(numberToDelete)
         .exec(function (err, docs) {
-            var ids = docs.map(function (doc) {
-              return doc._id;
-            });
-            MessageCache.remove({_id: {$in: ids}}, function (err, result) {
-              if (err) {
-                next(err);
-              } else {
-                var numberDeleted = result.result.n;
-                log.i('cleanup message cache database, numberDeleted: ' + numberDeleted);
-                shouldRepeat = (numberDeleted === numberToDelete);
-                next();
-              }
-            });
+            if (err) {
+              log.e(err);
+              next(err);
+            } else {
+              var ids = docs.map(function (doc) {
+                return doc._id;
+              });
+              MessageCache.remove({_id: {$in: ids}}, function (err, result) {
+                if (err) {
+                  log.e(err);
+                  next(err);
+                } else {
+                  var numberDeleted = result.result.n;
+                  log.i('cleanup message cache database, numberDeleted: ' + numberDeleted);
+                  shouldRepeat = (numberDeleted === numberToDelete);
+                  next();
+                }
+              });
+            }
           }
         );
     },
