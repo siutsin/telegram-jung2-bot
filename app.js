@@ -36,9 +36,19 @@ bot.onText(/\/help/, function (msg) {
   BotHandler.onHelp(msg, bot);
 });
 
+bot.onText(/\/debug/, function (msg) {
+  if (msg && msg.from && String(msg.from.id) === process.env.ADMIN_ID) {
+    debugFunction(msg);
+  }
+});
+
 bot.on('message', function (msg) {
   BotHandler.onMessage(msg);
 });
+
+var debugFunction = function (msg) {
+  // TODO:
+};
 
 var offJob = new CronJob({
   cronTime: '00 00 18 * * 1-5',
@@ -64,12 +74,8 @@ var offJob = new CronJob({
 });
 
 var databaseMaintenance = function () {
-  log.i('Cleanup message');
   MessageController.cleanup();
-  log.i('Cleanup usage');
   UsageController.cleanup();
-  log.i('Cleanup usage');
-
 };
 
 var cleanupJob = new CronJob({
