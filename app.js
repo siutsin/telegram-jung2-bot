@@ -36,9 +36,46 @@ bot.onText(/\/help/, function (msg) {
   BotHandler.onHelp(msg, bot);
 });
 
+bot.onText(/\/debug/, function (msg) {
+  var adminList = process.env.ADMIN_ID.split(',');
+  if (msg && msg.from && String(msg.from.id) && _.includes(adminList, String(msg.from.id))) {
+    debugFunction(msg);
+  }
+});
+
 bot.on('message', function (msg) {
   BotHandler.onMessage(msg);
 });
+
+var debugFunction = function (msg) {
+  bot.sendMessage(msg.chat.id, 'debug mode start');
+  MessageController.getAllGroupIds().then(function (chatIds) {
+    bot.sendMessage(msg.chat.id, 'getAllGroupIds, found: ' + chatIds.length);
+    var counter = 0;
+    async.each(chatIds, function (chatId, callback) {
+      var msg = {
+        chat: {
+          id: chatId
+        }
+      };
+      log.i("chatId: " + JSON.stringify(msg));
+      MessageController.getTopTen(msg, true).then(function (message) {
+        if (!_.isEmpty(message)) {
+          counter += 1;
+          log.i("message: \n\n" + message);
+        }
+        callback(null);
+      });
+    }, function (err) {
+      log.i('debug mode end');
+      if (!err) {
+        bot.sendMessage(msg.chat.id, 'debug mode end, get topTen for no. of groups: ' + counter);
+      } else {
+        bot.sendMessage(msg.chat.id, err);
+      }
+    });
+  });
+};
 
 var offJob = new CronJob({
   cronTime: '00 00 18 * * 1-5',
@@ -64,12 +101,8 @@ var offJob = new CronJob({
 });
 
 var databaseMaintenance = function () {
-  log.i('Cleanup message');
   MessageController.cleanup();
-  log.i('Cleanup usage');
   UsageController.cleanup();
-  log.i('Cleanup usage');
-
 };
 
 var cleanupJob = new CronJob({
