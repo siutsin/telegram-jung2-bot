@@ -37,7 +37,8 @@ bot.onText(/\/help/, function (msg) {
 });
 
 bot.onText(/\/debug/, function (msg) {
-  if (msg && msg.from && String(msg.from.id) === process.env.ADMIN_ID) {
+  var adminList = process.env.ADMIN_ID.split(',');
+  if (msg && msg.from && String(msg.from.id) && _.includes(adminList, String(msg.from.id))) {
     debugFunction(msg);
   }
 });
@@ -47,6 +48,7 @@ bot.on('message', function (msg) {
 });
 
 var debugFunction = function (msg) {
+  bot.sendMessage(msg.chat.id, 'debug mode start');
   // TODO:
 };
 
