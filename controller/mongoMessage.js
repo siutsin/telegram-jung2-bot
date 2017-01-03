@@ -271,15 +271,7 @@ exports.cleanup = function () {
         log.e(err);
         promise.error(err);
       } else {
-        cacheConnection.db.command({repairDatabase: 1}, function (repairErr, repairResult) {
-          if (repairErr) {
-            log.e(repairErr);
-            promise.error(repairErr);
-          } else {
-            log.i('repairDatabase: ' + JSON.stringify(repairResult));
-            promise.complete();
-          }
-        });
+        promise.complete();
       }
     });
   return promise;
