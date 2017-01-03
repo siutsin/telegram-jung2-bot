@@ -106,7 +106,7 @@ var databaseMaintenance = function () {
 };
 
 var cleanupJob = new CronJob({
-  cronTime: '0 0 4 * * *',
+  cronTime: '0 0 * * * *',
   onTick: function () {
     databaseMaintenance();
   },
