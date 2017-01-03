@@ -36,13 +36,6 @@ bot.onText(/\/help/, function (msg) {
   BotHandler.onHelp(msg, bot);
 });
 
-bot.onText(/\/debug/, function (msg) {
-  var adminList = process.env.ADMIN_ID.split(',');
-  if (msg && msg.from && String(msg.from.id) && _.includes(adminList, String(msg.from.id))) {
-    debugFunction(msg);
-  }
-});
-
 bot.on('message', function (msg) {
   BotHandler.onMessage(msg);
 });
@@ -58,11 +51,11 @@ var debugFunction = function (msg) {
           id: chatId
         }
       };
-      log.i("chatId: " + JSON.stringify(msg));
+      log.i('chatId: ' + JSON.stringify(msg));
       MessageController.getTopTen(msg, true).then(function (message) {
         if (!_.isEmpty(message)) {
           counter += 1;
-          log.i("message: \n\n" + message);
+          log.i('message: \n\n' + message);
         }
         callback(null);
       });
@@ -76,6 +69,13 @@ var debugFunction = function (msg) {
     });
   });
 };
+
+bot.onText(/\/debug/, function (msg) {
+  var adminList = process.env.ADMIN_ID.split(',');
+  if (msg && msg.from && String(msg.from.id) && _.includes(adminList, String(msg.from.id))) {
+    debugFunction(msg);
+  }
+});
 
 var offJob = new CronJob({
   cronTime: '00 00 18 * * 1-5',
