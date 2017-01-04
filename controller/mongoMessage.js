@@ -2,9 +2,11 @@
 
 var mongoose = require('mongoose');
 var MessageClass = require('../model/message');
-var cacheConnection;
+var cacheConnection; // openshift cache db
+var cacheDOConnection; // digital ocean cache db
+var persistenceConnection; // digital ocean persistence db
 var MessageCache;
-var persistenceConnection;
+var MessageDOCache;
 var MessagePersistence;
 
 var UsageController = require('./usage');
@@ -19,7 +21,7 @@ UsageController.init();
 var getCount = function (msg) {
   var promise = new mongoose.Promise();
   var chatId = msg.chat.id.toString();
-  MessageCache.count({
+  MessageDOCache.count({
     chatId: chatId.toString(),
     dateCreated: {
       $gte: new Date(moment().subtract(7, 'day').toISOString())
@@ -37,7 +39,7 @@ var getCount = function (msg) {
 var getJung = function (msg, limit) {
   var promise = new mongoose.Promise();
   var chatId = msg.chat.id.toString();
-  var query = MessageCache.aggregate([
+  var query = MessageDOCache.aggregate([
     {
       $match: {
         chatId: chatId.toString(),
@@ -97,14 +99,21 @@ exports.init = function () {
       process.env.OPENSHIFT_APP_NAME;
   }
 
+  var connectionStringCacheDO = '127.0.0.1:27017/jung2botCacheDO';
+  if (process.env.MONGODB_CACHE_DO_URL) {
+    connectionStringCacheDO = process.env.MONGODB_CACHE_DO_URL;
+  }
+
   var connectionStringPersistence = '127.0.0.1:27017/jung2bot';
   if (process.env.MONGODB_URL) {
     connectionStringPersistence = process.env.MONGODB_URL;
   }
 
   cacheConnection = mongoose.createConnection(connectionStringCache);
+  cacheDOConnection = mongoose.createConnection(connectionStringCacheDO);
   persistenceConnection = mongoose.createConnection(connectionStringPersistence);
   MessageCache = cacheConnection.model('Message', MessageClass.getSchema());
+  MessageDOCache = cacheDOConnection.model('Message', MessageClass.getSchema());
   MessagePersistence = persistenceConnection.model('Message', MessageClass.getSchema());
 };
 
@@ -180,6 +189,19 @@ var saveToMessageCache = function (msg) {
   return msgCache.save();
 };
 
+var saveToMessageCacheDO = function (msg) {
+  var msgCacheDO = new MessageDOCache();
+  msgCacheDO.chatId = msg.chat.id || '';
+  msgCacheDO.chatTitle = msg.chat.title || '';
+  msgCacheDO.userId = msg.from.id || '';
+  msgCacheDO.username = msg.from.username || '';
+  /*jshint camelcase: false */
+  msgCacheDO.firstName = msg.from.first_name || '';
+  msgCacheDO.lastName = msg.from.last_name || '';
+  /*jshint camelcase: true */
+  return msgCacheDO.save();
+};
+
 var saveToMessagePersistence = function (msg) {
   var msgPersistence = new MessagePersistence();
   msgPersistence.chatId = msg.chat.id || '';
@@ -197,6 +219,7 @@ exports.addMessage = function (msg, callback) {
   cachedLastSender[msg.chat.id] = msg.from.id.toString();
   var promises = [
     saveToMessageCache(msg),
+    saveToMessageCacheDO(msg),
     saveToMessagePersistence(msg)
   ];
   return Promise.all(promises).then(callback);
@@ -204,7 +227,7 @@ exports.addMessage = function (msg, callback) {
 
 exports.getAllGroupIds = function () {
   var promise = new mongoose.Promise();
-  MessageCache.find({
+  MessageDOCache.find({
       dateCreated: {
         $gte: new Date(moment().subtract(7, 'day').toISOString())
       }
@@ -227,7 +250,7 @@ exports.getTopTen = function (msg, force) {
   return getJungMessage(msg, 10, force);
 };
 
-exports.cleanup = function () {
+var cleanDB = function (db) {
   const numberToDelete = 10000;
   var shouldRepeat = true;
   var promise = new mongoose.Promise();
@@ -236,7 +259,7 @@ exports.cleanup = function () {
       return shouldRepeat;
     },
     function iteratee(next) {
-      MessageCache.find({
+      db.find({
         dateCreated: {
           $lt: new Date(moment().subtract(7, 'day').toISOString())
         }
@@ -251,13 +274,13 @@ exports.cleanup = function () {
               var ids = docs.map(function (doc) {
                 return doc._id;
               });
-              MessageCache.remove({_id: {$in: ids}}, function (err, result) {
+              db.remove({_id: {$in: ids}}, function (err, result) {
                 if (err) {
                   log.e(err);
                   next(err);
                 } else {
                   var numberDeleted = result.result.n;
-                  log.i('cleanup message cache database, numberDeleted: ' + numberDeleted);
+                  log.i('numberDeleted: ' + numberDeleted);
                   shouldRepeat = (numberDeleted === numberToDelete);
                   next();
                 }
@@ -275,4 +298,20 @@ exports.cleanup = function () {
       }
     });
   return promise;
+};
+
+var cleanOS = function () {
+  return cleanDB(MessageCache);
+};
+
+var cleanDO = function () {
+  return cleanDB(MessageDOCache);
+};
+
+exports.cleanup = function () {
+  var promises = [
+    cleanOS(),
+    cleanDO()
+  ];
+  return Promise.all(promises);
 };
