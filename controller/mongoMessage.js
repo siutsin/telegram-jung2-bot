@@ -250,7 +250,7 @@ exports.getTopTen = function (msg, force) {
   return getJungMessage(msg, 10, force);
 };
 
-exports.cleanup = function () {
+var cleanDB = function (db) {
   const numberToDelete = 10000;
   var shouldRepeat = true;
   var promise = new mongoose.Promise();
@@ -259,7 +259,7 @@ exports.cleanup = function () {
       return shouldRepeat;
     },
     function iteratee(next) {
-      MessageCache.find({
+      db.find({
         dateCreated: {
           $lt: new Date(moment().subtract(7, 'day').toISOString())
         }
@@ -274,13 +274,13 @@ exports.cleanup = function () {
               var ids = docs.map(function (doc) {
                 return doc._id;
               });
-              MessageCache.remove({_id: {$in: ids}}, function (err, result) {
+              db.remove({_id: {$in: ids}}, function (err, result) {
                 if (err) {
                   log.e(err);
                   next(err);
                 } else {
                   var numberDeleted = result.result.n;
-                  log.i('cleanup message cache database, numberDeleted: ' + numberDeleted);
+                  log.i('numberDeleted: ' + numberDeleted);
                   shouldRepeat = (numberDeleted === numberToDelete);
                   next();
                 }
@@ -298,4 +298,20 @@ exports.cleanup = function () {
       }
     });
   return promise;
+};
+
+var cleanOS = function () {
+  return cleanDB(MessageCache);
+};
+
+var cleanDO = function () {
+  return cleanDB(MessageDOCache);
+};
+
+exports.cleanup = function () {
+  var promises = [
+    cleanOS(),
+    cleanDO()
+  ];
+  return Promise.all(promises);
 };
