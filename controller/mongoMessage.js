@@ -124,11 +124,15 @@ var getJungMessage = function (msg, limit, force) {
       UsageController.addUsage(msg),
       getCountAndGetJung(msg, limit).then(function (results) {
         var total = '';
+        var isOutOfLimit = false;
         for (var i = 0, l = results.length; i < l; i++) {
           total = results[i].total;
-          message += (i + 1) + '. ' + results[i].firstName + ' ' + results[i].lastName + ' ' + results[i].percent +
-            ' (' + moment(results[i].dateCreated).fromNow() + ')' + '\n';
+          if (message.length < Constants.MESSAGE.LIMIT) {
+            message += (i + 1) + '. ' + results[i].firstName + ' ' + results[i].lastName + ' ' + results[i].percent +
+              ' (' + moment(results[i].dateCreated).fromNow() + ')' + '\n';
+          }
         }
+        message = isOutOfLimit ? message + "...\n...\n" : message;
         message += '\nTotal message: ' + total;
         return message;
       })
