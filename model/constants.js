@@ -18,7 +18,7 @@ module.exports = Object.freeze({
     'Commands:' + '\n' +
     '/topten  show top ten 冗員s' + '\n' +
     '/alljung  show all 冗員s' + '\n' +
-    '/help      show help message' + '\n' +
+    '/junghelp  show help message' + '\n' +
     '\n' +
     'Issue/Suggestion: https://github.com/siutsin/telegram-jung2-bot/issues' + '\n' +
     '\n' +

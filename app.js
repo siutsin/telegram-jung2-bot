@@ -32,7 +32,7 @@ bot.onText(/\/all(j|J)ung/, function (msg) {
   BotHandler.onAllJung(msg, bot);
 });
 
-bot.onText(/\/help/, function (msg) {
+bot.onText(/\/jung(h|H)elp/, function (msg) {
   BotHandler.onHelp(msg, bot);
 });
 
