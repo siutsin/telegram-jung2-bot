@@ -1,3 +1,3 @@
 topten - show top ten 冗員s
 alljung - show all 冗員s
-help - show help message
+junghelp - show help message
