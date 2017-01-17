@@ -18,7 +18,7 @@ This bot is created for counting the number of message per participant in the gr
 |---|---|
 |`/topten`|Show the percentage of top ten participants for the past 7 days|
 |`/alljung`|Show the percentage of all participants for the past 7 days|
-|`/help`|Show help message|
+|`/junghelp`|Show help message|
 
 ## Author
 
