@@ -26,10 +26,3 @@ module.exports = Object.freeze({
     'May your 冗 power powerful -- Simon'
   }
 });
-
-
-
-
-
-
-
