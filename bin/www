@@ -4,7 +4,7 @@
  * Module dependencies.
  */
 
-require('dotenv').load();
+require('dotenv').config();
 require('@risingstack/trace');
 require('newrelic');
 var app = require('../app');
