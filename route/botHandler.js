@@ -16,7 +16,7 @@ exports.onTopTen = function (msg, bot) {
     }
   }, function onFailure(err) {
     log.e('/topten err: ' + err.message, process.env.DISABLE_LOGGING);
-    bot.sendMessage(msg.chat.id, err.message);
+    bot.sendMessage(msg.chat.id, 'Server Error');
   });
 };
 
@@ -31,7 +31,7 @@ exports.onAllJung = function (msg, bot) {
     }
   }, function onFailure(err) {
     log.e('/alljung err: ' + err.message, process.env.DISABLE_LOGGING);
-    bot.sendMessage(msg.chat.id, err.message);
+    bot.sendMessage(msg.chat.id, 'Server Error');
   });
 };
 
