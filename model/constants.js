@@ -4,7 +4,8 @@ module.exports = Object.freeze({
   },
   MESSAGE: {
     TOP_TEN_TITLE: 'Top 10 冗員s in the last 7 days (last 上水 time):\n\n',
-    ALL_JUNG_TITLE: 'All 冗員s in the last 7 days (last 上水 time):\n\n'
+    ALL_JUNG_TITLE: 'All 冗員s in the last 7 days (last 上水 time):\n\n',
+    LIMIT: 3800
   },
   HELP: {
     MESSAGE: '冗員[jung2jyun4] Excess personnel in Cantonese' + '\n' +
