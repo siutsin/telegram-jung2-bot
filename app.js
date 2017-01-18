@@ -46,7 +46,9 @@ var debugFunction = function (msg) {
   bot.sendMessage(msg.chat.id, 'debug mode start');
   MessageController.getAllGroupIds().then(function (chatIds) {
     bot.sendMessage(msg.chat.id, 'getAllGroupIds, found: ' + chatIds.length);
-    var counter = 0;
+    var groupCounter = 0;
+    var totalMessageCounter = 0;
+    var messageCountForGroupRegexp = /(?:^|\s)message: (.*?)(?:\s|$)/gm;
     async.each(chatIds, function (chatId, callback) {
       var msg = {
         chat: {
@@ -56,15 +58,25 @@ var debugFunction = function (msg) {
       log.i('chatId: ' + JSON.stringify(msg));
       MessageController.getTopTen(msg, true).then(function (message) {
         if (!_.isEmpty(message)) {
-          counter += 1;
           log.i('message: \n\n' + message);
+          groupCounter += 1;
+          try {
+            var match = messageCountForGroupRegexp.exec(message);
+            var totalMessage = Number(match[1]);
+            totalMessageCounter += totalMessage;
+            log.i('totalMessage: ' + totalMessage);
+          } catch(e) {
+            log.e('totalMessage error: ' + JSON.stringify(e));
+          }
         }
         callback(null);
       });
     }, function (err) {
       log.i('debug mode end');
       if (!err) {
-        bot.sendMessage(msg.chat.id, 'debug mode end, get topTen for no. of groups: ' + counter);
+        bot.sendMessage(msg.chat.id,
+          'debug mode end:\nget topTen for no. of groups: ' + groupCounter +
+          '\ntotol no. of message in 7 days: ' + totalMessageCounter);
       } else {
         bot.sendMessage(msg.chat.id, err);
       }
