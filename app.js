@@ -5,13 +5,15 @@ var bodyParser = require('body-parser');
 var morgan = require('morgan');
 var mongoose = require('mongoose');
 var _ = require('lodash');
+var async = require('async');
 var CronJob = require('cron').CronJob;
+var TelegramBot = require('node-telegram-bot-api');
+
 var log = require('log-to-file-and-console-node');
 var MessageController = require('./controller/messageFacade');
 var UsageController = require('./controller/usage');
 var BotHandler = require('./route/botHandler');
-var TelegramBot = require('node-telegram-bot-api');
-var async = require('async');
+var systemAdmin = require('./helper/jungBotSystemAdminHelper');
 
 var app = express();
 var bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, {polling: true});
@@ -71,8 +73,7 @@ var debugFunction = function (msg) {
 };
 
 bot.onText(/\/debug/, function (msg) {
-  var adminList = process.env.ADMIN_ID.split(',');
-  if (msg && msg.from && String(msg.from.id) && _.includes(adminList, String(msg.from.id))) {
+  if (systemAdmin.isAdmin(msg)) {
     debugFunction(msg);
   }
 });

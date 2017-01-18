@@ -2,7 +2,6 @@
 
 // This is just a message controller facade
 
-require('dotenv').load();
 var MessageController = require('./' + process.env.MESSAGE_CONTROLLER);
 
 exports.init = function(skip) {
