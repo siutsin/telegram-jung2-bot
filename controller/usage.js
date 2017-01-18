@@ -11,6 +11,7 @@ var moment = require('moment-timezone');
 var _ = require('lodash');
 var log = require('log-to-file-and-console-node');
 var async = require('async');
+var systemAdmin = require('../helper/jungBotSystemAdminHelper');
 
 // TODO: refactoring required
 exports.init = function () {
@@ -61,7 +62,7 @@ var updateUsageNotice = function (chatId) {
 
 exports.isAllowCommand = function (msg, force) {
   var promise = new mongoose.Promise();
-  if (force) {
+  if (force || systemAdmin.isAdmin(msg)) {
     return promise.complete();
   }
   var chatId = msg.chat.id.toString();

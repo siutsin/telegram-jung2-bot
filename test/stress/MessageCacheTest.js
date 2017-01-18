@@ -2,7 +2,7 @@
 
 const util = require('util');
 const assert = require('assert');
-const MessageCache = require('../../src/lib/MessageCache.js');
+const MessageCache = require('../../helper/MessageCacheHelper.js');
 const faker = require('faker');
 
 
