@@ -130,6 +130,8 @@ var getJungMessage = function (msg, limit, force) {
           if (message.length < Constants.MESSAGE.LIMIT) {
             message += (i + 1) + '. ' + results[i].firstName + ' ' + results[i].lastName + ' ' + results[i].percent +
               ' (' + moment(results[i].dateCreated).fromNow() + ')' + '\n';
+          } else {
+            isOutOfLimit = true;
           }
         }
         message = isOutOfLimit ? message + "...\n...\n" : message;
