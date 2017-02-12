@@ -1,1 +1,1 @@
-require('../../model/usage');
+require('.././usage')
