@@ -1,4 +1,4 @@
-module.exports = Object.freeze({
+export default Object.freeze({
   CONFIG: {
     COMMAND_COOLDOWN_TIME: 1.0
   },

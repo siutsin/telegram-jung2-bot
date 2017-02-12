@@ -5,13 +5,14 @@ var UsageClass = require('../model/usage')
 var UsageCache
 var UsagePersistence
 
-var Constants = require('../model/constants')
+var Constants = require('../constants')
 require('moment')
 var moment = require('moment-timezone')
 var _ = require('lodash')
 var log = require('log-to-file-and-console-node')
 var async = require('async')
-var systemAdmin = require('../helper/SystemAdmin')
+import SystemAdmin from '../helper/SystemAdmin'
+const systemAdmin = new SystemAdmin()
 
 // TODO: refactoring required
 exports.init = function () {
