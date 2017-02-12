@@ -1,6 +1,6 @@
-'use strict';
+'use strict'
 
-var mongoose = require('mongoose');
+var mongoose = require('mongoose')
 
 var MessageSchema = new mongoose.Schema({
   chatId: String,
@@ -13,15 +13,15 @@ var MessageSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
-});
+})
 
 MessageSchema.index({
   chatId: 1,
   userId: 1
-});
+})
 
 MessageSchema.statics.getSchema = function () {
-  return MessageSchema;
-};
+  return MessageSchema
+}
 
-module.exports = mongoose.model('Message', MessageSchema);
+module.exports = mongoose.model('Message', MessageSchema)

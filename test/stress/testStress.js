@@ -1,2 +1,2 @@
 // Message
-require('./testStressMessage');
+require('./testStressMessage')
