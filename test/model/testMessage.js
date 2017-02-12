@@ -1,1 +1,1 @@
-require('../../model/message');
+require('.././message')
