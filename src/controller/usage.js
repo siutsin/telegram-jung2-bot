@@ -11,7 +11,7 @@ var moment = require('moment-timezone')
 var _ = require('lodash')
 var log = require('log-to-file-and-console-node')
 var async = require('async')
-import SystemAdmin from '../helper/SystemAdmin'
+import SystemAdmin from '../helper/systemAdmin'
 const systemAdmin = new SystemAdmin()
 
 // TODO: refactoring required
