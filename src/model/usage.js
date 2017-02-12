@@ -1,6 +1,6 @@
-'use strict';
+'use strict'
 
-var mongoose = require('mongoose');
+var mongoose = require('mongoose')
 
 var UsageSchema = new mongoose.Schema({
   chatId: String,
@@ -12,15 +12,15 @@ var UsageSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
-});
+})
 
 UsageSchema.index({
   chatId: 1,
   notified: 1
-});
+})
 
 UsageSchema.statics.getSchema = function () {
-  return UsageSchema;
-};
+  return UsageSchema
+}
 
-module.exports = mongoose.model('UsageClass', UsageSchema);
+module.exports = mongoose.model('UsageClass', UsageSchema)

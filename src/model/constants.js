@@ -25,4 +25,4 @@ module.exports = Object.freeze({
     '\n' +
     'May your 冗 power powerful -- Simon'
   }
-});
+})
