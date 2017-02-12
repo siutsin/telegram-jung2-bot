@@ -1,51 +1,44 @@
-'use strict'
+import log from 'log-to-file-and-console-node'
+import _ from 'lodash'
+import MessageController from '../controller/messageFacade'
+import HelpController from '../controller/help'
 
-var log = require('log-to-file-and-console-node')
-var MessageController = require('../controller/messageFacade')
-var HelpController = require('../controller/help')
-var _ = require('lodash')
+const helpController = new HelpController()
 
-exports.onTopTen = function (msg, bot) {
-  log.i('/topten msg: ' + JSON.stringify(msg), process.env.DISABLE_LOGGING)
-  MessageController.getTopTen(msg).then(function onSuccess (message) {
-    if (!_.isEmpty(message)) {
-      log.i('/topten sendBot to ' + msg.chat.id + ' message: ' + message, process.env.DISABLE_LOGGING)
-      bot.sendMessage(msg.chat.id, message)
-    } else {
-      log.e('/topten: message is empty', process.env.DISABLE_LOGGING)
+class BotHandler {
+  constructor (bot) {
+    this.bot = bot
+  }
+  async onTopTen (msg) {
+    try {
+      const message = await MessageController.getTopTen(msg)
+      if (!_.isEmpty(message)) { this.bot.sendMessage(msg.chat.id, message) }
+    } catch (e) {
+      log.e('/topten err: ' + e.message, process.env.DISABLE_LOGGING)
+      this.bot.sendMessage(msg.chat.id, 'Server Error')
     }
-  }, function onFailure (err) {
-    log.e('/topten err: ' + err.message, process.env.DISABLE_LOGGING)
-    bot.sendMessage(msg.chat.id, 'Server Error')
-  })
-}
-
-exports.onAllJung = function (msg, bot) {
-  log.i('/alljung msg: ' + JSON.stringify(msg), process.env.DISABLE_LOGGING)
-  MessageController.getAllJung(msg).then(function onSuccess (message) {
-    if (!_.isEmpty(message)) {
-      log.i('/alljung sendBot to ' + msg.chat.id + ' message: ' + message, process.env.DISABLE_LOGGING)
-      bot.sendMessage(msg.chat.id, message)
-    } else {
-      log.e('/alljung: message is empty', process.env.DISABLE_LOGGING)
+  }
+  async onAllJung (msg) {
+    log.i('/alljung msg: ' + JSON.stringify(msg), process.env.DISABLE_LOGGING)
+    try {
+      const message = await MessageController.getAllJung(msg)
+      if (!_.isEmpty(message)) { this.bot.sendMessage(msg.chat.id, message) }
+    } catch (e) {
+      log.e('/alljung err: ' + e.message, process.env.DISABLE_LOGGING)
+      this.bot.sendMessage(msg.chat.id, 'Server Error')
     }
-  }, function onFailure (err) {
-    log.e('/alljung err: ' + err.message, process.env.DISABLE_LOGGING)
-    bot.sendMessage(msg.chat.id, 'Server Error')
-  })
-}
-
-exports.onHelp = function (msg, bot) {
-  bot.sendMessage(msg.chat.id, HelpController.getHelp())
-}
-
-exports.onMessage = function (msg) {
-  log.i('msg: ' + JSON.stringify(msg), process.env.DISABLE_LOGGING)
-  if (MessageController.shouldAddMessage(msg)) {
-    MessageController.addMessage(msg, function () {
-      log.i('add message success', process.env.DISABLE_LOGGING)
-    })
-  } else {
-    log.e('skip repeated message', process.env.DISABLE_LOGGING)
+  }
+  onHelp (msg) {
+    this.bot.sendMessage(msg.chat.id, helpController.getHelp())
+  }
+  onMessage (msg) {
+    log.i('msg: ' + JSON.stringify(msg), process.env.DISABLE_LOGGING)
+    if (MessageController.shouldAddMessage(msg)) {
+      MessageController.addMessage(msg, () => log.i('add message success', process.env.DISABLE_LOGGING))
+    } else {
+      log.e('skip repeated message', process.env.DISABLE_LOGGING)
+    }
   }
 }
+
+export default BotHandler

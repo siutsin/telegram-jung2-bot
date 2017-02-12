@@ -10,7 +10,7 @@ var MessageDOCache
 var MessagePersistence
 
 var UsageController = require('./usage')
-var Constants = require('../model/constants')
+import Constants from '../constants'
 require('moment')
 var moment = require('moment-timezone')
 var log = require('log-to-file-and-console-node')

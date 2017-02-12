@@ -13,6 +13,7 @@ import root from './route/root'
 
 const app = express()
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true })
+const botHandler = new BotHandler(bot)
 const systemAdmin = new SystemAdmin()
 
 MessageController.init() // TODO: remove
@@ -22,10 +23,10 @@ app.use(bodyParser.json())
 
 app.use('/', root)
 
-bot.onText(/\/top(t|T)en/, msg => BotHandler.onTopTen(msg, bot))
-bot.onText(/\/all(j|J)ung/, msg => BotHandler.onAllJung(msg, bot))
-bot.onText(/\/jung(h|H)elp/, msg => BotHandler.onHelp(msg, bot))
-bot.on('message', msg => BotHandler.onMessage(msg))
+bot.onText(/\/top(t|T)en/, msg => botHandler.onTopTen(msg))
+bot.onText(/\/all(j|J)ung/, msg => botHandler.onAllJung(msg))
+bot.onText(/\/jung(h|H)elp/, msg => botHandler.onHelp(msg))
+bot.on('message', msg => botHandler.onMessage(msg))
 
 bot.onText(/\/debug/, msg => {
   if (systemAdmin.isAdmin(msg)) {

@@ -1,7 +1,9 @@
-'use strict'
+import Constants from '../constants'
 
-var Constants = require('../model/constants')
-
-exports.getHelp = function () {
-  return Constants.HELP.MESSAGE
+class HelpController {
+  getHelp () {
+    return Constants.HELP.MESSAGE
+  }
 }
+
+export default HelpController
