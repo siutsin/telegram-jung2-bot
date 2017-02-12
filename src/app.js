@@ -6,38 +6,36 @@ import log from 'log-to-file-and-console-node'
 
 import MessageController from './controller/messageFacade'
 import CronController from './controller/cron'
-import DebugController from './controller/debug'
 import BotHandler from './route/botHandler'
-import SystemAdmin from './helper/SystemAdmin'
-import root from './route/root'
+import Routes from './route/routes'
 
 const app = express()
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true })
 const botHandler = new BotHandler(bot)
-const systemAdmin = new SystemAdmin()
+const routes = new Routes(app)
 
-MessageController.init() // TODO: remove
-
+/**
+ * HTTP Server
+ */
 app.use(morgan('combined', { 'stream': log.stream }))
 app.use(bodyParser.json())
+routes.configRoutes()
 
-app.use('/', root)
-
+/**
+ * Bot
+ */
+MessageController.init() // TODO: remove
 bot.onText(/\/top(t|T)en/, msg => botHandler.onTopTen(msg))
 bot.onText(/\/all(j|J)ung/, msg => botHandler.onAllJung(msg))
 bot.onText(/\/jung(h|H)elp/, msg => botHandler.onHelp(msg))
+bot.onText(/\/debug/, msg => botHandler.onDebug(msg))
 bot.on('message', msg => botHandler.onMessage(msg))
 
-bot.onText(/\/debug/, msg => {
-  if (systemAdmin.isAdmin(msg)) {
-    const debugController = new DebugController(bot)
-    debugController.healthCheck(msg)
-  }
-})
-
+/**
+ * Cron Jobs
+ */
 const cron = new CronController(bot)
-cron.startAllCronJobs()
-// cleanup when service start
 cron.databaseMaintenance()
+cron.startAllCronJobs()
 
 export default app
