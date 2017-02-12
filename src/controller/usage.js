@@ -11,7 +11,7 @@ var moment = require('moment-timezone')
 var _ = require('lodash')
 var log = require('log-to-file-and-console-node')
 var async = require('async')
-var systemAdmin = require('../helper/jungBotSystemAdminHelper')
+var systemAdmin = require('../helper/SystemAdmin')
 
 // TODO: refactoring required
 exports.init = function () {
