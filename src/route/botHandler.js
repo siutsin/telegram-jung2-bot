@@ -1,51 +1,59 @@
-'use strict'
+import log from 'log-to-file-and-console-node'
+import _ from 'lodash'
+import MessageController from '../controller/message'
+import HelpController from '../controller/help'
+import DebugController from '../controller/debug'
+import SystemAdmin from '../helper/systemAdmin'
 
-var log = require('log-to-file-and-console-node')
-var MessageController = require('../controller/messageFacade')
-var HelpController = require('../controller/help')
-var _ = require('lodash')
+const messageController = new MessageController()
+const helpController = new HelpController()
+const systemAdmin = new SystemAdmin()
 
-exports.onTopTen = function (msg, bot) {
-  log.i('/topten msg: ' + JSON.stringify(msg), process.env.DISABLE_LOGGING)
-  MessageController.getTopTen(msg).then(function onSuccess (message) {
-    if (!_.isEmpty(message)) {
-      log.i('/topten sendBot to ' + msg.chat.id + ' message: ' + message, process.env.DISABLE_LOGGING)
-      bot.sendMessage(msg.chat.id, message)
-    } else {
-      log.e('/topten: message is empty', process.env.DISABLE_LOGGING)
-    }
-  }, function onFailure (err) {
-    log.e('/topten err: ' + err.message, process.env.DISABLE_LOGGING)
-    bot.sendMessage(msg.chat.id, 'Server Error')
-  })
-}
+export default class BotHandler {
 
-exports.onAllJung = function (msg, bot) {
-  log.i('/alljung msg: ' + JSON.stringify(msg), process.env.DISABLE_LOGGING)
-  MessageController.getAllJung(msg).then(function onSuccess (message) {
-    if (!_.isEmpty(message)) {
-      log.i('/alljung sendBot to ' + msg.chat.id + ' message: ' + message, process.env.DISABLE_LOGGING)
-      bot.sendMessage(msg.chat.id, message)
-    } else {
-      log.e('/alljung: message is empty', process.env.DISABLE_LOGGING)
-    }
-  }, function onFailure (err) {
-    log.e('/alljung err: ' + err.message, process.env.DISABLE_LOGGING)
-    bot.sendMessage(msg.chat.id, 'Server Error')
-  })
-}
-
-exports.onHelp = function (msg, bot) {
-  bot.sendMessage(msg.chat.id, HelpController.getHelp())
-}
-
-exports.onMessage = function (msg) {
-  log.i('msg: ' + JSON.stringify(msg), process.env.DISABLE_LOGGING)
-  if (MessageController.shouldAddMessage(msg)) {
-    MessageController.addMessage(msg, function () {
-      log.i('add message success', process.env.DISABLE_LOGGING)
-    })
-  } else {
-    log.e('skip repeated message', process.env.DISABLE_LOGGING)
+  constructor (bot) {
+    this.bot = bot
   }
+
+  async onTopTen (msg) {
+    try {
+      const message = await messageController.getTopTen(msg)
+      if (!_.isEmpty(message)) { this.bot.sendMessage(msg.chat.id, message) }
+    } catch (e) {
+      log.e('/topten err: ' + e.message, process.env.DISABLE_LOGGING)
+      this.bot.sendMessage(msg.chat.id, 'Server Error')
+    }
+  }
+
+  async onAllJung (msg) {
+    log.i('/alljung msg: ' + JSON.stringify(msg), process.env.DISABLE_LOGGING)
+    try {
+      const message = await messageController.getAllJung(msg)
+      if (!_.isEmpty(message)) { this.bot.sendMessage(msg.chat.id, message) }
+    } catch (e) {
+      log.e('/alljung err: ' + e.message, process.env.DISABLE_LOGGING)
+      this.bot.sendMessage(msg.chat.id, 'Server Error')
+    }
+  }
+
+  onHelp (msg) {
+    this.bot.sendMessage(msg.chat.id, helpController.getHelp())
+  }
+
+  onMessage (msg) {
+    log.i('msg: ' + JSON.stringify(msg), process.env.DISABLE_LOGGING)
+    if (messageController.shouldAddMessage(msg)) {
+      messageController.addMessage(msg, () => log.i('add message success', process.env.DISABLE_LOGGING))
+    } else {
+      log.e('skip repeated message', process.env.DISABLE_LOGGING)
+    }
+  }
+
+  onDebug (msg) {
+    if (systemAdmin.isAdmin(msg)) {
+      const debugController = new DebugController(this.bot)
+      debugController.healthCheck(msg)
+    }
+  }
+
 }

@@ -1,13 +1,12 @@
-'use strict'
+export default class Root {
 
-var express = require('express')
-var router = express.Router()
+  static root () {
+    return (req, res) => {
+      res.json({
+        status: 'OK',
+        desc: 'For UpTimeRobot'
+      })
+    }
+  }
 
-router.get('/', function (req, res) {
-  res.json({
-    status: 'OK',
-    desc: 'For UpTimeRobot'
-  })
-})
-
-module.exports = router
+}
