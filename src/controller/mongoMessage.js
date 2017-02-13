@@ -1,7 +1,7 @@
 'use strict'
 
-var mongoose = require('mongoose')
-var MessageClass = require('../model/message')
+import mongoose from 'mongoose'
+import MessageClass from '../model/message'
 var cacheConnection // openshift cache db
 var cacheDOConnection // digital ocean cache db
 var persistenceConnection // digital ocean persistence db

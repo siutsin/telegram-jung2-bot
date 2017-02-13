@@ -1,8 +1,6 @@
-'use strict'
+import mongoose from 'mongoose'
 
-var mongoose = require('mongoose')
-
-var MessageSchema = new mongoose.Schema({
+const MessageSchema = new mongoose.Schema({
   chatId: String,
   chatTitle: String,
   userId: String,
@@ -20,8 +18,6 @@ MessageSchema.index({
   userId: 1
 })
 
-MessageSchema.statics.getSchema = function () {
-  return MessageSchema
-}
+MessageSchema.statics.getSchema = () => MessageSchema
 
-module.exports = mongoose.model('Message', MessageSchema)
+export default mongoose.model('Message', MessageSchema)
