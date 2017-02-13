@@ -7,6 +7,8 @@ import async from 'async'
 import MessageController from './messageFacade'
 import UsageController from './usage'
 
+const usageController = new UsageController()
+
 class DebugController {
 
   constructor (bot) {
@@ -15,7 +17,7 @@ class DebugController {
 
   databaseMaintenance () {
     MessageController.cleanup()
-    UsageController.cleanup()
+    usageController.cleanup()
   }
 
   offJob () {

@@ -1,140 +1,79 @@
-'use strict'
+require('babel-polyfill')
 
+import 'moment'
+import moment from 'moment-timezone'
+import _ from 'lodash'
+import log from 'log-to-file-and-console-node'
 import mongoose from 'mongoose'
 import UsageClass from '../model/usage'
-var UsageCache
-var UsagePersistence
-
-var Constants = require('../constants')
-require('moment')
-var moment = require('moment-timezone')
-var _ = require('lodash')
-var log = require('log-to-file-and-console-node')
-var async = require('async')
+import c from '../constants'
 import SystemAdmin from '../helper/systemAdmin'
+
 const systemAdmin = new SystemAdmin()
 
-// TODO: refactoring required
-exports.init = function () {
-  var connectionStringCache = '127.0.0.1:27017/jung2botCache'
-  if (process.env.OPENSHIFT_MONGODB_DB_PASSWORD) {
-    connectionStringCache = process.env.OPENSHIFT_MONGODB_DB_USERNAME + ':' +
-      process.env.OPENSHIFT_MONGODB_DB_PASSWORD + '@' +
-      process.env.OPENSHIFT_MONGODB_DB_HOST + ':' +
-      process.env.OPENSHIFT_MONGODB_DB_PORT + '/' +
-      process.env.OPENSHIFT_APP_NAME
+export default class UsageController {
+
+  constructor () {
+    const connectionStringCache = process.env.MONGODB_CACHE_DO_URL
+    const connectionStringPersistence = process.env.MONGODB_URL
+    const cacheConnection = mongoose.createConnection(connectionStringCache)
+    const persistenceConnection = mongoose.createConnection(connectionStringPersistence)
+    this.UsageCache = cacheConnection.model('Usage', UsageClass.getSchema())
+    this.UsagePersistence = persistenceConnection.model('Usage', UsageClass.getSchema())
   }
 
-  var connectionStringPersistence = '127.0.0.1:27017/jung2bot'
-  if (process.env.MONGODB_URL) {
-    connectionStringPersistence = process.env.MONGODB_URL
+  addUsage (msg) {
+    const usageCache = new this.UsageCache()
+    usageCache.chatId = msg.chat.id || ''
+    const usagePersistence = new this.UsagePersistence()
+    usagePersistence.chatId = msg.chat.id || ''
+    return Promise.all([
+      usageCache.save(),
+      usagePersistence.save()
+    ])
   }
 
-  var cacheConnection = mongoose.createConnection(connectionStringCache)
-  var persistenceConnection = mongoose.createConnection(connectionStringPersistence)
-  UsageCache = cacheConnection.model('Usage', UsageClass.getSchema())
-  UsagePersistence = persistenceConnection.model('Usage', UsageClass.getSchema())
-}
+  updateUsageNotice (chatId) {
+    return this.UsageCache.findOneAndUpdate(
+      {chatId: chatId},
+      {notified: true},
+      {sort: '-dateCreated'})
+      .exec()
+  }
 
-exports.addUsage = function (msg) {
-  var usageCache = new UsageCache()
-  usageCache.chatId = msg.chat.id || ''
-  var usagePersistence = new UsagePersistence()
-  usagePersistence.chatId = msg.chat.id || ''
-  var promises = [
-    usageCache.save(),
-    usagePersistence.save()
-  ]
-  return Promise.all(promises)
-}
-
-var updateUsageNotice = function (chatId) {
-  var promise = new mongoose.Promise()
-  UsageCache.findOneAndUpdate(
-    {chatId: chatId},
-    {notified: true},
-    {sort: '-dateCreated'},
-    function callback (err, foundUsage) {
-      if (err) { throw err }
-      promise.complete(foundUsage)
+  async isAllowCommand (msg, force) {
+    if (force || systemAdmin.isAdmin(msg)) { return }
+    const chatId = msg.chat.id.toString()
+    const usages = await this.UsageCache
+      .find({chatId: chatId.toString()})
+      .sort('-dateCreated')
+      .limit(1)
+      .exec()
+    if (_.isArray(usages) && !_.isEmpty(usages)) {
+      const usage = usages[0]
+      const diff = Math.abs(moment(usage.dateCreated).diff(moment(), 'minute', true))
+      if (diff < c.CONFIG.COMMAND_COOLDOWN_TIME) {
+        if (!usage.notified) { await this.updateUsageNotice(chatId) }
+        throw usage
+      }
     }
-  )
-  return promise
-}
-
-exports.isAllowCommand = function (msg, force) {
-  var promise = new mongoose.Promise()
-  if (force || systemAdmin.isAdmin(msg)) {
-    return promise.complete()
   }
-  var chatId = msg.chat.id.toString()
-  UsageCache.find({chatId: chatId.toString()})
-    .sort('-dateCreated')
-    .limit(1)
-    .exec(function (err, usages) {
-      if (err) { throw err }
-      if (_.isArray(usages) && !_.isEmpty(usages)) {
-        var usage = usages[0]
-        var diff = Math.abs(moment(usage.dateCreated).diff(moment(), 'minute', true))
-        if (diff < Constants.CONFIG.COMMAND_COOLDOWN_TIME) {
-          if (usage.notified) {
-            promise.reject(usage)
-          } else {
-            updateUsageNotice(chatId).then(function () {
-              promise.reject(usage)
-            })
-          }
-        } else {
-          promise.complete()
-        }
-      } else {
-        promise.complete()
-      }
-    })
-  return promise
-}
 
-exports.cleanup = function () {
-  const numberToDelete = 10000
-  var shouldRepeat = true
-  var promise = new mongoose.Promise()
-  async.whilst(
-    function test () {
-      return shouldRepeat
-    },
-    function iteratee (next) {
-      UsageCache.find({
-        dateCreated: {
-          $lt: new Date(moment().subtract(7, 'day').toISOString())
-        }
-      }).select('_id')
-        .sort({_id: 1})
-        .limit(numberToDelete)
-        .exec(function (err, docs) {
-          if (err) { throw err }
-          var ids = docs.map(function (doc) {
-            return doc._id
-          })
-          UsageCache.remove({_id: {$in: ids}}, function (err, result) {
-            if (err) {
-              next(err)
-            } else {
-              var numberDeleted = result.result.n
-              log.i('cleanup usage cache database, numberDeleted: ' + numberDeleted)
-              shouldRepeat = (numberDeleted === numberToDelete)
-              next()
-            }
-          })
-        }
-        )
-    },
-    function callback (err) {
-      if (err) {
-        log.e(err)
-        promise.error(err)
-      } else {
-        promise.complete()
-      }
-    })
-  return promise
+  async cleanup () {
+    let shouldRepeat = true
+    while (shouldRepeat) {
+      const docs = await this.UsageCache
+        .find({ dateCreated: { $lt: new Date(moment().subtract(7, 'day').toISOString()) } })
+        .select('_id')
+        .sort({ _id: 1 })
+        .limit(c.CONFIG.CLEANUP_NUMBER_TO_DELETE)
+        .exec()
+      const ids = docs.map(doc => doc._id)
+      const result = await this.UsageCache.remove({ _id: { $in: ids } })
+      const numberDeleted = result.result.n
+      log.i('cleanup usage cache database, numberDeleted: ' + numberDeleted)
+      shouldRepeat = (numberDeleted === c.CONFIG.CLEANUP_NUMBER_TO_DELETE)
+    }
+  }
+
 }
