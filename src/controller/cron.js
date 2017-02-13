@@ -9,7 +9,7 @@ import UsageController from './usage'
 
 const usageController = new UsageController()
 
-class DebugController {
+export default class DebugController {
 
   constructor (bot) {
     this.bot = bot
@@ -51,5 +51,3 @@ class DebugController {
     cleanupJob.start()
   }
 }
-
-export default DebugController

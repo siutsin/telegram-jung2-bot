@@ -1,11 +1,9 @@
 import Constants from '../constants'
 
-class HelpController {
+export default class HelpController {
 
   getHelp () {
     return Constants.HELP.MESSAGE
   }
 
 }
-
-export default HelpController

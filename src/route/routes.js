@@ -1,6 +1,6 @@
 import Root from './root'
 
-class Routes {
+export default class Routes {
 
   constructor (app) {
     this.app = app
@@ -10,5 +10,3 @@ class Routes {
     this.app.get('/', Root.root())
   }
 }
-
-export default Routes

@@ -1,2 +1,2 @@
-import dotenv from 'dotenv'
-dotenv.config({silent: true})
+import dot from 'dotenv'
+dot.config({silent: true})

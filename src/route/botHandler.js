@@ -8,7 +8,7 @@ import SystemAdmin from '../helper/systemAdmin'
 const helpController = new HelpController()
 const systemAdmin = new SystemAdmin()
 
-class BotHandler {
+export default class BotHandler {
 
   constructor (bot) {
     this.bot = bot
@@ -56,5 +56,3 @@ class BotHandler {
   }
 
 }
-
-export default BotHandler

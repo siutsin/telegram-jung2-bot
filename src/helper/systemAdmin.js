@@ -1,6 +1,6 @@
 import _ from 'lodash'
 
-class SystemAdmin {
+export default class SystemAdmin {
 
   isAdmin (msg) {
     const adminList = process.env.ADMIN_ID.split(',')
@@ -12,5 +12,3 @@ class SystemAdmin {
   }
 
 }
-
-export default SystemAdmin
