@@ -23,10 +23,8 @@ for (let i = 0; i < nUsers; i++) {
   users.push({
     id: `id-${i}`,
     username: faker.internet.userName(),
-    /* jshint camelcase: false */
     first_name: faker.name.firstName(),
     last_name: faker.name.lastName()
-    /* jshint camelcase: true */
   })
 }
 // make some repetition

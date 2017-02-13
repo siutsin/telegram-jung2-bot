@@ -24,7 +24,7 @@ export default class DebugController {
     let groupCounter = 0
     let totalMessageCounter = 0
     async.each(chatIds, async (chatId, next) => {
-      const msg = { chat: { id: chatId } }
+      const msg = {chat: {id: chatId}}
       log.i('chatId: ' + JSON.stringify(msg), process.env.DISABLE_LOGGING)
       const message = await MessageController.getTopTen(msg, true)
       if (!_.isEmpty(message)) {
