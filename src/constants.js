@@ -1,6 +1,7 @@
-module.exports = Object.freeze({
+export default Object.freeze({
   CONFIG: {
-    COMMAND_COOLDOWN_TIME: 1.0
+    COMMAND_COOLDOWN_TIME: 1.0,
+    CLEANUP_NUMBER_TO_DELETE: 10000
   },
   MESSAGE: {
     TOP_TEN_TITLE: 'Top 10 冗員s in the last 7 days (last 上水 time):\n\n',
