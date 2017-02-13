@@ -63,13 +63,13 @@ export default class UsageController {
     let shouldRepeat = true
     while (shouldRepeat) {
       const docs = await this.UsageCache
-        .find({ dateCreated: { $lt: new Date(moment().subtract(7, 'day').toISOString()) } })
+        .find({dateCreated: {$lt: new Date(moment().subtract(7, 'day').toISOString())}})
         .select('_id')
-        .sort({ _id: 1 })
+        .sort({_id: 1})
         .limit(c.CONFIG.CLEANUP_NUMBER_TO_DELETE)
         .exec()
       const ids = docs.map(doc => doc._id)
-      const result = await this.UsageCache.remove({ _id: { $in: ids } })
+      const result = await this.UsageCache.remove({_id: {$in: ids}})
       const numberDeleted = result.result.n
       log.i('cleanup usage cache database, numberDeleted: ' + numberDeleted)
       shouldRepeat = (numberDeleted === c.CONFIG.CLEANUP_NUMBER_TO_DELETE)

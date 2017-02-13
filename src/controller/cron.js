@@ -1,12 +1,13 @@
 require('babel-polyfill')
 
 import _ from 'lodash'
-import {CronJob} from 'cron'
+import { CronJob } from 'cron'
 import async from 'async'
 
-import MessageController from './messageFacade'
+import MessageController from './message'
 import UsageController from './usage'
 
+const messageController = new MessageController()
 const usageController = new UsageController()
 
 export default class DebugController {
@@ -16,7 +17,7 @@ export default class DebugController {
   }
 
   databaseMaintenance () {
-    MessageController.cleanup()
+    messageController.cleanup()
     usageController.cleanup()
   }
 
@@ -24,11 +25,11 @@ export default class DebugController {
     return new CronJob({
       cronTime: '00 00 18 * * 1-5',
       onTick: async () => {
-        const chatIds = await MessageController.getAllGroupIds()
+        const chatIds = await messageController.getAllGroupIds()
         async.each(chatIds, async chatId => {
-          const msg = { chat: { id: chatId } }
+          const msg = {chat: {id: chatId}}
           this.bot.sendMessage(chatId, '夠鐘收工~~')
-          const message = await MessageController.getTopTen(msg, true)
+          const message = await messageController.getTopTen(msg, true)
           if (!_.isEmpty(message)) { this.bot.sendMessage(chatId, message) }
         })
       },

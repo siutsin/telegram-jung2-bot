@@ -10,14 +10,14 @@ import BotHandler from './route/botHandler'
 import Routes from './route/routes'
 
 const app = express()
-const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true })
+const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, {polling: true})
 const botHandler = new BotHandler(bot)
 const routes = new Routes(app)
 
 /**
  * HTTP Server
  */
-app.use(morgan('combined', { 'stream': log.stream }))
+app.use(morgan('combined', {'stream': log.stream}))
 app.use(bodyParser.json())
 routes.configRoutes()
 
