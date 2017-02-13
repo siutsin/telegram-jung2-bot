@@ -1,7 +1,7 @@
 'use strict'
 
-var mongoose = require('mongoose')
-var UsageClass = require('../model/usage')
+import mongoose from 'mongoose'
+import UsageClass from '../model/usage'
 var UsageCache
 var UsagePersistence
 

@@ -1,8 +1,6 @@
-'use strict'
+import mongoose from 'mongoose'
 
-var mongoose = require('mongoose')
-
-var UsageSchema = new mongoose.Schema({
+const UsageSchema = new mongoose.Schema({
   chatId: String,
   notified: {
     type: Boolean,
@@ -19,8 +17,6 @@ UsageSchema.index({
   notified: 1
 })
 
-UsageSchema.statics.getSchema = function () {
-  return UsageSchema
-}
+UsageSchema.statics.getSchema = () => UsageSchema
 
-module.exports = mongoose.model('UsageClass', UsageSchema)
+export default mongoose.model('UsageClass', UsageSchema)
