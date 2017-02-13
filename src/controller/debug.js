@@ -11,7 +11,7 @@ const totalNumberForMessage = message => {
   return Number(match[1])
 }
 
-class DebugController {
+export default class DebugController {
 
   constructor (bot) {
     this.bot = bot
@@ -51,5 +51,3 @@ class DebugController {
     })
   }
 }
-
-export default DebugController

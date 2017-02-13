@@ -1,4 +1,4 @@
-class Root {
+export default class Root {
 
   static root () {
     return (req, res) => {
@@ -10,5 +10,3 @@ class Root {
   }
 
 }
-
-export default Root
