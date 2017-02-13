@@ -9,14 +9,14 @@ var MessageCache
 var MessageDOCache
 var MessagePersistence
 
-var UsageController = require('./usage')
+import UsageController from './usage'
 import Constants from '../constants'
 require('moment')
 var moment = require('moment-timezone')
 var log = require('log-to-file-and-console-node')
 var async = require('async')
 
-UsageController.init()
+const usageController = new UsageController()
 
 var getCount = function (msg) {
   var promise = new mongoose.Promise()
@@ -119,9 +119,9 @@ exports.init = function () {
 
 var getJungMessage = function (msg, limit, force) {
   var message = limit ? Constants.MESSAGE.TOP_TEN_TITLE : Constants.MESSAGE.ALL_JUNG_TITLE
-  return UsageController.isAllowCommand(msg, force).then(function onSuccess () {
+  return usageController.isAllowCommand(msg, force).then(function onSuccess () {
     var promises = [
-      UsageController.addUsage(msg),
+      usageController.addUsage(msg),
       getCountAndGetJung(msg, limit).then(function (results) {
         var total = ''
         var isOutOfLimit = false
