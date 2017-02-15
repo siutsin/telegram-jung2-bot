@@ -3,7 +3,7 @@ require('babel-polyfill')
 import async from 'async'
 import _ from 'lodash'
 import log from 'log-to-file-and-console-node'
-import MessageController from './messageFacade'
+import MessageController from './message'
 
 const totalNumberForMessage = message => {
   const messageCountForGroupRegexp = /(?:^|\s)message: (.*?)(?:\s|$)/gm

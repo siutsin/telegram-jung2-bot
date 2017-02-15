@@ -4,7 +4,6 @@ import morgan from 'morgan'
 import TelegramBot from 'node-telegram-bot-api'
 import log from 'log-to-file-and-console-node'
 
-import MessageController from './controller/messageFacade'
 import CronController from './controller/cron'
 import BotHandler from './route/botHandler'
 import Routes from './route/routes'
@@ -24,7 +23,6 @@ routes.configRoutes()
 /**
  * Bot
  */
-MessageController.init() // TODO: remove
 bot.onText(/\/top(t|T)en/, msg => botHandler.onTopTen(msg))
 bot.onText(/\/all(j|J)ung/, msg => botHandler.onAllJung(msg))
 bot.onText(/\/jung(h|H)elp/, msg => botHandler.onHelp(msg))
