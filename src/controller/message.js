@@ -9,6 +9,7 @@ import UsageController from './usage'
 import c from '../constants'
 
 const usageController = new UsageController()
+mongoose.Promise = global.Promise
 
 export default class MessageController {
 

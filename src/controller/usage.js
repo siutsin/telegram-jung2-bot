@@ -10,6 +10,7 @@ import c from '../constants'
 import SystemAdmin from '../helper/systemAdmin'
 
 const systemAdmin = new SystemAdmin()
+mongoose.Promise = global.Promise
 
 export default class UsageController {
 
