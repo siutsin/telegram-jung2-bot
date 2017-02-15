@@ -28,6 +28,8 @@ bot.onText(/\/all(j|J)ung/, msg => botHandler.onAllJung(msg))
 bot.onText(/\/jung(h|H)elp/, msg => botHandler.onHelp(msg))
 bot.onText(/\/debug/, msg => botHandler.onDebug(msg))
 bot.on('message', msg => botHandler.onMessage(msg))
+bot.on('polling_error', error => log.e(error))
+bot.on('webhook_error', error => log.e(error))
 
 /**
  * Cron Jobs

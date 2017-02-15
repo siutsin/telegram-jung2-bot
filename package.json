@@ -17,7 +17,7 @@
     "coveralls": "cat ./coverage/lcov.info | ./node_modules/.bin/coveralls"
   },
   "dependencies": {
-    "@risingstack/trace": "^3.0.4",
+    "@risingstack/trace": "^3.4.0",
     "async": "^2.1.4",
     "body-parser": "^1.16.1",
     "cron": "^1.2.1",
@@ -32,11 +32,11 @@
     "node-telegram-bot-api": "^0.27.0"
   },
   "devDependencies": {
-    "babel-cli": "^6.22.2",
-    "babel-core": "^6.22.1",
+    "babel-cli": "^6.23.0",
+    "babel-core": "^6.23.1",
     "babel-plugin-syntax-async-functions": "^6.13.0",
     "babel-plugin-transform-regenerator": "^6.22.0",
-    "babel-polyfill": "^6.22.0",
+    "babel-polyfill": "^6.23.0",
     "babel-preset-es2015": "^6.22.0",
     "babel-preset-stage-0": "^6.22.0",
     "chai": "^3.5.0",
