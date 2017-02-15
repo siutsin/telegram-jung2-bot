@@ -26,7 +26,6 @@ export default class BotHandler {
   }
 
   async onAllJung (msg) {
-    log.i('/alljung msg: ' + JSON.stringify(msg), process.env.DISABLE_LOGGING)
     try {
       const message = await messageController.getAllJung(msg)
       if (!_.isEmpty(message)) { this.bot.sendMessage(msg.chat.id, message) }
@@ -40,10 +39,11 @@ export default class BotHandler {
     this.bot.sendMessage(msg.chat.id, helpController.getHelp())
   }
 
-  onMessage (msg) {
+  async onMessage (msg) {
     log.i('msg: ' + JSON.stringify(msg), process.env.DISABLE_LOGGING)
     if (messageController.shouldAddMessage(msg)) {
-      messageController.addMessage(msg, () => log.i('add message success', process.env.DISABLE_LOGGING))
+      await messageController.addMessage(msg)
+      log.i('add message success', process.env.DISABLE_LOGGING)
     } else {
       log.e('skip repeated message', process.env.DISABLE_LOGGING)
     }
