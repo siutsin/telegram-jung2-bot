@@ -6,7 +6,6 @@
 
 require('dotenv').config();
 require('@risingstack/trace');
-require('newrelic');
 var app = require('../app');
 var debug = require('debug')('telegram-bot:server');
 var http = require('http');
