@@ -36,15 +36,15 @@ const server = http.createServer(app)
 
 const onError = error => {
   if (error.syscall !== 'listen') { throw error }
-  const bind = typeof port === 'string' ? 'Pipe ' + port : 'Port ' + port
+  const bind = typeof port === 'string' ? `Pipe ${port}` : `Port ${port}`
   // handle specific listen errors with friendly messages
   switch (error.code) {
     case 'EACCES':
-      console.error(bind + ' requires elevated privileges')
+      log.e(`${bind} requires elevated privileges`)
       process.exit(1)
       break
     case 'EADDRINUSE':
-      console.error(bind + ' is already in use')
+      log.e(`${bind} is already in use`)
       process.exit(1)
       break
     default:
@@ -58,7 +58,7 @@ const onError = error => {
 const onListening = () => {
   const address = server.address()
   const bind = typeof address === 'string' ? 'pipe ' + address : 'port ' + address.port
-  log.i('Listening on ' + bind)
+  log.i(`Listening on ${bind}`)
 }
 
 /**
