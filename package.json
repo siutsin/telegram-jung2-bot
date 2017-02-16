@@ -27,7 +27,7 @@
     "log-to-file-and-console-node": "^1.1.0",
     "moment": "^2.17.0",
     "moment-timezone": "^0.5.9",
-    "mongoose": "^4.8.2",
+    "mongoose": "^4.8.3",
     "morgan": "^1.8.1",
     "node-telegram-bot-api": "^0.27.0"
   },
