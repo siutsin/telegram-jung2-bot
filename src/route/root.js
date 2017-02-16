@@ -1,6 +1,6 @@
 export default class Root {
 
-  static root () {
+  root () {
     return (req, res) => {
       res.json({
         status: 'OK',
