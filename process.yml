@@ -1,3 +1,3 @@
 apps:
-  - script   : ./build/bin/www.js.js
+  - script   : ./build/bin/www.js
     name     : 'telegram-jung2-bot'
