@@ -20,7 +20,7 @@ export default class BotHandler {
       const message = await messageController.getTopTen(msg)
       if (!_.isEmpty(message)) { this.bot.sendMessage(msg.chat.id, message) }
     } catch (e) {
-      log.e('/topten err: ' + e.message, process.env.DISABLE_LOGGING)
+      log.e(`/topten err: ${e.message}`, process.env.DISABLE_LOGGING)
       this.bot.sendMessage(msg.chat.id, 'Server Error')
     }
   }
@@ -30,7 +30,7 @@ export default class BotHandler {
       const message = await messageController.getAllJung(msg)
       if (!_.isEmpty(message)) { this.bot.sendMessage(msg.chat.id, message) }
     } catch (e) {
-      log.e('/alljung err: ' + e.message, process.env.DISABLE_LOGGING)
+      log.e(`/alljung err: ${e.message}`, process.env.DISABLE_LOGGING)
       this.bot.sendMessage(msg.chat.id, 'Server Error')
     }
   }
@@ -40,7 +40,6 @@ export default class BotHandler {
   }
 
   async onMessage (msg) {
-    log.i('msg: ' + JSON.stringify(msg), process.env.DISABLE_LOGGING)
     if (messageController.shouldAddMessage(msg)) {
       await messageController.addMessage(msg)
       log.i('add message success', process.env.DISABLE_LOGGING)

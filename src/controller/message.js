@@ -82,14 +82,13 @@ export default class MessageController {
     for (var i = 0, l = results.length; i < l; i++) {
       total = results[i].total
       if (message.length < c.MESSAGE.LIMIT) {
-        message += (i + 1) + '. ' + results[i].firstName + ' ' + results[i].lastName + ' ' + results[i].percent +
-          ' (' + moment(results[i].dateCreated).fromNow() + ')' + '\n'
+        message += `${(i + 1)}. ${results[i].firstName} ${results[i].lastName} ${results[i].percent} (${moment(results[i].dateCreated).fromNow()})\n`
       } else {
         isOutOfLimit = true
       }
     }
-    message = isOutOfLimit ? message + '...\n...\n' : message
-    message += '\nTotal message: ' + total
+    message = isOutOfLimit ? `${message}...\n...\n` : message
+    message += `\nTotal message: ${total}`
     return message
   }
 
@@ -108,12 +107,8 @@ export default class MessageController {
       } else {
         const oneMinutesLater = moment(usage.dateCreated)
           .add(c.CONFIG.COMMAND_COOLDOWN_TIME, 'minute')
-          .tz('Asia/Hong_Kong')
-        message = '[Error] Commands will be available ' +
-          oneMinutesLater.fromNow() +
-          ' (' +
-          oneMinutesLater.format('h:mm:ss a') +
-          ' HKT).'
+          .tz(c.CONFIG.TIMEZONE)
+        message = `[Error] Commands will be available ${oneMinutesLater.fromNow()}\n(${oneMinutesLater.format('h:mm:ss a')} HKT)`
       }
       return message
     }
@@ -187,7 +182,7 @@ export default class MessageController {
       const ids = docs.map(doc => doc._id)
       const result = await this.MessageDOCache.remove({_id: {$in: ids}})
       const numberDeleted = result.result.n
-      log.i('numberDeleted: ' + numberDeleted)
+      log.i(`numberDeleted: ${numberDeleted}`)
       shouldRepeat = (numberDeleted === c.CONFIG.CLEANUP_NUMBER_TO_DELETE)
     }
   }

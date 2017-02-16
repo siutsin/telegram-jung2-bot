@@ -6,8 +6,8 @@ export default class Bot {
 
   root () {
     return (req, res) => {
-      this.bot.processUpdate(req.body);
-      res.sendStatus(200);
+      this.bot.processUpdate(req.body)
+      res.sendStatus(200)
     }
   }
 
