@@ -6,6 +6,7 @@ import async from 'async'
 
 import MessageController from './message'
 import UsageController from './usage'
+import c from '../constants'
 
 const messageController = new MessageController()
 const usageController = new UsageController()
@@ -23,25 +24,25 @@ export default class DebugController {
 
   offJob () {
     return new CronJob({
-      cronTime: '00 00 18 * * 1-5',
+      cronTime: c.CRON.OFF_JOB_PATTERN,
       onTick: async () => {
         const chatIds = await messageController.getAllGroupIds()
         async.each(chatIds, async chatId => {
           const msg = {chat: {id: chatId}}
-          this.bot.sendMessage(chatId, '夠鐘收工~~')
+          this.bot.sendMessage(chatId, c.CRON.OFF_JOB)
           const message = await messageController.getTopTen(msg, true)
           if (!_.isEmpty(message)) { this.bot.sendMessage(chatId, message) }
         })
       },
-      timeZone: 'Asia/Hong_Kong'
+      timeZone: c.CONFIG.TIMEZONE
     })
   }
 
   cleanupJob () {
     return new CronJob({
-      cronTime: '0 0 0-17,19-23 * * *',
+      cronTime: c.CRON.DB_CLEANUP_PATTERN,
       onTick: () => this.databaseMaintenance(),
-      timeZone: 'Asia/Hong_Kong'
+      timeZone: c.CONFIG.TIMEZONE
     })
   }
 
