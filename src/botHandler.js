@@ -1,9 +1,9 @@
 import log from 'log-to-file-and-console-node'
 import _ from 'lodash'
-import MessageController from '../controller/message'
-import HelpController from '../controller/help'
-import DebugController from '../controller/debug'
-import SystemAdmin from '../helper/systemAdmin'
+import MessageController from './controller/message'
+import HelpController from './controller/help'
+import DebugController from './controller/debug'
+import SystemAdmin from './helper/systemAdmin'
 
 const messageController = new MessageController()
 const helpController = new HelpController()

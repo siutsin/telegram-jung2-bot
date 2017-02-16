@@ -5,20 +5,21 @@ import TelegramBot from 'node-telegram-bot-api'
 import log from 'log-to-file-and-console-node'
 
 import CronController from './controller/cron'
-import BotHandler from './route/botHandler'
+import BotHandler from './botHandler'
 import Routes from './route/routes'
 
 const app = express()
-const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, {polling: true})
+const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN)
+bot.setWebHook(`${process.env.WEBHOOK_URL}/bot${process.env.TELEGRAM_BOT_TOKEN}`)
 const botHandler = new BotHandler(bot)
-const routes = new Routes(app)
+const routes = new Routes(app, bot)
 
 /**
  * HTTP Server
  */
 app.use(morgan('combined', {'stream': log.stream}))
 app.use(bodyParser.json())
-routes.configRoutes()
+routes.configRoutes(bot)
 
 /**
  * Bot
