@@ -4,6 +4,7 @@ MAINTAINER Simon Li <li@siutsin.com>
 
 RUN npm install -g yarn
 RUN yarn global add pm2
+RUN pm2 install pm2-server-monit
 
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
