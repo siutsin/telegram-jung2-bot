@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@risingstack/trace": "^3.5.1",
+    "async": "^2.1.5",
     "babel-polyfill": "^6.23.0",
     "body-parser": "^1.17.0",
     "cron": "^1.2.1",
