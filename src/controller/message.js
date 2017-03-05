@@ -12,7 +12,6 @@ const usageController = new UsageController()
 mongoose.Promise = global.Promise
 
 export default class MessageController {
-
   constructor () {
     const connectionStringCacheDO = process.env.MONGODB_CACHE_DO_URL
     const connectionStringPersistence = process.env.MONGODB_URL
@@ -186,5 +185,4 @@ export default class MessageController {
       shouldRepeat = (numberDeleted === c.CONFIG.CLEANUP_NUMBER_TO_DELETE)
     }
   }
-
 }

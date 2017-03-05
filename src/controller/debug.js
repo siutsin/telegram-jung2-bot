@@ -1,6 +1,5 @@
 require('babel-polyfill')
 
-import async from 'async'
 import _ from 'lodash'
 import log from 'log-to-file-and-console-node'
 import MessageController from './message'
@@ -14,7 +13,6 @@ const totalNumberForMessage = message => {
 }
 
 export default class DebugController {
-
   constructor (bot) {
     this.bot = bot
   }

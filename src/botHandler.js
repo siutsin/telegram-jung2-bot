@@ -10,7 +10,6 @@ const helpController = new HelpController()
 const systemAdmin = new SystemAdmin()
 
 export default class BotHandler {
-
   constructor (bot) {
     this.bot = bot
   }
@@ -40,6 +39,7 @@ export default class BotHandler {
   }
 
   async onMessage (msg) {
+    log.i(JSON.stringify(msg), process.env.DISABLE_LOGGING)
     if (messageController.shouldAddMessage(msg)) {
       await messageController.addMessage(msg)
       log.i('add message success', process.env.DISABLE_LOGGING)
@@ -54,5 +54,4 @@ export default class BotHandler {
       debugController.healthCheck(msg)
     }
   }
-
 }
