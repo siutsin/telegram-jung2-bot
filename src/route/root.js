@@ -1,5 +1,4 @@
 export default class Root {
-
   root () {
     return (req, res) => {
       res.json({
@@ -8,5 +7,4 @@ export default class Root {
       })
     }
   }
-
 }

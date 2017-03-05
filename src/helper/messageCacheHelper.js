@@ -19,7 +19,6 @@ function bsearchMax (a, b, test) {
 }
 
 class User {
-
   constructor (userId, details) {
     this.id = userId
     this.timestamp = []
@@ -76,11 +75,9 @@ class User {
     // todo: not sure whether V8 would actually free memory
     this.timestamp.splice(0, ix + 1)
   }
-
 }
 
 class Group {
-
   constructor (id, details) {
     this.id = id
     this.users = new Map()
@@ -143,11 +140,9 @@ class Group {
   clearTimestampBefore (time) {
     for (let u of this.users.values()) u.clearTimestampBefore(time)
   }
-
 }
 
 class MessageCache {
-
   constructor () {
     this.groups = new Map()
   }

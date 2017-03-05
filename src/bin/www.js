@@ -7,7 +7,9 @@ import '../env'
 import '@risingstack/trace'
 import app from '../app'
 import log from 'log-to-file-and-console-node'
-import http from 'http'
+import c from '../constants'
+import fs from 'fs'
+import https from 'https'
 
 /**
  * Normalize a port into a number, string, or false.
@@ -22,19 +24,25 @@ const normalizePort = val => {
 /**
  * Get port from environment and store in Express.
  */
-const port = normalizePort(process.env.PORT || '3000')
+const port = normalizePort(process.env.PORT || '443')
 app.set('port', port)
 
 /**
  * Create HTTP server.
  */
-const server = http.createServer(app)
+const options = {
+  key: fs.readFileSync(c.CONFIG.SSL_KEY),
+  cert: fs.readFileSync(c.CONFIG.SSL_CERT)
+}
+const server = https.createServer(options, app)
 
 /**
- * Event listener for HTTP server "error" event.
+ * Listen on provided port, on all network interfaces.
  */
-
-const onError = error => {
+server.listen(port, () => {
+  log.i(`Express server is listening on ${port}`)
+})
+server.on('error', error => {
   if (error.syscall !== 'listen') { throw error }
   const bind = typeof port === 'string' ? `Pipe ${port}` : `Port ${port}`
   // handle specific listen errors with friendly messages
@@ -50,20 +58,4 @@ const onError = error => {
     default:
       throw error
   }
-}
-
-/**
- * Event listener for HTTP server "listening" event.
- */
-const onListening = () => {
-  const address = server.address()
-  const bind = typeof address === 'string' ? 'pipe ' + address : 'port ' + address.port
-  log.i(`Listening on ${bind}`)
-}
-
-/**
- * Listen on provided port, on all network interfaces.
- */
-server.listen(port)
-server.on('error', onError)
-server.on('listening', onListening)
+})

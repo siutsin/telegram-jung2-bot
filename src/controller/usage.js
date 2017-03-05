@@ -13,7 +13,6 @@ const systemAdmin = new SystemAdmin()
 mongoose.Promise = global.Promise
 
 export default class UsageController {
-
   constructor () {
     const connectionStringCache = process.env.MONGODB_CACHE_DO_URL
     const connectionStringPersistence = process.env.MONGODB_URL
@@ -76,5 +75,4 @@ export default class UsageController {
       shouldRepeat = (numberDeleted === c.CONFIG.CLEANUP_NUMBER_TO_DELETE)
     }
   }
-
 }
