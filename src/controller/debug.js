@@ -3,6 +3,7 @@ require('babel-polyfill')
 import _ from 'lodash'
 import log from 'log-to-file-and-console-node'
 import MessageController from './message'
+import async from 'async'
 
 const messageController = new MessageController()
 

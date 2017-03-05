@@ -2,6 +2,7 @@ require('babel-polyfill')
 
 import _ from 'lodash'
 import { CronJob } from 'cron'
+import async from 'async'
 
 import MessageController from './message'
 import UsageController from './usage'
