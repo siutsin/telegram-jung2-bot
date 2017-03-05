@@ -13,7 +13,7 @@ const sample = {
 }
 
 function repeat (n, recreatePromise) {
-  return co(function *() {
+  return co(function * () {
     for (var i = 0; i < n; i++) yield recreatePromise()
   })
 }
