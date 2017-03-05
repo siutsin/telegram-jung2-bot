@@ -12,7 +12,7 @@
     "build": "./node_modules/.bin/babel src -d build",
     "start": "yarn build && node ./build/bin/www.js",
     "test": "yarn standard && gulp",
-    "populate-database": "node ./test/stress/tool/populateDatabase.js",
+    "populate-database": "babel-node ./test/stress/populateDatabase.js",
     "stress": "gulp stress",
     "coveralls": "cat ./coverage/lcov.info | ./node_modules/.bin/coveralls"
   },
@@ -44,7 +44,9 @@
     "coveralls": "^2.11.15",
     "faker": "^4.1.0",
     "gulp": "^3.9.1",
+    "gulp-babel": "^6.1.2",
     "gulp-babel-istanbul": "^1.6.0",
+    "gulp-inject-modules": "^1.0.0",
     "gulp-mocha": "^4.0.1",
     "gulp-standard": "^9.0.0",
     "mocha": "^3.2.0",
