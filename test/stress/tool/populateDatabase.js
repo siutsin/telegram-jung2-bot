@@ -34,7 +34,7 @@ for (let i = 0; i < nUsers; i++) {
   }
 }
 
-co(function *() {
+co(function * () {
   // remove all data
   yield Message.remove({})
 
