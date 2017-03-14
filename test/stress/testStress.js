@@ -16,7 +16,6 @@ const repeat = async (n, recreatePromise) => {
 }
 
 describe('MessageStressTest', () => {
-
   describe('getTopTen', function () {
     it('test 1: once', async () => {
       try {
