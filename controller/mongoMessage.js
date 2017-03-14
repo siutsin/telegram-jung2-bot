@@ -2,10 +2,8 @@
 
 var mongoose = require('mongoose');
 var MessageClass = require('../model/message');
-var cacheConnection; // openshift cache db
 var cacheDOConnection; // digital ocean cache db
 var persistenceConnection; // digital ocean persistence db
-var MessageCache;
 var MessageDOCache;
 var MessagePersistence;
 
@@ -90,16 +88,7 @@ var getCountAndGetJung = function (msg, limit) {
 
 // TODO: refactoring required
 exports.init = function () {
-  var connectionStringCache = '127.0.0.1:27017/jung2botCache';
-  if (process.env.OPENSHIFT_MONGODB_DB_PASSWORD) {
-    connectionStringCache = process.env.OPENSHIFT_MONGODB_DB_USERNAME + ':' +
-      process.env.OPENSHIFT_MONGODB_DB_PASSWORD + '@' +
-      process.env.OPENSHIFT_MONGODB_DB_HOST + ':' +
-      process.env.OPENSHIFT_MONGODB_DB_PORT + '/' +
-      process.env.OPENSHIFT_APP_NAME;
-  }
-
-  var connectionStringCacheDO = '127.0.0.1:27017/jung2botCacheDO';
+  var connectionStringCacheDO = '127.0.0.1:27017/jung2botCache';
   if (process.env.MONGODB_CACHE_DO_URL) {
     connectionStringCacheDO = process.env.MONGODB_CACHE_DO_URL;
   }
@@ -109,10 +98,8 @@ exports.init = function () {
     connectionStringPersistence = process.env.MONGODB_URL;
   }
 
-  cacheConnection = mongoose.createConnection(connectionStringCache);
   cacheDOConnection = mongoose.createConnection(connectionStringCacheDO);
   persistenceConnection = mongoose.createConnection(connectionStringPersistence);
-  MessageCache = cacheConnection.model('Message', MessageClass.getSchema());
   MessageDOCache = cacheDOConnection.model('Message', MessageClass.getSchema());
   MessagePersistence = persistenceConnection.model('Message', MessageClass.getSchema());
 };
@@ -134,7 +121,7 @@ var getJungMessage = function (msg, limit, force) {
             isOutOfLimit = true;
           }
         }
-        message = isOutOfLimit ? message + "...\n...\n" : message;
+        message = isOutOfLimit ? message + '...\n...\n' : message;
         message += '\nTotal message: ' + total;
         return message;
       })
@@ -182,19 +169,6 @@ exports.shouldAddMessage = function (msg) {
   return result;
 };
 
-var saveToMessageCache = function (msg) {
-  var msgCache = new MessageCache();
-  msgCache.chatId = msg.chat.id || '';
-  msgCache.chatTitle = msg.chat.title || '';
-  msgCache.userId = msg.from.id || '';
-  msgCache.username = msg.from.username || '';
-  /*jshint camelcase: false */
-  msgCache.firstName = msg.from.first_name || '';
-  msgCache.lastName = msg.from.last_name || '';
-  /*jshint camelcase: true */
-  return msgCache.save();
-};
-
 var saveToMessageCacheDO = function (msg) {
   var msgCacheDO = new MessageDOCache();
   msgCacheDO.chatId = msg.chat.id || '';
@@ -224,7 +198,6 @@ var saveToMessagePersistence = function (msg) {
 exports.addMessage = function (msg, callback) {
   cachedLastSender[msg.chat.id] = msg.from.id.toString();
   var promises = [
-    saveToMessageCache(msg),
     saveToMessageCacheDO(msg),
     saveToMessagePersistence(msg)
   ];
@@ -306,18 +279,10 @@ var cleanDB = function (db) {
   return promise;
 };
 
-var cleanOS = function () {
-  return cleanDB(MessageCache);
-};
-
 var cleanDO = function () {
   return cleanDB(MessageDOCache);
 };
 
 exports.cleanup = function () {
-  var promises = [
-    cleanOS(),
-    cleanDO()
-  ];
-  return Promise.all(promises);
+  return cleanDO();
 };
