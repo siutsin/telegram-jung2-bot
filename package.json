@@ -8,10 +8,10 @@
   "author": "Simon Li",
   "license": "MIT",
   "scripts": {
-    "standard": "standard --fix",
+    "standard": "./node_modules/standard/bin/cmd.js --fix",
     "build": "./node_modules/.bin/babel src -d build",
     "start": "yarn build && node ./build/bin/www.js",
-    "test": "yarn standard && gulp",
+    "test": "yarn standard && ./node_modules/gulp/bin/gulp.js",
     "populate-database": "babel-node ./test/stress/populateDatabase.js",
     "stress": "gulp stress",
     "coveralls": "cat ./coverage/lcov.info | ./node_modules/.bin/coveralls"
@@ -44,9 +44,6 @@
     "coveralls": "^2.12.0",
     "faker": "^4.1.0",
     "gulp": "^3.9.1",
-    "gulp-babel": "^6.1.2",
-    "gulp-babel-istanbul": "^1.6.0",
-    "gulp-inject-modules": "^1.0.0",
     "gulp-mocha": "^4.1.0",
     "gulp-standard": "^9.0.0",
     "mocha": "^3.2.0",
