@@ -1,6 +1,6 @@
 {
   "name": "telegram-jung2-bot",
-  "version": "1.9.1",
+  "version": "2.0.0-beta.1",
   "repository": {
     "type": "git",
     "url": "https://github.com/siutsin/telegram-jung2-bot.git"
@@ -8,19 +8,19 @@
   "author": "Simon Li",
   "license": "MIT",
   "scripts": {
-    "start": "node --use_strict ./bin/www",
-    "test": "gulp",
-    "populate-database": "node ./test/stress/tool/populateDatabase.js",
+    "standard": "./node_modules/standard/bin/cmd.js --fix",
+    "build": "./node_modules/.bin/babel src -d build",
+    "start": "yarn build && node ./build/bin/www.js",
+    "test": "yarn standard && ./node_modules/gulp/bin/gulp.js",
+    "populate-database": "babel-node ./test/stress/populateDatabase.js",
     "stress": "gulp stress",
-    "nodemon": "nodemon ./bin/www",
-    "debug": "node-debug ./bin/www",
     "coveralls": "cat ./coverage/lcov.info | ./node_modules/.bin/coveralls"
   },
   "dependencies": {
     "@risingstack/trace": "^3.5.1",
     "async": "^2.1.5",
-    "body-parser": "^1.16.0",
-    "co": "^4.6.0",
+    "babel-polyfill": "^6.23.0",
+    "body-parser": "^1.17.1",
     "cron": "^1.2.1",
     "dotenv": "^4.0.0",
     "express": "^4.15.2",
@@ -33,21 +33,30 @@
     "node-telegram-bot-api": "^0.27.0"
   },
   "devDependencies": {
+    "babel-cli": "^6.24.0",
+    "babel-core": "^6.24.0",
+    "babel-plugin-syntax-async-functions": "^6.13.0",
+    "babel-plugin-transform-regenerator": "^6.22.0",
+    "babel-preset-es2015": "^6.24.0",
+    "babel-preset-stage-0": "^6.22.0",
     "chai": "^3.5.0",
     "codecov": "^1.0.1",
-    "coveralls": "^2.11.15",
+    "coveralls": "^2.12.0",
     "faker": "^4.1.0",
     "gulp": "^3.9.1",
-    "gulp-istanbul": "^1.1.1",
-    "gulp-jshint": "^2.0.4",
     "gulp-mocha": "^4.1.0",
-    "jshint": "^2.9.4",
-    "jshint-stylish": "^2.2.1",
+    "gulp-standard": "^9.0.0",
     "mocha": "^3.2.0",
     "run-sequence": "^1.2.2",
     "should": "^11.2.1",
     "sinon": "^1.17.7",
     "sinon-as-promised": "^4.0.2",
-    "sinon-mongoose": "^1.3.0"
+    "sinon-mongoose": "^1.3.0",
+    "standard": "^9.0.1"
+  },
+  "standard": {
+    "env": [
+      "mocha"
+    ]
   }
 }
