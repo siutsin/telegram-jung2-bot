@@ -7,9 +7,7 @@ import '../env'
 import '@risingstack/trace'
 import app from '../app'
 import log from 'log-to-file-and-console-node'
-import c from '../constants'
-import fs from 'fs'
-import https from 'https'
+import http from 'http'
 
 /**
  * Normalize a port into a number, string, or false.
@@ -24,17 +22,13 @@ const normalizePort = val => {
 /**
  * Get port from environment and store in Express.
  */
-const port = normalizePort(process.env.PORT || '443')
+const port = normalizePort(process.env.PORT || '3000')
 app.set('port', port)
 
 /**
  * Create HTTP server.
  */
-const options = {
-  key: fs.readFileSync(c.CONFIG.SSL_KEY),
-  cert: fs.readFileSync(c.CONFIG.SSL_CERT)
-}
-const server = https.createServer(options, app)
+const server = http.createServer(app)
 
 /**
  * Listen on provided port, on all network interfaces.
