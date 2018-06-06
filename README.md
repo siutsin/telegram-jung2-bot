@@ -7,6 +7,10 @@
  <img src="https://img.shields.io/badge/Sponsored%20and%20Monitored%20by-Trace%20by%20RisingStack-40aa94.svg">
 </a>
 
+# #movingtogitlab
+
+Abandon ship, new repo location: [https://gitlab.com/siutsin/telegram-jung2-bot](https://gitlab.com/siutsin/telegram-jung2-bot)
+
 # telegram-jung2-bot
 
 Add the bot to your group at [@jung2_bot](https://telegram.me/jung2_bot)
