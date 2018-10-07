@@ -4,7 +4,6 @@
  * Module dependencies.
  */
 import '../env'
-import '@risingstack/trace'
 import app from '../app'
 import log from 'log-to-file-and-console-node'
 import http from 'http'
