@@ -1,0 +1,153 @@
+service: jung2bot
+
+frameworkVersion: '>=1.40.0 <2.0.0'
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  stage: ${env:STAGE, 'dev'}
+  region: ${env:REGION, 'us-east-1'}
+  profile: ${env:PROFILE, 'default'}
+  memorySize: 128
+  timeout: 30
+  logRetentionInDays: 1
+  deploymentBucket:
+    serverSideEncryption: AES256
+  environment:
+    LOG_LEVEL: ${env:LOG_LEVEL, 'error'}
+  tags:
+    Name: jung2bot
+  tracing:
+    lambda: true
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - 'dynamodb:*'
+      Resource: !Join
+        - ''
+        - - !GetAtt Jung2BotDynamoDB.Arn
+          - '*'
+    - Effect: Allow
+      Action:
+        - 'dynamodb:*'
+      Resource: !Join
+        - ''
+        - - !GetAtt UsageDynamoDB.Arn
+          - '*'
+
+functions:
+  messages:
+    handler: src/handler.onMessage
+    events:
+      - http:
+          path: /
+          method: post
+
+plugins:
+  - serverless-domain-manager
+  - serverless-vpc-plugin
+  - serverless-dotenv-plugin
+  - serverless-plugin-dynamodb-autoscaling
+  - serverless-webpack
+  - serverless-dynamodb-local
+  - serverless-offline
+
+custom:
+  # serverless-domain-manager
+  customDomain:
+    domainName: ${env:DOMAIN}
+    stage: ${self:provider.stage}
+    createRoute53Record: true
+    endpointType: edge
+  # serverless-dynamodb-local
+  dynamodb:
+    start:
+      seed: true
+      migrate: true
+    seed:
+      domain:
+        sources:
+          - table: ${env:MESSAGE_TABLE}
+            sources: [./test/helper/dynamodbSeed.json]
+  # serverless-plugin-dynamodb-autoscaling
+  dynamodbAutoscaling:
+    tablesConfig:
+      Jung2BotDynamoDB:
+        minCapacity: 5
+        maxCapacity: 50
+      UsageDynamoDB: false
+  # serverless-vpc-plugin
+  vpcConfig:
+    cidrBlock: '10.20.0.0/16'
+    createDbSubnet: false
+    createFlowLogs: true
+
+resources:
+  Resources:
+    # Jung2Bot DynamoDB
+    Jung2BotDynamoDB:
+      Type: 'AWS::DynamoDB::Table'
+      DeletionPolicy: Retain
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: dateCreated
+            AttributeType: S
+          - AttributeName: chatId
+            AttributeType: N
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+          - AttributeName: dateCreated
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: ${env:MESSAGE_TABLE_GSI}
+            KeySchema:
+              - AttributeName: chatId
+                KeyType: HASH
+              - AttributeName: dateCreated
+                KeyType: RANGE
+            Projection:
+              NonKeyAttributes:
+                - chatTitle
+                - userId
+                - username
+                - firstName
+                - lastName
+              ProjectionType: INCLUDE
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        SSESpecification:
+          SSEEnabled: true
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+        TableName: ${env:MESSAGE_TABLE}
+    # Usage DynamoDB
+    UsageDynamoDB:
+      Type: 'AWS::DynamoDB::Table'
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: N
+          - AttributeName: ttl
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+          - AttributeName: ttl
+            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        SSESpecification:
+          SSEEnabled: true
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+        TableName: ${env:USAGE_TABLE}

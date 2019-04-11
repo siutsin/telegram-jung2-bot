@@ -1,11 +1,9 @@
+[![serverless](http://public.serverless.com/badges/v3.svg)](https://www.serverless.com)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://img.shields.io/badge/license-MIT-blue.svg)
 [![dependency](https://david-dm.org/siutsin/telegram-jung2-bot.svg)](https://david-dm.org/siutsin/telegram-jung2-bot.svg)
 [![devDependency Status](https://david-dm.org/siutsin/telegram-jung2-bot/dev-status.svg)](https://david-dm.org/siutsin/telegram-jung2-bot#info=devDependencies)
 [![Build Status](https://travis-ci.org/siutsin/telegram-jung2-bot.svg?branch=master)](https://travis-ci.org/siutsin/telegram-jung2-bot)
 [![Coverage Status](https://coveralls.io/repos/github/siutsin/telegram-jung2-bot/badge.svg)](https://coveralls.io/github/siutsin/telegram-jung2-bot)
-<a href="https://trace.risingstack.com?utm_source=github&utm_medium=sponsored&utm_content=siutsin/telegram-jung2-bot">
- <img src="https://img.shields.io/badge/Sponsored%20and%20Monitored%20by-Trace%20by%20RisingStack-40aa94.svg">
-</a>
 
 # telegram-jung2-bot
 
@@ -26,6 +24,10 @@ This bot is created for counting the number of message per participant in the gr
 ## Author
 
 [@Simon__Li](https://twitter.com/Simon__LI)
+
+## Sponsor
+
+* [RisingStack](https://trace.risingstack.com?utm_source=github&utm_medium=sponsored&utm_content=siutsin/telegram-jung2-bot)
 
 ## License
 
