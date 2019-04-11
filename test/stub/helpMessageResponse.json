@@ -1,0 +1,42 @@
+{
+  "ok": true,
+  "result": {
+    "message_id": 123,
+    "from": {
+      "id": 456,
+      "is_bot": true,
+      "first_name": "first_name",
+      "username": "username"
+    },
+    "chat": {
+      "id": -123,
+      "title": "title",
+      "type": "group",
+      "all_members_are_administrators": true
+    },
+    "date": 1554107410,
+    "text": "冗員[jung2jyun4] Excess personnel in Cantonese\n\nThis bot is created for counting the number of message per participant in the group.\n\nRules:\n1. Repeated messages will only be counted as ONE message.\n2. Commands can only be used for ONCE per minute.\n\nCommands:\n/topten  show top ten 冗員s\n/alljung  show all 冗員s\n/junghelp  show help message\n\nIssue/Suggestion: https://github.com/siutsin/telegram-jung2-bot/issues\n\nMay your 冗 power powerful -- Simon",
+    "entities": [
+      {
+        "offset": 258,
+        "length": 7,
+        "type": "bot_command"
+      },
+      {
+        "offset": 284,
+        "length": 8,
+        "type": "bot_command"
+      },
+      {
+        "offset": 307,
+        "length": 9,
+        "type": "bot_command"
+      },
+      {
+        "offset": 355,
+        "length": 52,
+        "type": "url"
+      }
+    ]
+  }
+}
