@@ -1,0 +1,20 @@
+{
+  "ok": true,
+  "result": {
+    "message_id": 5062,
+    "from": {
+      "id": 456,
+      "is_bot": true,
+      "first_name": "first_name",
+      "username": "username"
+    },
+    "chat": {
+      "id": 123,
+      "title": "title",
+      "type": "group",
+      "all_members_are_administrators": true
+    },
+    "date": 1554091104,
+    "text": "hihi"
+  }
+}

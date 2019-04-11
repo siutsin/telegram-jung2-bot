@@ -1,0 +1,24 @@
+{
+  "message_id": 2,
+  "from": {
+    "id": 3,
+    "is_bot": false,
+    "first_name": "first_name",
+    "username": "username"
+  },
+  "chat": {
+    "id": -4,
+    "title": "title",
+    "type": "group",
+    "all_members_are_administrators": true
+  },
+  "date": 1554092292,
+  "text": "/junghelp",
+  "entities": [
+    {
+      "offset": 0,
+      "length": 9,
+      "type": "bot_command"
+    }
+  ]
+}
