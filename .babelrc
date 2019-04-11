@@ -1,4 +1,9 @@
 {
-  "presets": ["es2015", "stage-0"],
-  "plugins": ["syntax-async-functions", "transform-regenerator"]
+  "plugins": [
+    "source-map-support",
+    "@babel/plugin-transform-runtime"
+  ],
+  "presets": [
+    "@babel/preset-env"
+  ]
 }
