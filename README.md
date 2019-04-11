@@ -21,13 +21,13 @@ This bot is created for counting the number of message per participant in the gr
 |`/alljung`|Show the percentage of all participants for the past 7 days|
 |`/junghelp`|Show help message|
 
+## Sponsor
+
+[RisingStack](https://trace.risingstack.com?utm_source=github&utm_medium=sponsored&utm_content=siutsin/telegram-jung2-bot)
+
 ## Author
 
 [@Simon__Li](https://twitter.com/Simon__LI)
-
-## Sponsor
-
-* [RisingStack](https://trace.risingstack.com?utm_source=github&utm_medium=sponsored&utm_content=siutsin/telegram-jung2-bot)
 
 ## License
 
