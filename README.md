@@ -5,10 +5,6 @@
 [![Build Status](https://travis-ci.org/siutsin/telegram-jung2-bot.svg?branch=master)](https://travis-ci.org/siutsin/telegram-jung2-bot)
 [![Coverage Status](https://coveralls.io/repos/github/siutsin/telegram-jung2-bot/badge.svg)](https://coveralls.io/github/siutsin/telegram-jung2-bot)
 
-# #movingtogitlab
-
-Abandon ship, new repo location: [https://gitlab.com/siutsin/telegram-jung2-bot](https://gitlab.com/siutsin/telegram-jung2-bot)
-
 # telegram-jung2-bot
 
 Add the bot to your group at [@jung2_bot](https://telegram.me/jung2_bot)
