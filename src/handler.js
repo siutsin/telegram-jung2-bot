@@ -1,7 +1,5 @@
-import DynamoDB from './dynamodb'
 import Messages from './messages'
 
-const dynamodb = new DynamoDB()
-const messages = new Messages({ dynamodb })
+const messages = new Messages()
 
 export const onMessage = async (event) => messages.newMessage(event)
