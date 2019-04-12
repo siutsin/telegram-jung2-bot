@@ -17,4 +17,5 @@ test('sendHelpMessage', async t => {
     })
   const response = await help.sendHelpMessage(stubHelpMessage)
   t.is(response.data.data.result.text, stubHelpMessageResponse.result.text)
+  nock.restore()
 })
