@@ -7,7 +7,7 @@
 
 # telegram-jung2-bot
 
-Add the bot to your group at [@jung2_bot](https://telegram.me/jung2_bot)
+Add the bot to your group at [@jung2_bot](https://bit.ly/github-jung2bot)
 
 <b>冗員</b>[jung2jyun4] Excess personnel in Cantonese
 
@@ -27,8 +27,12 @@ This bot is created for counting the number of message per participant in the gr
 
 ## Author
 
-[@Simon__Li](https://twitter.com/Simon__LI)
+[@Simon__Li](https://bit.ly/github-twitter)
+
+## Code Style
+
+[![JavaScript Style Guide](https://cdn.rawgit.com/standard/standard/master/badge.svg)](https://github.com/standard/standard)
 
 ## License
 
-`telegram-jung2-bot` is available under the [MIT license](http://siutsin.mit-license.org). See the LICENSE file for more info.
+`telegram-jung2-bot` is available under the [MIT license](https://siutsin.mit-license.org). See the LICENSE file for more info.
