@@ -32,7 +32,7 @@ export default class DynamoDB {
     }
     this.logger.debug('item', item)
     const response = await this.documentClient.put({ TableName: process.env.MESSAGE_TABLE, Item: item }).promise()
-    this.logger.debug('response', response)
+    this.logger.trace('response', response)
     return response
   }
 
@@ -48,7 +48,7 @@ export default class DynamoDB {
       }
     }
     const result = await this.documentClient.query(params).promise()
-    this.logger.debug(result.Items)
+    this.logger.trace(result.Items)
     return result.Items
   }
 }
