@@ -55,7 +55,6 @@ export default class Statistics {
     for (let i = 0; i < loopLimit; i++) {
       if (body.length < telegramMessageLimit) {
         const o = normalisedRows.rankings[i]
-        this.logger.debug('generateReport line 53, o:', o)
         const percentage = ((o.count / normalisedRows.totalMessage) * 100).toFixed(2)
         const timeAgo = moment(o.dateCreated).fromNow()
         const item = `${i + 1}. ${o.fullName} ${percentage}% (${timeAgo})\n`
@@ -70,7 +69,7 @@ export default class Statistics {
     const footer = `\nTotal messages: ${normalisedRows.totalMessage}`
 
     const fullMessage = header + body + footer
-    this.logger.debug('fullMessage', fullMessage)
+    this.logger.trace('fullMessage', fullMessage)
     return fullMessage
   }
 

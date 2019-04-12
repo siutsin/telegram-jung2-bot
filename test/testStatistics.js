@@ -7,7 +7,7 @@ import Statistics from '../src/statistics'
 import stubTopTen from './stub/telegramMessageTopTen'
 import stubAllJung from './stub/telegramMessageAllJung'
 import stubAllJungDBResponse from './stub/allJungDatabaseResponse'
-import stuballJungMessageResponse from './stub/allJungMessageResponse'
+import stubAllJungMessageResponse from './stub/allJungMessageResponse'
 
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
@@ -25,7 +25,7 @@ test('/topten', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .post('/sendMessage')
     .reply(200, {
-      data: stuballJungMessageResponse
+      data: stubAllJungMessageResponse
     })
   const statistics = new Statistics()
   const response = await statistics.topTen(stubTopTen.message)
@@ -39,7 +39,7 @@ test('/alljung', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .post('/sendMessage')
     .reply(200, {
-      data: stuballJungMessageResponse
+      data: stubAllJungMessageResponse
     })
   const statistics = new Statistics()
   const response = await statistics.allJung(stubAllJung.message)

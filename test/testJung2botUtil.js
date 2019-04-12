@@ -17,6 +17,7 @@ test('sendMessage', async t => {
   const response = await jung2botUtil.sendMessage(123, 'hihi')
   const data = response.data.data
   t.is(data.text, stubSaveMessageResponse.text)
+  nock.restore()
 })
 
 test('sendMessage - failing - Telegram API returns HTTP 400 Error', async t => {
@@ -25,4 +26,5 @@ test('sendMessage - failing - Telegram API returns HTTP 400 Error', async t => {
     .reply(400)
   const error = await t.throwsAsync(jung2botUtil.sendMessage(123, 'hihi'))
   t.is(error.message, 'Request failed with status code 400')
+  nock.restore()
 })
