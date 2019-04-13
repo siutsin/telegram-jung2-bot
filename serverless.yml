@@ -9,7 +9,7 @@ provider:
   region: ${env:REGION, 'us-east-1'}
   profile: ${env:PROFILE, 'default'}
   memorySize: 128
-  timeout: 30
+  timeout: 6
   logRetentionInDays: 1
   deploymentBucket:
     serverSideEncryption: AES256
