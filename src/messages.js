@@ -30,14 +30,14 @@ export default class Messages {
           this.logger.info('newMessage help')
           await this.help.sendHelpMessage(message)
         }
-        // if (text.match(/\/top[tT]en/)) {
-        //   this.logger.info('newMessage topTen')
-        //   await this.statistics.topTen(message)
-        // }
-        // if (text.match(/\/all[jJ]ung/)) {
-        //   this.logger.info('newMessage alljung')
-        //   await this.statistics.allJung(message)
-        // }
+        if (text.match(/\/top[tT]en/)) {
+          this.logger.info('newMessage topTen')
+          await this.statistics.topTen(message)
+        }
+        if (text.match(/\/all[jJ]ung/)) {
+          this.logger.info('newMessage alljung')
+          await this.statistics.allJung(message)
+        }
       }
       return { statusCode: 200 }
     } catch (e) {
