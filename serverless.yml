@@ -32,6 +32,10 @@ provider:
       Action:
         - 'sns:Publish'
       Resource: !Ref MessagesDeadLetterTopic
+    - Effect: Allow
+      Action:
+        - 'sns:Publish'
+      Resource: !Ref OffFromWorkDeadLetterTopic
 
 functions:
   messages:
