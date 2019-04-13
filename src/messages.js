@@ -20,7 +20,7 @@ export default class Messages {
         return { statusCode: 204 }
       }
       const message = params.message
-      await this.dynamodb.saveMessage(message)
+      await this.dynamodb.saveMessage({ message })
       if (message.entities &&
         message.entities[0] &&
         message.entities[0].type === 'bot_command') {
