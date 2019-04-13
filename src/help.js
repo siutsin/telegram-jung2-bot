@@ -9,10 +9,6 @@ export default class Help {
 
 This bot is created for counting the number of message per participant in the group.
 
-Rules:
-1. Repeated messages will only be counted as ONE message.
-2. Commands can only be used for ONCE per minute.
-
 Commands:
 /topten  show top ten 冗員s
 /alljung  show all 冗員s
