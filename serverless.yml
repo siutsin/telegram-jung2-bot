@@ -30,13 +30,6 @@ provider:
           - '*'
     - Effect: Allow
       Action:
-        - 'dynamodb:*'
-      Resource: !Join
-        - ''
-        - - !GetAtt UsageDynamoDB.Arn
-          - '*'
-    - Effect: Allow
-      Action:
         - 'sns:Publish'
       Resource: !Ref MessagesDeadLetterTopic
 
@@ -124,24 +117,3 @@ resources:
           AttributeName: ttl
           Enabled: true
         TableName: ${env:MESSAGE_TABLE}
-    # Usage DynamoDB
-    UsageDynamoDB:
-      Type: 'AWS::DynamoDB::Table'
-      Properties:
-        AttributeDefinitions:
-          - AttributeName: id
-            AttributeType: N
-          - AttributeName: ttl
-            AttributeType: S
-        KeySchema:
-          - AttributeName: id
-            KeyType: HASH
-          - AttributeName: ttl
-            KeyType: RANGE
-        BillingMode: PAY_PER_REQUEST
-        SSESpecification:
-          SSEEnabled: true
-        TimeToLiveSpecification:
-          AttributeName: ttl
-          Enabled: true
-        TableName: ${env:USAGE_TABLE}
