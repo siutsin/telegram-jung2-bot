@@ -15,6 +15,7 @@ provider:
     serverSideEncryption: AES256
   environment:
     LOG_LEVEL: ${env:LOG_LEVEL, 'error'}
+    TELEGRAM_BOT_TOKEN: ${ssm:${self:service}-${self:provider.stage}-telegram-api-token~true}
   tags:
     Name: jung2bot
   tracing:
