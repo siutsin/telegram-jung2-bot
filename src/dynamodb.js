@@ -53,7 +53,6 @@ export default class DynamoDB {
   }
 
   async getAllRowsWithinDays ({ days = 7 } = {}) {
-    console.log('days', days)
     const params = {
       TableName: process.env.MESSAGE_TABLE,
       ScanIndexForward: false,
