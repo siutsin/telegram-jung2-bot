@@ -80,6 +80,7 @@ custom:
     cidrBlock: ${env:VPC_CIDR}
     createDbSubnet: false
     createFlowLogs: true
+    createNatInstance: true
 
 resources:
   Resources:
