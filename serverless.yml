@@ -38,6 +38,8 @@ provider:
 functions:
   messages:
     handler: src/handler.onMessage
+    deadLetter:
+      sns: onMessage-dl-topic
     events:
       - http:
           path: /
@@ -45,6 +47,7 @@ functions:
 
 plugins:
   - serverless-domain-manager
+  - serverless-plugin-lambda-dead-letter
   - serverless-vpc-plugin
   - serverless-dotenv-plugin
   - serverless-webpack
