@@ -9,7 +9,7 @@ provider:
   region: ${env:REGION, 'us-east-1'}
   profile: ${env:PROFILE, 'default'}
   memorySize: 128
-  timeout: 30
+  timeout: 6
   logRetentionInDays: 1
   deploymentBucket:
     serverSideEncryption: AES256
@@ -34,10 +34,16 @@ provider:
         - ''
         - - !GetAtt UsageDynamoDB.Arn
           - '*'
+    - Effect: Allow
+      Action:
+        - 'sns:Publish'
+      Resource: !Ref MessagesDeadLetterTopic
 
 functions:
   messages:
     handler: src/handler.onMessage
+    deadLetter:
+      sns: onMessage-dl-topic
     events:
       - http:
           path: /
@@ -45,9 +51,9 @@ functions:
 
 plugins:
   - serverless-domain-manager
+  - serverless-plugin-lambda-dead-letter
   - serverless-vpc-plugin
   - serverless-dotenv-plugin
-  - serverless-plugin-dynamodb-autoscaling
   - serverless-webpack
   - serverless-dynamodb-local
   - serverless-offline
@@ -69,18 +75,12 @@ custom:
         sources:
           - table: ${env:MESSAGE_TABLE}
             sources: [./test/helper/dynamodbSeed.json]
-  # serverless-plugin-dynamodb-autoscaling
-  dynamodbAutoscaling:
-    tablesConfig:
-      Jung2BotDynamoDB:
-        minCapacity: 5
-        maxCapacity: 50
-      UsageDynamoDB: false
   # serverless-vpc-plugin
   vpcConfig:
-    cidrBlock: '10.20.0.0/16'
+    cidrBlock: ${env:VPC_CIDR}
     createDbSubnet: false
     createFlowLogs: true
+    createNatInstance: true
 
 resources:
   Resources:
@@ -116,12 +116,7 @@ resources:
                 - firstName
                 - lastName
               ProjectionType: INCLUDE
-            ProvisionedThroughput:
-              ReadCapacityUnits: 1
-              WriteCapacityUnits: 1
-        ProvisionedThroughput:
-          ReadCapacityUnits: 1
-          WriteCapacityUnits: 1
+        BillingMode: PAY_PER_REQUEST
         SSESpecification:
           SSEEnabled: true
         TimeToLiveSpecification:
@@ -142,9 +137,7 @@ resources:
             KeyType: HASH
           - AttributeName: ttl
             KeyType: RANGE
-        ProvisionedThroughput:
-          ReadCapacityUnits: 1
-          WriteCapacityUnits: 1
+        BillingMode: PAY_PER_REQUEST
         SSESpecification:
           SSEEnabled: true
         TimeToLiveSpecification:
