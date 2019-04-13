@@ -47,7 +47,6 @@ plugins:
   - serverless-domain-manager
   - serverless-vpc-plugin
   - serverless-dotenv-plugin
-  - serverless-plugin-dynamodb-autoscaling
   - serverless-webpack
   - serverless-dynamodb-local
   - serverless-offline
@@ -69,13 +68,6 @@ custom:
         sources:
           - table: ${env:MESSAGE_TABLE}
             sources: [./test/helper/dynamodbSeed.json]
-  # serverless-plugin-dynamodb-autoscaling
-  dynamodbAutoscaling:
-    tablesConfig:
-      Jung2BotDynamoDB:
-        minCapacity: 5
-        maxCapacity: 50
-      UsageDynamoDB: false
   # serverless-vpc-plugin
   vpcConfig:
     cidrBlock: '10.20.0.0/16'
@@ -116,12 +108,7 @@ resources:
                 - firstName
                 - lastName
               ProjectionType: INCLUDE
-            ProvisionedThroughput:
-              ReadCapacityUnits: 1
-              WriteCapacityUnits: 1
-        ProvisionedThroughput:
-          ReadCapacityUnits: 1
-          WriteCapacityUnits: 1
+        BillingMode: PAY_PER_REQUEST
         SSESpecification:
           SSEEnabled: true
         TimeToLiveSpecification:
@@ -142,9 +129,7 @@ resources:
             KeyType: HASH
           - AttributeName: ttl
             KeyType: RANGE
-        ProvisionedThroughput:
-          ReadCapacityUnits: 1
-          WriteCapacityUnits: 1
+        BillingMode: PAY_PER_REQUEST
         SSESpecification:
           SSEEnabled: true
         TimeToLiveSpecification:
