@@ -73,7 +73,7 @@ custom:
             sources: [./test/helper/dynamodbSeed.json]
   # serverless-vpc-plugin
   vpcConfig:
-    cidrBlock: '10.20.0.0/16'
+    cidrBlock: ${env:VPC_CIDR}
     createDbSubnet: false
     createFlowLogs: true
 
