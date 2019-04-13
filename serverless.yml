@@ -46,7 +46,6 @@ functions:
 plugins:
   - serverless-domain-manager
   - serverless-plugin-lambda-dead-letter
-  - serverless-vpc-plugin
   - serverless-dotenv-plugin
   - serverless-webpack
   - serverless-dynamodb-local
@@ -69,12 +68,6 @@ custom:
         sources:
           - table: ${env:MESSAGE_TABLE}
             sources: [./test/helper/dynamodbSeed.json]
-  # serverless-vpc-plugin
-  vpcConfig:
-    cidrBlock: ${env:VPC_CIDR}
-    createDbSubnet: false
-    createFlowLogs: true
-    createNatInstance: true
 
 resources:
   Resources:
