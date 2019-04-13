@@ -34,6 +34,10 @@ provider:
         - ''
         - - !GetAtt UsageDynamoDB.Arn
           - '*'
+    - Effect: Allow
+      Action:
+        - 'sns:Publish'
+      Resource: !Ref MessagesDeadLetterTopic
 
 functions:
   messages:
