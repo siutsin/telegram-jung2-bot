@@ -18,7 +18,7 @@ export default class DynamoDB {
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
   }
 
-  async saveMessage (message) {
+  async saveMessage ({ message, days = 7 } = {}) {
     const item = {
       id: uuid.v4(),
       chatId: message.chat.id,
@@ -28,7 +28,7 @@ export default class DynamoDB {
       firstName: message.from.first_name,
       lastName: message.from.last_name,
       dateCreated: moment().utcOffset(8).format(),
-      ttl: moment().utcOffset(8).add(7, 'days').format()
+      ttl: moment().utcOffset(8).add(days, 'days').format()
     }
     this.logger.debug('item', item)
     const response = await this.documentClient.put({ TableName: process.env.MESSAGE_TABLE, Item: item }).promise()
@@ -36,7 +36,7 @@ export default class DynamoDB {
     return response
   }
 
-  async getRowsByChatId (chatId) {
+  async getRowsByChatId ({ chatId, days = 7 } = {}) {
     const params = {
       TableName: process.env.MESSAGE_TABLE,
       IndexName: process.env.MESSAGE_TABLE_GSI,
@@ -44,10 +44,25 @@ export default class DynamoDB {
       ScanIndexForward: false,
       ExpressionAttributeValues: {
         ':chat_id': chatId,
-        ':date_created': moment().utcOffset(8).subtract(7, 'days').format()
+        ':date_created': moment().utcOffset(8).subtract(days, 'days').format()
       }
     }
     const result = await this.documentClient.query(params).promise()
+    this.logger.trace(result.Items)
+    return result.Items
+  }
+
+  async getAllRowsWithinDays ({ days = 7 } = {}) {
+    console.log('days', days)
+    const params = {
+      TableName: process.env.MESSAGE_TABLE,
+      ScanIndexForward: false,
+      FilterExpression: 'dateCreated > :date_created',
+      ExpressionAttributeValues: {
+        ':date_created': moment().utcOffset(8).subtract(days, 'days').format()
+      }
+    }
+    const result = await this.documentClient.scan(params).promise()
     this.logger.trace(result.Items)
     return result.Items
   }

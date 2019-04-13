@@ -6,8 +6,8 @@ import Pino from 'pino'
 const jung2botUtil = new Jung2botUtil()
 
 export default class Statistics {
-  constructor (option) {
-    this.dynamodb = new DynamoDB(option)
+  constructor () {
+    this.dynamodb = new DynamoDB()
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
   }
 
@@ -74,9 +74,9 @@ export default class Statistics {
   }
 
   async getStats (message, options) {
-    const rows = await this.dynamodb.getRowsByChatId(message.chat.id)
-    const statsMessage = await this.generateReport(rows, options)
     try {
+      const rows = await this.dynamodb.getRowsByChatId({ chatId: message.chat.id })
+      const statsMessage = await this.generateReport(rows, options)
       await jung2botUtil.sendMessage(message.chat.id, statsMessage)
       return statsMessage
     } catch (e) {

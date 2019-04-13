@@ -37,11 +37,19 @@ functions:
   messages:
     handler: src/handler.onMessage
     deadLetter:
-      sns: onMessage-dl-topic
+      sns: messages-dead-letter-topic
     events:
       - http:
           path: /
           method: post
+  offFromWork:
+    handler: src/handler.onOffFromWork
+    deadLetter:
+      sns: offFromWork-dead-letter-topic
+    events:
+      - http:
+          path: /
+          method: get
 
 plugins:
   - serverless-domain-manager
