@@ -40,7 +40,7 @@ test.serial('off - with error', async t => {
   try {
     const offFromWork = new OffFromWork()
     const response = await offFromWork.off()
-    t.fail(response, 'This case should throw an error')
+    t.falsy(response)
   } catch (e) {
     t.is(e.message, 'Request failed with status code 404')
   }

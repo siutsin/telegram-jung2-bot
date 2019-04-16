@@ -38,7 +38,7 @@ export default class OffFromWork {
     const throttled = pThrottle((id, report) => this.jung2botUtil.sendMessage(id, report), GROUPS_PER_SECOND, 1000)
     for (const id of groupIds) {
       const rawRowData = records[id]
-      const report = await this.statistics.generateReport(rawRowData)
+      const report = await this.statistics.generateReport(rawRowData, { limit: 10 })
       await throttled(id, report)
     }
   }
