@@ -5,9 +5,8 @@ import stubHelpMessage from './stub/helpMessage'
 import stubHelpMessageResponse from './stub/helpMessageResponse'
 import Help from '../src/help'
 import dotenv from 'dotenv'
-dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
-const help = new Help()
+dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
 test('sendHelpMessage', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
@@ -15,6 +14,7 @@ test('sendHelpMessage', async t => {
     .reply(200, {
       data: stubHelpMessageResponse
     })
+  const help = new Help()
   const response = await help.sendHelpMessage(stubHelpMessage)
   t.is(response.data.data.result.text, stubHelpMessageResponse.result.text)
   nock.restore()
