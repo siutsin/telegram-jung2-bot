@@ -51,9 +51,7 @@ functions:
     deadLetter:
       sns: offFromWork-dead-letter-topic
     events:
-      - http:
-          path: /
-          method: get
+      - schedule: cron(0 10 ? * MON-FRI *) # 10 am UTC = 6 pm HKT
 
 plugins:
   - serverless-domain-manager
