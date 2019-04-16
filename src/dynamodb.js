@@ -18,7 +18,7 @@ export default class DynamoDB {
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
   }
 
-  async saveMessage ({ message, days = 7 } = {}) {
+  async saveMessage ({ message, days = 7 }) {
     const item = {
       id: uuid.v4(),
       chatId: message.chat.id,
@@ -36,7 +36,7 @@ export default class DynamoDB {
     return response
   }
 
-  async getRowsByChatId ({ chatId, days = 7 } = {}) {
+  async getRowsByChatId ({ chatId, days = 7 }) {
     const params = {
       TableName: process.env.MESSAGE_TABLE,
       IndexName: process.env.MESSAGE_TABLE_GSI,
