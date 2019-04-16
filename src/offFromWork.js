@@ -4,10 +4,9 @@ import Jung2botUtil from './jung2botUtil'
 import Statistics from './statistics'
 import pThrottle from 'p-throttle'
 
-const jung2botUtil = new Jung2botUtil()
-
 export default class OffFromWork {
   constructor () {
+    this.jung2botUtil = new Jung2botUtil()
     this.dynamodb = new DynamoDB()
     this.statistics = new Statistics()
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
@@ -28,7 +27,7 @@ export default class OffFromWork {
   async announcement (groupIds) {
     // https://core.telegram.org/bots/faq#my-bot-is-hitting-limits-how-do-i-avoid-this
     const GROUPS_PER_SECOND = 20
-    const throttled = pThrottle(id => jung2botUtil.sendMessage(id, '夠鐘收工~~'), GROUPS_PER_SECOND, 1000)
+    const throttled = pThrottle(id => this.jung2botUtil.sendMessage(id, '夠鐘收工~~'), GROUPS_PER_SECOND, 1000)
     for (const id of groupIds) {
       await throttled(id)
     }
@@ -36,7 +35,7 @@ export default class OffFromWork {
 
   async statsPerGroup (groupIds, records) {
     const GROUPS_PER_SECOND = 20
-    const throttled = pThrottle((id, report) => jung2botUtil.sendMessage(id, report), GROUPS_PER_SECOND, 1000)
+    const throttled = pThrottle((id, report) => this.jung2botUtil.sendMessage(id, report), GROUPS_PER_SECOND, 1000)
     for (const id of groupIds) {
       const rawRowData = records[id]
       const report = await this.statistics.generateReport(rawRowData)
