@@ -17,6 +17,9 @@ test.before(t => {
   AWS.mock('DynamoDB.DocumentClient', 'query', (params, callback) => {
     callback(null, stubQueryMessage)
   })
+  AWS.mock('DynamoDB.DocumentClient', 'scan', (params, callback) => {
+    callback(null, stubQueryMessage)
+  })
 })
 
 test.after.always(t => {
@@ -25,13 +28,26 @@ test.after.always(t => {
 
 test('saveMessage', async t => {
   const dynamodb = new DynamoDB()
-  const response = await dynamodb.saveMessage(stubTelegramNewMessage.message)
+  const message = stubTelegramNewMessage.message
+  const response = await dynamodb.saveMessage({ message })
   t.is(response, stubPutMessage)
 })
 
 test('getRowsByChatId', async t => {
   const dynamodb = new DynamoDB()
-  const response = await dynamodb.getRowsByChatId(123)
+  const response = await dynamodb.getRowsByChatId({ chatId: 123 })
+  t.is(response, stubQueryMessage.Items)
+})
+
+test('getAllRowsWithinDays - 5 days', async t => {
+  const dynamodb = new DynamoDB()
+  const response = await dynamodb.getAllRowsWithinDays({ days: 5 })
+  t.is(response, stubQueryMessage.Items)
+})
+
+test('getAllRowsWithinDays - default 7 days', async t => {
+  const dynamodb = new DynamoDB()
+  const response = await dynamodb.getAllRowsWithinDays()
   t.is(response, stubQueryMessage.Items)
 })
 
@@ -39,7 +55,8 @@ test('In serverless-offline environment', async t => {
   const cache = process.env.IS_OFFLINE
   process.env.IS_OFFLINE = true
   const dynamodb = new DynamoDB()
-  const response = await dynamodb.saveMessage(stubTelegramNewMessage.message)
+  const message = stubTelegramNewMessage.message
+  const response = await dynamodb.saveMessage({ message })
   t.is(response, stubPutMessage)
   process.env.IS_OFFLINE = cache
 })

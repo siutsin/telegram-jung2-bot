@@ -32,16 +32,26 @@ provider:
       Action:
         - 'sns:Publish'
       Resource: !Ref MessagesDeadLetterTopic
+    - Effect: Allow
+      Action:
+        - 'sns:Publish'
+      Resource: !Ref OffFromWorkDeadLetterTopic
 
 functions:
   messages:
     handler: src/handler.onMessage
     deadLetter:
-      sns: onMessage-dl-topic
+      sns: messages-dead-letter-topic
     events:
       - http:
           path: /
           method: post
+  offFromWork:
+    handler: src/handler.onOffFromWork
+    deadLetter:
+      sns: offFromWork-dead-letter-topic
+    events:
+      - schedule: cron(0 10 ? * MON-FRI *) # 10 am UTC = 6 pm HKT
 
 plugins:
   - serverless-domain-manager
@@ -106,6 +116,8 @@ resources:
         BillingMode: PAY_PER_REQUEST
         SSESpecification:
           SSEEnabled: true
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true
         TimeToLiveSpecification:
           AttributeName: ttl
           Enabled: true
