@@ -13,6 +13,35 @@ Add the bot to your group at [@jung2_bot](https://bit.ly/github-jung2bot)
 
 This bot is created for counting the number of message per participant in the group.
 
+## Setup
+
+### AWS Credential
+
+Refer to [AWS Documentation](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html).
+
+### Telegram API Token
+
+Serverless will retrieve the Telegram API Token via [SSM](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-paramstore.html) from a SecureString.
+
+Naming convention - `{service}-{stage}-telegram-api-token`. E.g.:
+
+- `jung2bot-dev-telegram-api-token`
+
+### Create `.env` files
+
+Copy `.env.example` and rename the file to `.env.{stage}`. E.g.:
+
+- `.env.development`
+- `.env.production`
+
+Load orders are defined at `serverless-dotenv-plugin`'s [doc](https://github.com/colynb/serverless-dotenv-plugin#automatic-env-file-name-resolution).
+
+### Deploy! 🚀
+
+```bash
+$ sls deploy
+```
+
 ## Usage
 
 |command|info|
@@ -20,6 +49,14 @@ This bot is created for counting the number of message per participant in the gr
 |`/topten`|Show the percentage of top ten participants for the past 7 days|
 |`/alljung`|Show the percentage of all participants for the past 7 days|
 |`/junghelp`|Show help message|
+
+## Development
+
+### Test API and DB locally
+
+```bash
+$ npm run offline
+```
 
 ## Sponsor
 
