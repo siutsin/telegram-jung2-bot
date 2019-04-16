@@ -49,6 +49,7 @@ export default class OffFromWork {
       const rows = await this.dynamodb.getAllRowsWithinDays({ days: 7 })
       const records = await this.separateByGroups(rows)
       const groupIds = Object.keys(records)
+      this.logger.debug('groupIds', groupIds)
       await this.announcement(groupIds)
       await this.statsPerGroup(groupIds, records)
       return true
