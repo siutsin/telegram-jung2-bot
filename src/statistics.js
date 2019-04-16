@@ -31,9 +31,8 @@ export default class Statistics {
     const rankings = usersCount.users.map(o => {
       o.count = tally[o.userId]
       return o
-    }).sort((a, b) => {
-      return a.count - b.count
     })
+    rankings.sort((a, b) => b.count - a.count)
     return {
       totalMessage: rows.length,
       rankings
@@ -43,6 +42,8 @@ export default class Statistics {
   async generateReport (rows, options = {}) {
     const normalisedRows = await this.normaliseRows(rows)
     const limit = options.limit || undefined
+
+    this.logger.debug('normalisedRows.rankings', normalisedRows.rankings)
 
     const telegramMessageLimit = 3800
     let isReachingTelegramMessageLimit = false
