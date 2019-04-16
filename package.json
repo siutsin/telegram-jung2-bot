@@ -28,7 +28,7 @@
     "lint-fix": "standard --fix",
     "generateSeed": "node ./test/helper/generateDynamodbSeed.js",
     "migrateTestingDB": "node ./test/helper/migrateDynamodb.js",
-    "offline": "npm run generateSeed && sls offline start"
+    "offline": "kill $(lsof -t -i :8000); npm run generateSeed && sls offline start"
   },
   "dependencies": {
     "@babel/polyfill": "^7.4.3",

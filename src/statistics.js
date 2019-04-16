@@ -44,6 +44,8 @@ export default class Statistics {
     const normalisedRows = await this.normaliseRows(rows)
     const limit = options.limit || undefined
 
+    this.logger.debug('normalisedRows.rankings', normalisedRows.rankings)
+
     const telegramMessageLimit = 3800
     let isReachingTelegramMessageLimit = false
 
