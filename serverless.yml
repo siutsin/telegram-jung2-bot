@@ -43,7 +43,6 @@ functions:
 
 plugins:
   - serverless-domain-manager
-  - serverless-plugin-lambda-dead-letter
   - serverless-dotenv-plugin
   - serverless-webpack
   - serverless-dynamodb-local
