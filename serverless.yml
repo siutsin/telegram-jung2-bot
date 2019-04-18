@@ -7,7 +7,7 @@ provider:
   runtime: nodejs8.10
   stage: ${env:STAGE, 'dev'}
   region: ${env:REGION, 'us-east-1'}
-  profile: ${env:PROFILE, 'default'}
+  profile: ${env:PROFILE, ''}
   memorySize: 128
   timeout: 6
   logRetentionInDays: 1
