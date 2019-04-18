@@ -29,6 +29,7 @@ export default class OffFromWork {
     const GROUPS_PER_SECOND = 20
     const throttled = pThrottle(id => this.jung2botUtil.sendMessage(id, '夠鐘收工~~'), GROUPS_PER_SECOND, 1000)
     for (const id of groupIds) {
+      this.logger.debug('announcement await throttled', id)
       await throttled(id)
     }
   }
@@ -39,6 +40,7 @@ export default class OffFromWork {
     for (const id of groupIds) {
       const rawRowData = records[id]
       const report = await this.statistics.generateReport(rawRowData, { limit: 10 })
+      this.logger.debug('statsPerGroup await throttled', id)
       await throttled(id, report)
     }
   }
