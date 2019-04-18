@@ -15,19 +15,23 @@ export default class Statistics {
       soFar[row.userId] = soFar[row.userId] ? soFar[row.userId] + 1 : 1
       return soFar
     }, {})
-    const usersCount = rows.reduce((soFar, row) => {
-      if (!soFar.check[row.userId]) {
-        soFar.check[row.userId] = true
-        soFar.users.push({
-          userId: row.userId,
-          firstName: row.firstName,
-          lastName: row.lastName,
-          fullName: [row.firstName, row.lastName].join(' '),
-          dateCreated: row.dateCreated
-        })
-      }
-      return soFar
-    }, { users: [], check: {} })
+    // DynamoDB scan does not support sorting. Hence a manual sorting is required here.
+    // TODO: looks like a performance issue here.
+    const usersCount = rows
+      .sort((a, b) => moment(a.dateCreated).isAfter(moment(b.dateCreated)) ? -1 : 1)
+      .reduce((soFar, row) => {
+        if (!soFar.check[row.userId]) {
+          soFar.check[row.userId] = true
+          soFar.users.push({
+            userId: row.userId,
+            firstName: row.firstName,
+            lastName: row.lastName,
+            fullName: [row.firstName, row.lastName].join(' '),
+            dateCreated: row.dateCreated
+          })
+        }
+        return soFar
+      }, { users: [], check: {} })
     const rankings = usersCount.users.map(o => {
       o.count = tally[o.userId]
       return o
