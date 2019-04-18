@@ -1,0 +1,20 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "VisualEditor0",
+      "Effect": "Allow",
+      "Action": [
+        "iam:GetRole",
+        "iam:PassRole",
+        "iam:DeleteRolePolicy",
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:PutRolePolicy"
+      ],
+      "Resource": [
+        "arn:aws:iam::*:role/jung2bot-*"
+      ]
+    }
+  ]
+}
