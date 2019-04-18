@@ -3,7 +3,6 @@
 if [[ "${TRAVIS_BRANCH}" == "develop" ]]; then
    echo "STAGE=$STAGE_DEV" >> .env
    echo "REGION=$REGION_DEV" >> .env
-   echo "PROFILE=$PROFILE_DEV" >> .env
    echo "MESSAGE_TABLE=$MESSAGE_TABLE_DEV" >> .env
    echo "MESSAGE_TABLE_GSI=$MESSAGE_TABLE_GSI_DEV" >> .env
    echo "DOMAIN=$DOMAIN_DEV" >> .env
@@ -11,7 +10,6 @@ if [[ "${TRAVIS_BRANCH}" == "develop" ]]; then
 elif [[ "${TRAVIS_BRANCH}" == "master" ]]; then
    echo "STAGE=$STAGE_PROD" >> .env
    echo "REGION=$REGION_PROD" >> .env
-   echo "PROFILE=$PROFILE_PROD" >> .env
    echo "MESSAGE_TABLE=$MESSAGE_TABLE_PROD" >> .env
    echo "MESSAGE_TABLE_GSI=$MESSAGE_TABLE_GSI_PROD" >> .env
    echo "DOMAIN=$DOMAIN_PROD" >> .env
@@ -21,7 +19,7 @@ else
    exit 1
 fi
 
-sls deploy
+sls deploy --conceal &>/dev/null
 
 echo "Successful deployment for ${TRAVIS_BRANCH}"
 
