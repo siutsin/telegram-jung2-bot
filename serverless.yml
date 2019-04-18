@@ -8,8 +8,6 @@ provider:
   stage: ${env:STAGE, 'dev'}
   region: ${env:REGION, 'us-east-1'}
   profile: ${env:PROFILE, ''}
-  memorySize: 128
-  timeout: 6
   logRetentionInDays: 1
   deploymentBucket:
     serverSideEncryption: AES256
@@ -28,22 +26,39 @@ provider:
         - ''
         - - !GetAtt Jung2BotDynamoDB.Arn
           - '*'
+    - Effect: Allow
+      Action:
+        - 'sns:Publish'
+      Resource: !Ref MessagesDeadLetterTopic
+    - Effect: Allow
+      Action:
+        - 'sns:Publish'
+      Resource: !Ref OffFromWorkDeadLetterTopic
 
 functions:
   messages:
     handler: src/handler.onMessage
+    timeout: 6
+    memorySize: 128
+    deadLetter:
+      sns: '${self:service}-${self:provider.stage}-messages-dead-letter-topic'
     events:
       - http:
           path: /
           method: post
   offFromWork:
     handler: src/handler.onOffFromWork
+    timeout: 300
+    memorySize: 1024
+    deadLetter:
+      sns: '${self:service}-${self:provider.stage}-offFromWork-dead-letter-topic'
     events:
       - schedule: cron(0 10 ? * MON-FRI *) # 10 am UTC = 6 pm HKT
 
 plugins:
   - serverless-domain-manager
   - serverless-dotenv-plugin
+  - serverless-plugin-lambda-dead-letter
   - serverless-webpack
   - serverless-dynamodb-local
   - serverless-offline
