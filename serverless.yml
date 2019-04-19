@@ -38,8 +38,8 @@ provider:
 functions:
   messages:
     handler: src/handler.onMessage
-    timeout: 6
-    memorySize: 128
+    timeout: 30
+    memorySize: 256
     deadLetter:
       sns: '${self:service}-${self:provider.stage}-messages-dead-letter-topic'
     events:
