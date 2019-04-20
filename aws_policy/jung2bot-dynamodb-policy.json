@@ -12,18 +12,20 @@
         "dynamodb:ListTables",
         "dynamodb:DescribeReservedCapacity",
         "dynamodb:ListBackups",
-        "dynamodb:PurchaseReservedCapacityOfferings",
         "dynamodb:ListTagsOfResource",
         "dynamodb:DescribeTimeToLive",
         "dynamodb:DescribeLimits",
-        "dynamodb:ListStreams"
+        "dynamodb:ListStreams",
+        "application-autoscaling:*"
       ],
       "Resource": "*"
     },
     {
       "Sid": "VisualEditor1",
       "Effect": "Allow",
-      "Action": "dynamodb:*",
+      "Action": [
+        "dynamodb:*"
+      ],
       "Resource": [
         "arn:aws:dynamodb::*:global-table/jung2bot-*",
         "arn:aws:dynamodb:*:*:table/jung2bot-*/backup/*",
