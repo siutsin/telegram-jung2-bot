@@ -59,6 +59,7 @@ plugins:
   - serverless-domain-manager
   - serverless-dotenv-plugin
   - serverless-plugin-lambda-dead-letter
+  - serverless-plugin-dynamodb-autoscaling
   - serverless-webpack
   - serverless-dynamodb-local
   - serverless-offline
@@ -80,6 +81,12 @@ custom:
         sources:
           - table: ${env:MESSAGE_TABLE}
             sources: [./test/helper/dynamodbSeed.json]
+  # serverless-plugin-dynamodb-autoscaling
+  dynamodbAutoscaling:
+    tablesConfig:
+      Jung2BotDynamoDB:
+        minCapacity: 1
+        maxCapacity: 50
 
 resources:
   Resources:
@@ -115,7 +122,12 @@ resources:
                 - firstName
                 - lastName
               ProjectionType: INCLUDE
-        BillingMode: PAY_PER_REQUEST
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
         SSESpecification:
           SSEEnabled: true
         PointInTimeRecoverySpecification:
