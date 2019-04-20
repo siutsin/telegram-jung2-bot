@@ -10,7 +10,8 @@
         "iam:DeleteRolePolicy",
         "iam:CreateRole",
         "iam:DeleteRole",
-        "iam:PutRolePolicy"
+        "iam:PutRolePolicy",
+        "iam:UpdateAssumeRolePolicy"
       ],
       "Resource": [
         "arn:aws:iam::*:role/jung2bot-*"
