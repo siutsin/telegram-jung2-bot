@@ -8,7 +8,7 @@ import dotenv from 'dotenv'
 
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
-test.failing('sendHelpMessage', async t => {
+test('sendHelpMessage', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .post('/sendMessage')
     .reply(200, {
