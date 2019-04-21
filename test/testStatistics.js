@@ -70,7 +70,7 @@ test('/alljung', async t => {
   nock.restore()
 })
 
-test.serial.failing('/topten with error', async t => {
+test.serial('/topten with error', async t => {
   const statistics = new Statistics()
   try {
     await statistics.topTen(stubTopTen.message)
