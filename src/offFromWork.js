@@ -24,13 +24,14 @@ export default class OffFromWork {
   }
 
   async statsPerGroup (groupIds, records) {
+    const promises = []
     for (const id of groupIds) {
       const rawRowData = records[id]
       let report = await this.statistics.generateReport(rawRowData, { limit: 10 })
       report = '夠鐘收工~~\n\n' + report
-      this.logger.debug('statsPerGroup await throttled', id)
-      await this.jung2botUtil.sendMessage(id, report)
+      promises.push(this.jung2botUtil.sendMessage(id, report))
     }
+    await Promise.all(promises)
   }
 
   async off () {
