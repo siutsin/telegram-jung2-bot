@@ -13,8 +13,9 @@ export default class jung2botUtil {
       chat_id: -287173723, // testing group id
       text: message
     }
-    const response = axios.post(url, data)
-    this.logger.debug('response', response)
+    const response = await axios.post(url, data)
+    this.logger.debug('response.status', response.status)
+    this.logger.debug('response.data', response.data)
     return response
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "telegram-jung2-bot",
-  "version": "3.0.0-rc.5",
+  "version": "3.0.0-rc.6",
   "private": true,
   "repository": {
     "type": "git",
@@ -35,10 +35,10 @@
     "@babel/runtime": "^7.4.3",
     "aws-sdk": "^2.441.0",
     "axios": "^0.18.0",
+    "bottleneck": "^2.18.0",
     "moment": "^2.24.0",
-    "p-throttle": "^3.1.0",
     "pino": "^5.12.2",
-    "pino-pretty": "^2.6.0",
+    "pino-pretty": "^2.6.1",
     "source-map-support": "^0.5.12",
     "uuid": "^3.3.2"
   },
@@ -52,7 +52,7 @@
     "babel-loader": "^8.0.5",
     "babel-plugin-source-map-support": "^2.0.1",
     "codecov": "^3.3.0",
-    "copy-dynamodb-table": "^2.0.14",
+    "copy-dynamodb-table": "^2.0.16",
     "coveralls": "^3.0.3",
     "dotenv": "^7.0.0",
     "nock": "^10.0.6",

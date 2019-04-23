@@ -24,6 +24,7 @@ export default class Statistics {
           soFar.check[row.userId] = true
           soFar.users.push({
             userId: row.userId,
+            chatTitle: row.chatTitle,
             firstName: row.firstName,
             lastName: row.lastName,
             fullName: [row.firstName, row.lastName].join(' '),
@@ -52,7 +53,8 @@ export default class Statistics {
     const telegramMessageLimit = 3800
     let isReachingTelegramMessageLimit = false
 
-    const header = `${limit ? 'Top ' + limit : 'All'} 冗員s in the last 7 days (last 上水 time):\n\n`
+    const chatTitle = normalisedRows.rankings[0].chatTitle
+    const header = `圍爐區: ${chatTitle}\n\n${limit ? 'Top ' + limit : 'All'} 冗員s in the last 7 days (last 上水 time):\n\n`
 
     let body = ''
     const loopLimit = limit ? Math.min(limit, normalisedRows.rankings.length) : normalisedRows.rankings.length

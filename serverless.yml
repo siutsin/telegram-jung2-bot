@@ -87,7 +87,7 @@ custom:
     tablesConfig:
       Jung2BotDynamoDB:
         minCapacity: 1
-        maxCapacity: 50
+        maxCapacity: 100
 
 resources:
   Resources:
