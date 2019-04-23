@@ -4,14 +4,14 @@ import AWS from 'aws-sdk-mock'
 import nock from 'nock'
 import OffFromWork from '../src/offFromWork'
 import dotenv from 'dotenv'
-import stubAllJungDBResponse from './stub/allJungDatabaseResponse'
+import stubAllJungDatabaseResponseReverseOrder from './stub/allJungDatabaseResponseReverseOrder'
 import stubAllJungMessageResponse from './stub/allJungMessageResponse'
 
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
 test.before(t => {
   AWS.mock('DynamoDB.DocumentClient', 'scan', (params, callback) => {
-    callback(null, stubAllJungDBResponse)
+    callback(null, stubAllJungDatabaseResponseReverseOrder)
   })
 })
 
