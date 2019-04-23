@@ -12,8 +12,9 @@ export default class jung2botUtil {
       chat_id: chatId,
       text: message
     }
-    const response = axios.post(url, data)
-    this.logger.debug('response', response)
+    const response = await axios.post(url, data)
+    this.logger.debug('response.status', response.status)
+    this.logger.debug('response.data', response.data)
     return response
   }
 }
