@@ -1,8 +1,8 @@
 import Pino from 'pino'
+import Bottleneck from 'bottleneck'
 import DynamoDB from './dynamodb'
 import Jung2botUtil from './jung2botUtil'
 import Statistics from './statistics'
-import pThrottle from 'p-throttle'
 
 export default class OffFromWork {
   constructor () {
@@ -24,35 +24,40 @@ export default class OffFromWork {
     return records
   }
 
-  async announcement (groupIds) {
-    // https://core.telegram.org/bots/faq#my-bot-is-hitting-limits-how-do-i-avoid-this
-    const GROUPS_PER_SECOND = 20
-    const throttled = pThrottle(id => this.jung2botUtil.sendMessage(id, '夠鐘收工~~'), GROUPS_PER_SECOND, 1000)
-    for (const id of groupIds) {
-      this.logger.debug('announcement await throttled', id)
-      await throttled(id)
-    }
-  }
-
   async statsPerGroup (groupIds, records) {
-    const GROUPS_PER_SECOND = 20
-    const throttled = pThrottle((id, report) => this.jung2botUtil.sendMessage(id, report), GROUPS_PER_SECOND, 1000)
+    // https://core.telegram.org/bots/faq#my-bot-is-hitting-limits-how-do-i-avoid-this
+    // If you're sending bulk notifications to multiple users, the API will not allow more than 30 messages
+    // per second or so. Consider spreading out notifications over large intervals of 8—12 hours for best results.
+    // Also note that your bot will not be able to send more than 20 messages per minute to the same group.
+    const limiter = new Bottleneck({ // 25 messages per second
+      maxConcurrent: 1,
+      minTime: 40
+    })
+    limiter.on('error', e => {
+      this.logger.error(e.message)
+    })
+    this.logger.debug('groupIds:', groupIds)
     for (const id of groupIds) {
       const rawRowData = records[id]
-      const report = await this.statistics.generateReport(rawRowData, { limit: 10 })
-      this.logger.debug('statsPerGroup await throttled', id)
-      await throttled(id, report)
+      this.logger.info(`id: ${id} length: ${rawRowData.length}`)
+      let report = await this.statistics.generateReport(rawRowData, { limit: 10 })
+      report = '夠鐘收工~~\n\n' + report
+      await limiter.schedule(() => this.jung2botUtil.sendMessage(id, report))
     }
   }
 
   async off () {
+    this.logger.info('off start')
     try {
       const rows = await this.dynamodb.getAllRowsWithinDays({ days: 7 })
       const records = await this.separateByGroups(rows)
-      const groupIds = Object.keys(records)
-      this.logger.debug('groupIds', groupIds)
-      await this.announcement(groupIds)
-      await this.statsPerGroup(groupIds, records)
+      // Message ordered by the most active groups
+      const orderedGroupIds = Object.keys(records)
+        .map(chatId => ({ chatId: chatId, count: records[chatId].length }))
+        .sort((a, b) => b.count - a.count)
+        .map(o => o.chatId)
+      this.logger.info('orderedGroupIds.length', orderedGroupIds.length)
+      await this.statsPerGroup(orderedGroupIds, records)
       return true
     } catch (e) {
       this.logger.error(e.message)
