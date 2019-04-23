@@ -10,7 +10,7 @@ export default class jung2botUtil {
     const url = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`
     const data = {
       // chat_id: chatId,
-      chat_id: -373745886, // testing group id
+      chat_id: -287173723, // testing group id
       text: message
     }
     const response = axios.post(url, data)
