@@ -57,7 +57,7 @@
     "dotenv": "^7.0.0",
     "nock": "^10.0.6",
     "nyc": "^14.0.0",
-    "serverless": "^1.41.0",
+    "serverless": "^1.41.1",
     "serverless-domain-manager": "^3.2.1",
     "serverless-dotenv-plugin": "^2.0.1",
     "serverless-dynamodb-local": "^0.2.37",
