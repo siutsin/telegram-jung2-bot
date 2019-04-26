@@ -72,7 +72,7 @@ test('/alljung', async t => {
   t.regex(response, /Total messages: [1-9]+[0-9]*/)
 })
 
-test.failing('/topten with error', async t => {
+test('/topten with error', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .post('/sendMessage')
     .reply(497, 'Request failed with status code 497')
