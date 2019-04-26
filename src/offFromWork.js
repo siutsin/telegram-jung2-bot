@@ -33,16 +33,19 @@ export default class OffFromWork {
       maxConcurrent: 1,
       minTime: 40
     })
-    limiter.on('error', e => {
-      this.logger.error(e.message)
-    })
     this.logger.debug('groupIds:', groupIds)
     for (const id of groupIds) {
       const rawRowData = records[id]
       this.logger.info(`id: ${id} length: ${rawRowData.length}`)
       let report = await this.statistics.generateReport(rawRowData, { limit: 10 })
       report = '夠鐘收工~~\n\n' + report
-      await limiter.schedule(() => this.jung2botUtil.sendMessage(id, report))
+      try {
+        await limiter.schedule(() => this.jung2botUtil.sendMessage(id, report))
+      } catch (e) {
+        this.logger.error(`statsPerGroup error - id: ${id}, error: ${e.message}`)
+        // allow only 4xx and 5xx telegram API error
+        if (!e.message.match(/[45][0-9]{2}/)) { throw e }
+      }
     }
   }
 
