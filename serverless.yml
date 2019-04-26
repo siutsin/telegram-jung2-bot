@@ -51,7 +51,8 @@ functions:
     deadLetter:
       sns: '${self:service}-${self:provider.stage}-offFromWork-dead-letter-topic'
     events:
-      - schedule: cron(0 10 ? * MON-FRI *) # 10 am UTC = 6 pm HKT
+#      - schedule: cron(0 10 ? * MON-FRI *) # 10 am UTC = 6 pm HKT
+      - schedule: cron(10 10 ? * MON-FRI *) # TODO: temporary change to 6:10 pm to avoid API limit
 
 plugins:
   - serverless-domain-manager
