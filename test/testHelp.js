@@ -12,7 +12,7 @@ test.afterEach.always(t => {
   nock.cleanAll()
 })
 
-test.failing('sendHelpMessage', async t => {
+test('sendHelpMessage', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .post('/sendMessage')
     .reply(200, {
