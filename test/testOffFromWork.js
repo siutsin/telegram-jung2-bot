@@ -15,11 +15,15 @@ test.before(t => {
   })
 })
 
+test.afterEach.always(async t => {
+  nock.cleanAll()
+})
+
 test.after.always(t => {
   AWS.restore()
 })
 
-test.serial('off', async t => {
+test('off', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .persist()
     .post('/sendMessage')
@@ -29,20 +33,28 @@ test.serial('off', async t => {
   const offFromWork = new OffFromWork()
   const response = await offFromWork.off()
   t.truthy(response)
-  nock.restore()
 })
 
-test.serial('off - with 404 error', async t => {
+test.serial('off - should catch 4xx and 5xx error', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .persist()
     .post('/sendMessage')
-    .reply(404, 'Request failed with status code 404')
+    .reply(498, 'Request failed with status code 498')
+  const offFromWork = new OffFromWork()
+  const response = await offFromWork.off()
+  t.truthy(response)
+})
+
+test.serial('off - with 999 error', async t => {
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .post('/sendMessage')
+    .reply(999, 'Request failed with status code 999')
   try {
     const offFromWork = new OffFromWork()
     const response = await offFromWork.off()
     t.falsy(response)
   } catch (e) {
-    t.is(e.message, 'Request failed with status code 404')
+    t.is(e.message, 'Request failed with status code 999')
   }
-  nock.restore()
 })
