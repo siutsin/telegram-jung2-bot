@@ -8,6 +8,10 @@ import dotenv from 'dotenv'
 
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
+test.afterEach.always(t => {
+  nock.cleanAll()
+})
+
 test.failing('sendHelpMessage', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .post('/sendMessage')
@@ -17,5 +21,4 @@ test.failing('sendHelpMessage', async t => {
   const help = new Help()
   const response = await help.sendHelpMessage(stubHelpMessage)
   t.is(response.data.data.result.text, stubHelpMessageResponse.result.text)
-  nock.restore()
 })
