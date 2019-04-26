@@ -16,8 +16,6 @@ provider:
     TELEGRAM_BOT_TOKEN: ${ssm:${self:service}-${self:provider.stage}-telegram-api-token~true}
   tags:
     Name: jung2bot
-  tracing:
-    lambda: true
   iamRoleStatements:
     - Effect: Allow
       Action:
