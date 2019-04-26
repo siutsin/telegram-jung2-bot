@@ -25,7 +25,7 @@ test.beforeEach(async t => {
 
 test.afterEach.always(async t => {
   AWS.restore()
-  nock.restore()
+  nock.cleanAll()
 })
 
 test('newMessage', async t => {
