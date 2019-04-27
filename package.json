@@ -32,7 +32,7 @@
   },
   "dependencies": {
     "@babel/polyfill": "^7.4.3",
-    "@babel/runtime": "^7.4.3",
+    "@babel/runtime": "^7.4.4",
     "aws-sdk": "^2.443.0",
     "axios": "^0.18.0",
     "bottleneck": "^2.18.0",
@@ -44,7 +44,7 @@
   },
   "devDependencies": {
     "@babel/cli": "^7.4.4",
-    "@babel/core": "^7.4.3",
+    "@babel/core": "^7.4.4",
     "@babel/plugin-transform-runtime": "^7.4.3",
     "@babel/preset-env": "^7.4.3",
     "ava": "^1.4.1",
