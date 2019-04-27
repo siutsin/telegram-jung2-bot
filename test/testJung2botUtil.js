@@ -11,7 +11,7 @@ test.afterEach.always(t => {
   nock.cleanAll()
 })
 
-test.failing('sendMessage', async t => {
+test('sendMessage', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .post('/sendMessage')
     .reply(200, {
@@ -23,7 +23,7 @@ test.failing('sendMessage', async t => {
   t.is(data.text, stubSaveMessageResponse.text)
 })
 
-test.failing('sendMessage - failing - Telegram API returns HTTP 499 Error', async t => {
+test('sendMessage - failing - Telegram API returns HTTP 499 Error', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .post('/sendMessage')
     .reply(499)

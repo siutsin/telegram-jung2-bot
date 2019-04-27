@@ -28,7 +28,7 @@ export default class DynamoDB {
       firstName: message.from.first_name,
       lastName: message.from.last_name,
       dateCreated: moment().utcOffset(8).format(),
-      ttl: moment().utcOffset(8).add(days, 'days').format()
+      ttl: moment().utcOffset(8).add(days, 'days').unix()
     }
     this.logger.debug('item', item)
     const response = await this.documentClient.put({ TableName: process.env.MESSAGE_TABLE, Item: item }).promise()
