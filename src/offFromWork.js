@@ -1,4 +1,5 @@
 import Pino from 'pino'
+import moment from 'moment'
 import Bottleneck from 'bottleneck'
 import DynamoDB from './dynamodb'
 import Jung2botUtil from './jung2botUtil'
@@ -13,6 +14,7 @@ export default class OffFromWork {
   }
 
   async separateByGroups (rows) {
+    this.logger.info(`separateByGroups start at ${moment().utcOffset(8).format()}`)
     const records = rows.reduce((soFar, row) => {
       if (!soFar[row.chatId]) {
         soFar[row.chatId] = []
@@ -21,6 +23,7 @@ export default class OffFromWork {
       return soFar
     }, {})
     this.logger.trace('records', records)
+    this.logger.info(`separateByGroups finish at ${moment().utcOffset(8).format()}`)
     return records
   }
 
@@ -29,6 +32,7 @@ export default class OffFromWork {
     // If you're sending bulk notifications to multiple users, the API will not allow more than 30 messages
     // per second or so. Consider spreading out notifications over large intervals of 8—12 hours for best results.
     // Also note that your bot will not be able to send more than 20 messages per minute to the same group.
+    this.logger.info(`statsPerGroup start at ${moment().utcOffset(8).format()}`)
     const limiter = new Bottleneck({ // 25 messages per second
       maxConcurrent: 1,
       minTime: 40
@@ -47,10 +51,11 @@ export default class OffFromWork {
         if (!e.message.match(/[45][0-9]{2}/)) { throw e }
       }
     }
+    this.logger.info(`statsPerGroup finish at ${moment().utcOffset(8).format()}`)
   }
 
   async off () {
-    this.logger.info('off start')
+    this.logger.info(`off start at ${moment().utcOffset(8).format()}`)
     try {
       const rows = await this.dynamodb.getAllRowsWithinDays({ days: 7 })
       const records = await this.separateByGroups(rows)
@@ -59,11 +64,13 @@ export default class OffFromWork {
         .map(chatId => ({ chatId: chatId, count: records[chatId].length }))
         .sort((a, b) => b.count - a.count)
         .map(o => o.chatId)
-      this.logger.info('orderedGroupIds.length', orderedGroupIds.length)
+      this.logger.debug('orderedGroupIds.length', orderedGroupIds.length)
       await this.statsPerGroup(orderedGroupIds, records)
+      this.logger.info(`off finish at ${moment().utcOffset(8).format()}`)
       return true
     } catch (e) {
       this.logger.error(e.message)
+      this.logger.info(`off finish with error at ${moment().utcOffset(8).format()}`)
       throw e
     }
   }

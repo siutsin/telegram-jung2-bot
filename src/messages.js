@@ -1,4 +1,5 @@
 import Pino from 'pino'
+import moment from 'moment'
 import DynamoDB from './dynamodb'
 import Help from './help'
 import Statistics from './statistics'
@@ -12,6 +13,8 @@ export default class Messages {
   }
 
   async newMessage (event) {
+    this.logger.info(`newMessage start at ${moment().utcOffset(8).format()}`)
+    this.logger.debug(`event`, event)
     try {
       const params = JSON.parse(event.body)
       this.logger.trace('params', params)
@@ -27,21 +30,26 @@ export default class Messages {
         const text = message.text
         this.logger.info(text)
         if (text.match(/\/jung[hH]elp/)) {
-          this.logger.info('newMessage help')
+          this.logger.info(`newMessage help start at ${moment().utcOffset(8).format()}`)
           await this.help.sendHelpMessage(message)
+          this.logger.info(`newMessage help finish at ${moment().utcOffset(8).format()}`)
         }
         if (text.match(/\/top[tT]en/)) {
-          this.logger.info('newMessage topTen')
+          this.logger.info(`newMessage topTen start at ${moment().utcOffset(8).format()}`)
           await this.statistics.topTen(message)
+          this.logger.info(`newMessage topTen finish at ${moment().utcOffset(8).format()}`)
         }
         if (text.match(/\/all[jJ]ung/)) {
-          this.logger.info('newMessage alljung')
+          this.logger.info(`newMessage alljung start at ${moment().utcOffset(8).format()}`)
           await this.statistics.allJung(message)
+          this.logger.info(`newMessage alljung finish at ${moment().utcOffset(8).format()}`)
         }
       }
+      this.logger.info(`newMessage finish at ${moment().utcOffset(8).format()}`)
       return { statusCode: 200 }
     } catch (e) {
       this.logger.error(e.message)
+      this.logger.info(`newMessage finish with error at ${moment().utcOffset(8).format()}`)
       return { statusCode: 500 }
     }
   }
