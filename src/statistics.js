@@ -11,6 +11,7 @@ export default class Statistics {
   }
 
   async normaliseRows (rows) {
+    this.logger.info(`normaliseRows start at ${moment().utcOffset(8).format()}`)
     const tally = rows.reduce((soFar, row) => {
       soFar[row.userId] = soFar[row.userId] ? soFar[row.userId] + 1 : 1
       return soFar
@@ -38,6 +39,7 @@ export default class Statistics {
       return o
     })
     rankings.sort((a, b) => b.count - a.count)
+    this.logger.info(`normaliseRows finish at ${moment().utcOffset(8).format()}`)
     return {
       totalMessage: rows.length,
       rankings
@@ -45,6 +47,7 @@ export default class Statistics {
   }
 
   async generateReport (rows, options = {}) {
+    this.logger.info(`generateReport start at ${moment().utcOffset(8).format()}`)
     const normalisedRows = await this.normaliseRows(rows)
     const limit = options.limit || undefined
 
@@ -76,20 +79,25 @@ export default class Statistics {
 
     const fullMessage = header + body + footer
     this.logger.trace('fullMessage', fullMessage)
+    this.logger.info(`generateReport finish at ${moment().utcOffset(8).format()}`)
     return fullMessage
   }
 
   async getStats (message, options) {
+    this.logger.info(`getStats start at ${moment().utcOffset(8).format()}`)
+    let returnMessage = ''
     try {
       const rows = await this.dynamodb.getRowsByChatId({ chatId: message.chat.id })
       const statsMessage = await this.generateReport(rows, options)
       await this.jung2botUtil.sendMessage(message.chat.id, statsMessage)
-      return statsMessage
+      returnMessage = statsMessage
     } catch (e) {
       this.logger.error(e.message)
       if (!e.message.match(/[45][0-9]{2}/)) { throw e }
-      return `bot is removed in group ${message.chat.id}`
+      returnMessage = `bot is removed in group ${message.chat.id}`
     }
+    this.logger.info(`getStats finish at ${moment().utcOffset(8).format()}`)
+    return returnMessage
   }
 
   async allJung (message) {
