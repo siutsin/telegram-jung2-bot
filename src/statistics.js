@@ -87,7 +87,8 @@ export default class Statistics {
       return statsMessage
     } catch (e) {
       this.logger.error(e.message)
-      throw e
+      if (!e.message.match(/[45][0-9]{2}/)) { throw e }
+      return `bot is removed in group ${message.chat.id}`
     }
   }
 
