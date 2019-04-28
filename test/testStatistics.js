@@ -72,15 +72,24 @@ test('/alljung', async t => {
   t.regex(response, /Total messages: [1-9]+[0-9]*/)
 })
 
-test('/topten with error', async t => {
+test('/topten with 4xx error', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .post('/sendMessage')
     .reply(497, 'Request failed with status code 497')
+  const statistics = new Statistics()
+  const result = await statistics.topTen(stubTopTen.message)
+  t.truthy(result)
+})
+
+test('/topten with 9xx error', async t => {
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .post('/sendMessage')
+    .reply(996, 'Request failed with status code 996')
   const statistics = new Statistics()
   try {
     await statistics.topTen(stubTopTen.message)
     t.fail('This case should throw an error')
   } catch (e) {
-    t.is(e.message, 'Request failed with status code 497')
+    t.is(e.message, 'Request failed with status code 996')
   }
 })
