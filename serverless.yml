@@ -37,7 +37,7 @@ functions:
   messages:
     handler: src/handler.onMessage
     timeout: 30
-    memorySize: 256
+    memorySize: 1024
     deadLetter:
       sns: '${self:service}-${self:provider.stage}-messages-dead-letter-topic'
     events:
@@ -84,7 +84,7 @@ custom:
     tablesConfig:
       Jung2BotDynamoDB:
         minCapacity: 1
-        maxCapacity: 100
+        maxCapacity: 1000
 
 resources:
   Resources:
