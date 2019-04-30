@@ -25,7 +25,7 @@ export default class DynamoDB {
       ttl: moment().utcOffset(8).add(days, 'days').unix()
     }
     this.logger.debug('item', item)
-    const response = await this.documentClient.put({ TableName: process.env.MESSAGE_TABLE, Item: item }).promise()
+    const response = await this.documentClient.put({ TableName: process.env.CHATID_TABLE, Item: item }).promise()
     this.logger.trace('response', response)
     return response
   }
