@@ -19,13 +19,21 @@ export default class DynamoDB {
   }
 
   async saveChatId ({ message, days = 7 }) {
-    const item = {
-      chatId: message.chat.id,
-      dateCreated: moment().utcOffset(8).format(),
-      ttl: moment().utcOffset(8).add(days, 'days').unix()
+    const params = {
+      TableName: process.env.CHATID_TABLE,
+      Key: { chatId: message.chat.id },
+      UpdateExpression: 'set #dateCreated = :dateCreated and set #ttl = :ttl',
+      ExpressionAttributeNames: {
+        '#dateCreated': 'dateCreated',
+        '#ttl': 'ttl'
+      },
+      ExpressionAttributeValues: {
+        ':dateCreated': moment().utcOffset(8).format(),
+        ':ttl': moment().utcOffset(8).add(days, 'days').unix()
+      }
     }
-    this.logger.debug('item', item)
-    const response = await this.documentClient.put({ TableName: process.env.CHATID_TABLE, Item: item }).promise()
+    this.logger.debug('params', params)
+    const response = await this.documentClient.update(params).promise()
     this.logger.trace('response', response)
     return response
   }
