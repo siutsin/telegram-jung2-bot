@@ -65,7 +65,7 @@ export default class OffFromWork {
         .sort((a, b) => b.count - a.count)
         .map(o => o.chatId)
       this.logger.debug('orderedGroupIds.length', orderedGroupIds.length)
-      await this.statsPerGroup(orderedGroupIds, records)
+      // await this.statsPerGroup(orderedGroupIds, records)
       this.logger.info(`off finish at ${moment().utcOffset(8).format()}`)
       return true
     } catch (e) {
