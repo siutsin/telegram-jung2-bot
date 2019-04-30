@@ -39,7 +39,7 @@ functions:
     timeout: 30
     memorySize: 1024
     deadLetter:
-      sns: '${self:service}-${self:provider.stage}-messages-dead-letter-topic'
+      sns: ${self:service}-${self:provider.stage}-messages-dead-letter-topic
     events:
       - http:
           path: /
@@ -49,7 +49,7 @@ functions:
     timeout: 900
     memorySize: 3008
     deadLetter:
-      sns: '${self:service}-${self:provider.stage}-offFromWork-dead-letter-topic'
+      sns: ${self:service}-${self:provider.stage}-offFromWork-dead-letter-topic
     events:
       - schedule: cron(0 10 ? * MON-FRI *) # 10 am UTC = 6 pm HKT
 
@@ -85,12 +85,15 @@ custom:
       Jung2BotDynamoDB:
         minCapacity: 1
         maxCapacity: 1000
+      ChatIDsDynamoDB:
+        minCapacity: 1
+        maxCapacity: 1000
 
 resources:
   Resources:
-    # Jung2Bot DynamoDB
+    # Messages DynamoDB Table
     Jung2BotDynamoDB:
-      Type: 'AWS::DynamoDB::Table'
+      Type: AWS::DynamoDB::Table
       DeletionPolicy: Retain
       Properties:
         AttributeDefinitions:
@@ -106,7 +109,7 @@ resources:
           - AttributeName: dateCreated
             KeyType: RANGE
         GlobalSecondaryIndexes:
-          - IndexName: ${env:MESSAGE_TABLE_GSI}
+          - IndexName: chatId-dateCreated-GSI
             KeySchema:
               - AttributeName: chatId
                 KeyType: HASH
@@ -135,4 +138,28 @@ resources:
         TimeToLiveSpecification:
           AttributeName: ttl
           Enabled: true
-        TableName: ${env:MESSAGE_TABLE}
+        TableName: ${self:service}-${self:provider.stage}-messages
+    # ChatId DynamoDB Table
+    ChatIDsDynamoDB:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: chatId
+            AttributeType: N
+          - AttributeName: dateCreated
+            AttributeType: S
+        KeySchema:
+          - AttributeName: chatId
+            KeyType: HASH
+          - AttributeName: dateCreated
+            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+        TableName: ${self:service}-${self:provider.stage}-chatIds
