@@ -65,19 +65,37 @@ export default class DynamoDB {
   }
 
   async getRowsByChatId ({ chatId, days = 7 }) {
-    const params = {
-      TableName: process.env.MESSAGE_TABLE,
-      IndexName: process.env.MESSAGE_TABLE_GSI,
-      KeyConditionExpression: 'chatId = :chat_id AND dateCreated > :date_created',
-      ScanIndexForward: false,
-      ExpressionAttributeValues: {
-        ':chat_id': chatId,
-        ':date_created': moment().utcOffset(8).subtract(days, 'days').format()
+    const _getRowsByChatId = async (startKey) => {
+      const params = {
+        TableName: process.env.MESSAGE_TABLE,
+        IndexName: process.env.MESSAGE_TABLE_GSI,
+        KeyConditionExpression: 'chatId = :chat_id AND dateCreated > :date_created',
+        ScanIndexForward: false,
+        ExpressionAttributeValues: {
+          ':chat_id': chatId,
+          ':date_created': moment().utcOffset(8).subtract(days, 'days').format()
+        }
       }
+      if (startKey) {
+        params.ExclusiveStartKey = startKey
+      }
+      const result = await this.documentClient.query(params).promise()
+      this.logger.info(`Count: ${result.Count} result.LastEvaluatedKey: ${JSON.stringify(result.LastEvaluatedKey)}`)
+      this.logger.trace(result)
+      return result
     }
-    const result = await this.documentClient.query(params).promise()
-    this.logger.trace(result.Items)
-    return result.Items
+    let lastEvaluatedKey
+    let i = 0
+    let rows = []
+    do {
+      this.logger.info(`i: ${i} lastEvaluatedKey: ${JSON.stringify(lastEvaluatedKey)}`)
+      const result = await _getRowsByChatId(lastEvaluatedKey)
+      rows = rows.concat(result.Items)
+      lastEvaluatedKey = result.LastEvaluatedKey
+      i++
+    } while (lastEvaluatedKey)
+    this.logger.info(`getRowsByChatId rows count: ${rows.length}`)
+    return rows
   }
 
   async getAllRowsWithinDays ({ days = 7 } = {}) {
