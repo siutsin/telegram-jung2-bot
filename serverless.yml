@@ -28,6 +28,13 @@ provider:
           - '*'
     - Effect: Allow
       Action:
+        - 'dynamodb:*'
+      Resource: !Join
+        - ''
+        - - !GetAtt ChatIDsDynamoDB.Arn
+          - '*'
+    - Effect: Allow
+      Action:
         - 'sns:Publish'
       Resource: !Ref MessagesDeadLetterTopic
     - Effect: Allow
