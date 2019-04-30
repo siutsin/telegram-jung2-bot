@@ -79,7 +79,7 @@ custom:
     seed:
       domain:
         sources:
-          - table: ${env:MESSAGE_TABLE}
+          - table: ${self:service}-${self:provider.stage}-messages
             sources: [./test/helper/dynamodbSeed.json]
   # serverless-plugin-dynamodb-autoscaling
   dynamodbAutoscaling:
