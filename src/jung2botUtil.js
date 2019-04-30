@@ -9,7 +9,8 @@ export default class jung2botUtil {
     // TODO: TELEGRAM_BOT_TOKEN should be loaded from SSM Parameter Store
     const url = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`
     const data = {
-      chat_id: chatId,
+      // chat_id: chatId,
+      chat_id: -287173723,
       text: message
     }
     const response = await axios.post(url, data)
