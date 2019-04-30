@@ -15,6 +15,9 @@ import stubAllJungDatabaseResponse from './stub/allJungDatabaseResponse'
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
 test.beforeEach(async t => {
+  AWS.mock('DynamoDB.DocumentClient', 'update', (params, callback) => {
+    callback(null, { Items: 'successfully update items to the database' })
+  })
   AWS.mock('DynamoDB.DocumentClient', 'put', (params, callback) => {
     callback(null, { Items: 'successfully query items from the database' })
   })
