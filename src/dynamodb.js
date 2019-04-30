@@ -18,7 +18,19 @@ export default class DynamoDB {
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
   }
 
-  async saveMessage ({ message, days = 7 }) {
+  async saveChatId ({ message, days = 7 }) {
+    const item = {
+      chatId: message.chat.id,
+      dateCreated: moment().utcOffset(8).format(),
+      ttl: moment().utcOffset(8).add(days, 'days').unix()
+    }
+    this.logger.debug('item', item)
+    const response = await this.documentClient.put({ TableName: process.env.MESSAGE_TABLE, Item: item }).promise()
+    this.logger.trace('response', response)
+    return response
+  }
+
+  async saveStatMessage ({ message, days = 7 }) {
     const item = {
       id: uuid.v4(),
       chatId: message.chat.id,
@@ -34,6 +46,14 @@ export default class DynamoDB {
     const response = await this.documentClient.put({ TableName: process.env.MESSAGE_TABLE, Item: item }).promise()
     this.logger.trace('response', response)
     return response
+  }
+
+  async saveMessage (options) {
+    const saveChatIdPromise = this.saveChatId(options)
+    const saveStatMessagePromise = this.saveStatMessage(options)
+    const promises = [saveChatIdPromise, saveStatMessagePromise]
+    const [saveChatIdResponse, saveStatMessageResponse] = await Promise.all(promises)
+    return { saveChatIdResponse, saveStatMessageResponse }
   }
 
   async getRowsByChatId ({ chatId, days = 7 }) {
