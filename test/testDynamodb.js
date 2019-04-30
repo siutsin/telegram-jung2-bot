@@ -10,7 +10,7 @@ dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 const stubPutMessage = 'successfully put item into the database'
 const stubQueryMessage = { Items: 'successfully query items from the database' }
 
-test.before(t => {
+test.beforeEach(t => {
   AWS.mock('DynamoDB.DocumentClient', 'put', (params, callback) => {
     callback(null, stubPutMessage)
   })
@@ -25,7 +25,7 @@ test.before(t => {
   })
 })
 
-test.after.always(t => {
+test.afterEach.always(t => {
   AWS.restore()
 })
 
@@ -40,7 +40,28 @@ test('saveMessage', async t => {
 test('getRowsByChatId', async t => {
   const dynamodb = new DynamoDB()
   const response = await dynamodb.getRowsByChatId({ chatId: 123 })
-  t.is(response, stubQueryMessage.Items)
+  t.is(response[0], stubQueryMessage.Items)
+})
+
+test.serial('getRowsByChatId with LastEvaluatedKey', async t => {
+  AWS.restore()
+  let i = 3
+  const stubObject = () => {
+    const obj = {
+      Items: ['dummy'],
+      LastEvaluatedKey: { d: 'ummy' }
+    }
+    if (i <= 0) { delete obj.LastEvaluatedKey }
+    i--
+    return obj
+  }
+  AWS.mock('DynamoDB.DocumentClient', 'query', (params, callback) => {
+    const obj = stubObject()
+    callback(null, obj)
+  })
+  const dynamodb = new DynamoDB()
+  const response = await dynamodb.getRowsByChatId({ chatId: 123 })
+  t.is(response[0], 'dummy')
 })
 
 test('getAllRowsWithinDays - 5 days', async t => {
