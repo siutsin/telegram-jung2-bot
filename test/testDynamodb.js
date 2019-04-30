@@ -14,6 +14,9 @@ test.before(t => {
   AWS.mock('DynamoDB.DocumentClient', 'put', (params, callback) => {
     callback(null, stubPutMessage)
   })
+  AWS.mock('DynamoDB.DocumentClient', 'update', (params, callback) => {
+    callback(null, stubPutMessage)
+  })
   AWS.mock('DynamoDB.DocumentClient', 'query', (params, callback) => {
     callback(null, stubQueryMessage)
   })
@@ -29,8 +32,9 @@ test.after.always(t => {
 test('saveMessage', async t => {
   const dynamodb = new DynamoDB()
   const message = stubTelegramNewMessage.message
-  const response = await dynamodb.saveMessage({ message })
-  t.is(response, stubPutMessage)
+  const { saveChatIdResponse, saveStatMessageResponse } = await dynamodb.saveMessage({ message })
+  t.is(saveChatIdResponse, 'successfully put item into the database')
+  t.is(saveStatMessageResponse, 'successfully put item into the database')
 })
 
 test('getRowsByChatId', async t => {
@@ -56,7 +60,8 @@ test('In serverless-offline environment', async t => {
   process.env.IS_OFFLINE = true
   const dynamodb = new DynamoDB()
   const message = stubTelegramNewMessage.message
-  const response = await dynamodb.saveMessage({ message })
-  t.is(response, stubPutMessage)
+  const { saveChatIdResponse, saveStatMessageResponse } = await dynamodb.saveMessage({ message })
+  t.is(saveChatIdResponse, 'successfully put item into the database')
+  t.is(saveStatMessageResponse, 'successfully put item into the database')
   process.env.IS_OFFLINE = cache
 })

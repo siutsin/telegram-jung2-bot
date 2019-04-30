@@ -14,6 +14,8 @@ provider:
   environment:
     LOG_LEVEL: ${env:LOG_LEVEL, 'error'}
     TELEGRAM_BOT_TOKEN: ${ssm:${self:service}-${self:provider.stage}-telegram-api-token~true}
+    MESSAGE_TABLE: ${self:service}-${self:provider.stage}-messages
+    CHATID_TABLE: ${self:service}-${self:provider.stage}-chatIds
   tags:
     Name: jung2bot
   iamRoleStatements:
@@ -23,6 +25,13 @@ provider:
       Resource: !Join
         - ''
         - - !GetAtt Jung2BotDynamoDB.Arn
+          - '*'
+    - Effect: Allow
+      Action:
+        - 'dynamodb:*'
+      Resource: !Join
+        - ''
+        - - !GetAtt ChatIDsDynamoDB.Arn
           - '*'
     - Effect: Allow
       Action:
@@ -39,7 +48,7 @@ functions:
     timeout: 30
     memorySize: 1024
     deadLetter:
-      sns: '${self:service}-${self:provider.stage}-messages-dead-letter-topic'
+      sns: ${self:service}-${self:provider.stage}-messages-dead-letter-topic
     events:
       - http:
           path: /
@@ -49,7 +58,7 @@ functions:
     timeout: 900
     memorySize: 3008
     deadLetter:
-      sns: '${self:service}-${self:provider.stage}-offFromWork-dead-letter-topic'
+      sns: ${self:service}-${self:provider.stage}-offFromWork-dead-letter-topic
     events:
       - schedule: cron(0 10 ? * MON-FRI *) # 10 am UTC = 6 pm HKT
 
@@ -77,7 +86,7 @@ custom:
     seed:
       domain:
         sources:
-          - table: ${env:MESSAGE_TABLE}
+          - table: ${self:service}-${self:provider.stage}-messages
             sources: [./test/helper/dynamodbSeed.json]
   # serverless-plugin-dynamodb-autoscaling
   dynamodbAutoscaling:
@@ -85,12 +94,15 @@ custom:
       Jung2BotDynamoDB:
         minCapacity: 1
         maxCapacity: 1000
+      ChatIDsDynamoDB:
+        minCapacity: 1
+        maxCapacity: 1000
 
 resources:
   Resources:
-    # Jung2Bot DynamoDB
+    # Messages DynamoDB Table
     Jung2BotDynamoDB:
-      Type: 'AWS::DynamoDB::Table'
+      Type: AWS::DynamoDB::Table
       DeletionPolicy: Retain
       Properties:
         AttributeDefinitions:
@@ -106,7 +118,7 @@ resources:
           - AttributeName: dateCreated
             KeyType: RANGE
         GlobalSecondaryIndexes:
-          - IndexName: ${env:MESSAGE_TABLE_GSI}
+          - IndexName: chatId-dateCreated-GSI
             KeySchema:
               - AttributeName: chatId
                 KeyType: HASH
@@ -135,4 +147,24 @@ resources:
         TimeToLiveSpecification:
           AttributeName: ttl
           Enabled: true
-        TableName: ${env:MESSAGE_TABLE}
+        TableName: ${self:service}-${self:provider.stage}-messages
+    # ChatId DynamoDB Table
+    ChatIDsDynamoDB:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: chatId
+            AttributeType: N
+        KeySchema:
+          - AttributeName: chatId
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+        TableName: ${self:service}-${self:provider.stage}-chatIds

@@ -18,7 +18,27 @@ export default class DynamoDB {
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
   }
 
-  async saveMessage ({ message, days = 7 }) {
+  async saveChatId ({ message, days = 7 }) {
+    const params = {
+      TableName: process.env.CHATID_TABLE,
+      Key: { chatId: message.chat.id },
+      UpdateExpression: 'SET #dateCreated = :dateCreated, #ttl = :ttl',
+      ExpressionAttributeNames: {
+        '#dateCreated': 'dateCreated',
+        '#ttl': 'ttl'
+      },
+      ExpressionAttributeValues: {
+        ':dateCreated': moment().utcOffset(8).format(),
+        ':ttl': moment().utcOffset(8).add(days, 'days').unix()
+      }
+    }
+    this.logger.debug('params', params)
+    const response = await this.documentClient.update(params).promise()
+    this.logger.trace('response', response)
+    return response
+  }
+
+  async saveStatMessage ({ message, days = 7 }) {
     const item = {
       id: uuid.v4(),
       chatId: message.chat.id,
@@ -34,6 +54,14 @@ export default class DynamoDB {
     const response = await this.documentClient.put({ TableName: process.env.MESSAGE_TABLE, Item: item }).promise()
     this.logger.trace('response', response)
     return response
+  }
+
+  async saveMessage (options) {
+    const saveChatIdPromise = this.saveChatId(options)
+    const saveStatMessagePromise = this.saveStatMessage(options)
+    const promises = [saveChatIdPromise, saveStatMessagePromise]
+    const [saveChatIdResponse, saveStatMessageResponse] = await Promise.all(promises)
+    return { saveChatIdResponse, saveStatMessageResponse }
   }
 
   async getRowsByChatId ({ chatId, days = 7 }) {
