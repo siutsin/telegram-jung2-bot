@@ -22,7 +22,7 @@ export default class DynamoDB {
     const params = {
       TableName: process.env.CHATID_TABLE,
       Key: { chatId: message.chat.id },
-      UpdateExpression: 'set #dateCreated = :dateCreated and set #ttl = :ttl',
+      UpdateExpression: 'SET #dateCreated = :dateCreated, #ttl = :ttl',
       ExpressionAttributeNames: {
         '#dateCreated': 'dateCreated',
         '#ttl': 'ttl'

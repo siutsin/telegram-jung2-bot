@@ -156,13 +156,9 @@ resources:
         AttributeDefinitions:
           - AttributeName: chatId
             AttributeType: N
-          - AttributeName: dateCreated
-            AttributeType: S
         KeySchema:
           - AttributeName: chatId
             KeyType: HASH
-          - AttributeName: dateCreated
-            KeyType: RANGE
         ProvisionedThroughput:
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
