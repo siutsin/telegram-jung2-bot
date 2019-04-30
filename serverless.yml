@@ -15,6 +15,7 @@ provider:
     LOG_LEVEL: ${env:LOG_LEVEL, 'error'}
     TELEGRAM_BOT_TOKEN: ${ssm:${self:service}-${self:provider.stage}-telegram-api-token~true}
     MESSAGE_TABLE: ${self:service}-${self:provider.stage}-messages
+    MESSAGE_TABLE_GSI: ${self:custom.jung2bot.MESSAGE_TABLE_GSI}
     CHATID_TABLE: ${self:service}-${self:provider.stage}-chatIds
   tags:
     Name: jung2bot
@@ -72,6 +73,8 @@ plugins:
   - serverless-offline
 
 custom:
+  jung2bot:
+    MESSAGE_TABLE_GSI: chatId-dateCreated-GSI
   # serverless-domain-manager
   customDomain:
     domainName: ${env:DOMAIN}
@@ -118,7 +121,7 @@ resources:
           - AttributeName: dateCreated
             KeyType: RANGE
         GlobalSecondaryIndexes:
-          - IndexName: chatId-dateCreated-GSI
+          - IndexName: ${self:custom.jung2bot.MESSAGE_TABLE_GSI}
             KeySchema:
               - AttributeName: chatId
                 KeyType: HASH
