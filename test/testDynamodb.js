@@ -14,6 +14,9 @@ test.before(t => {
   AWS.mock('DynamoDB.DocumentClient', 'put', (params, callback) => {
     callback(null, stubPutMessage)
   })
+  AWS.mock('DynamoDB.DocumentClient', 'update', (params, callback) => {
+    callback(null, stubPutMessage)
+  })
   AWS.mock('DynamoDB.DocumentClient', 'query', (params, callback) => {
     callback(null, stubQueryMessage)
   })
