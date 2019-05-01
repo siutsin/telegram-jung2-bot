@@ -1,7 +1,6 @@
 import moment from 'moment'
 import AWS from 'aws-sdk'
 import Pino from 'pino'
-import uuid from 'uuid'
 
 export default class DynamoDB {
   constructor (options) {
@@ -40,7 +39,6 @@ export default class DynamoDB {
 
   async saveStatMessage ({ message, days = 7 }) {
     const item = {
-      id: uuid.v4(),
       chatId: message.chat.id,
       chatTitle: message.chat.title,
       userId: message.from.id,
@@ -68,7 +66,6 @@ export default class DynamoDB {
     const _getRowsByChatId = async (startKey) => {
       const params = {
         TableName: process.env.MESSAGE_TABLE,
-        IndexName: process.env.MESSAGE_TABLE_GSI,
         KeyConditionExpression: 'chatId = :chat_id AND dateCreated > :date_created',
         ScanIndexForward: false,
         ExpressionAttributeValues: {
