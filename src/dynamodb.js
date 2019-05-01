@@ -38,18 +38,32 @@ export default class DynamoDB {
   }
 
   async saveStatMessage ({ message, days = 7 }) {
-    const item = {
-      chatId: message.chat.id,
-      chatTitle: message.chat.title,
-      userId: message.from.id,
-      username: message.from.username,
-      firstName: message.from.first_name,
-      lastName: message.from.last_name,
-      dateCreated: moment().utcOffset(8).format(),
-      ttl: moment().utcOffset(8).add(days, 'days').unix()
+    const params = {
+      TableName: process.env.MESSAGE_TABLE,
+      Key: {
+        chatId: message.chat.id,
+        dateCreated: moment().utcOffset(8).format()
+      },
+      UpdateExpression: 'SET #ct = :ct, #ui = :ui, #un = :un, #fn = :fn, #ln = :ln, #ttl = :ttl',
+      ExpressionAttributeNames: {
+        '#ct': 'chatTitle',
+        '#ui': 'userId',
+        '#un': 'username',
+        '#fn': 'firstName',
+        '#ln': 'lastName',
+        '#ttl': 'ttl'
+      },
+      ExpressionAttributeValues: {
+        ':ct': message.chat.title,
+        ':ui': message.from.id,
+        ':un': message.from.username,
+        ':fn': message.from.first_name,
+        ':ln': message.from.last_name,
+        ':ttl': moment().add(days, 'days').unix()
+      }
     }
-    this.logger.debug('item', item)
-    const response = await this.documentClient.put({ TableName: process.env.MESSAGE_TABLE, Item: item }).promise()
+    this.logger.debug('params', params)
+    const response = await this.documentClient.update(params).promise()
     this.logger.trace('response', response)
     return response
   }
