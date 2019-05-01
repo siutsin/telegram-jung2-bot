@@ -40,8 +40,7 @@
     "moment": "^2.24.0",
     "pino": "^5.12.3",
     "pino-pretty": "^3.0.0",
-    "source-map-support": "^0.5.12",
-    "uuid": "^3.3.2"
+    "source-map-support": "^0.5.12"
   },
   "devDependencies": {
     "@babel/cli": "^7.4.4",

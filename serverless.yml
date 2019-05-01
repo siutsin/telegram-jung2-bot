@@ -15,7 +15,6 @@ provider:
     LOG_LEVEL: ${env:LOG_LEVEL, 'error'}
     TELEGRAM_BOT_TOKEN: ${ssm:${self:service}-${self:provider.stage}-telegram-api-token~true}
     MESSAGE_TABLE: ${self:service}-${self:provider.stage}-messages
-    MESSAGE_TABLE_GSI: ${self:custom.jung2bot.MESSAGE_TABLE_GSI}
     CHATID_TABLE: ${self:service}-${self:provider.stage}-chatIds
   tags:
     Name: jung2bot
@@ -109,40 +108,18 @@ resources:
       DeletionPolicy: Retain
       Properties:
         AttributeDefinitions:
-          - AttributeName: id
-            AttributeType: S
-          - AttributeName: dateCreated
-            AttributeType: S
           - AttributeName: chatId
             AttributeType: N
+          - AttributeName: dateCreated
+            AttributeType: S
         KeySchema:
-          - AttributeName: id
+          - AttributeName: chatId
             KeyType: HASH
           - AttributeName: dateCreated
             KeyType: RANGE
-        GlobalSecondaryIndexes:
-          - IndexName: ${self:custom.jung2bot.MESSAGE_TABLE_GSI}
-            KeySchema:
-              - AttributeName: chatId
-                KeyType: HASH
-              - AttributeName: dateCreated
-                KeyType: RANGE
-            Projection:
-              NonKeyAttributes:
-                - chatTitle
-                - userId
-                - username
-                - firstName
-                - lastName
-              ProjectionType: INCLUDE
-            ProvisionedThroughput:
-              ReadCapacityUnits: 1
-              WriteCapacityUnits: 1
         ProvisionedThroughput:
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
-        SSESpecification:
-          SSEEnabled: true
         PointInTimeRecoverySpecification:
           PointInTimeRecoveryEnabled: true
         StreamSpecification:
@@ -167,6 +144,8 @@ resources:
           WriteCapacityUnits: 1
         PointInTimeRecoverySpecification:
           PointInTimeRecoveryEnabled: true
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
         TimeToLiveSpecification:
           AttributeName: ttl
           Enabled: true
