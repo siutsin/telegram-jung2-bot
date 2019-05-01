@@ -11,9 +11,6 @@ const stubPutMessage = 'successfully put item into the database'
 const stubQueryMessage = { Items: 'successfully query items from the database' }
 
 test.beforeEach(t => {
-  AWS.mock('DynamoDB.DocumentClient', 'put', (params, callback) => {
-    callback(null, stubPutMessage)
-  })
   AWS.mock('DynamoDB.DocumentClient', 'update', (params, callback) => {
     callback(null, stubPutMessage)
   })
