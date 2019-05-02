@@ -4,6 +4,7 @@ import dotenv from 'dotenv'
 import AWS from 'aws-sdk-mock'
 import DynamoDB from '../src/dynamodb'
 import stubTelegramNewMessage from './stub/telegramNewMessage'
+import stubTelegramNewMessageOptional from './stub/telegramNewMessageOptional'
 
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
@@ -26,9 +27,48 @@ test.afterEach.always(t => {
   AWS.restore()
 })
 
+test('buildExpression', t => {
+  const dynamodb = new DynamoDB()
+  const message = stubTelegramNewMessage.message
+  const {
+    Key,
+    UpdateExpression,
+    ExpressionAttributeNames,
+    ExpressionAttributeValues
+  } = dynamodb.buildExpression({ message })
+  t.is(Key.chatId, -4)
+  t.regex(Key.dateCreated, /[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\+[0-9]{2}:[0-9]{2}/)
+  t.is(UpdateExpression, 'SET #chatTitle = :chatTitle, #userId = :userId, #username = :username, #firstName = :firstName, #lastName = :lastName, #ttl = :ttl')
+  t.deepEqual(ExpressionAttributeNames, {
+    '#chatTitle': 'chatTitle',
+    '#firstName': 'firstName',
+    '#lastName': 'lastName',
+    '#ttl': 'ttl',
+    '#userId': 'userId',
+    '#username': 'username'
+  })
+  t.regex(ExpressionAttributeValues[':ttl'].toString(), /[0-9]{10}/)
+  delete ExpressionAttributeValues[':ttl']
+  t.deepEqual(ExpressionAttributeValues, {
+    ':chatTitle': 'title',
+    ':firstName': 'first_name',
+    ':lastName': 'last_name',
+    ':userId': 3,
+    ':username': 'username'
+  })
+})
+
 test('saveMessage', async t => {
   const dynamodb = new DynamoDB()
   const message = stubTelegramNewMessage.message
+  const { saveChatIdResponse, saveStatMessageResponse } = await dynamodb.saveMessage({ message })
+  t.is(saveChatIdResponse, 'successfully put item into the database')
+  t.is(saveStatMessageResponse, 'successfully put item into the database')
+})
+
+test('saveMessage - optional fields', async t => {
+  const dynamodb = new DynamoDB()
+  const message = stubTelegramNewMessageOptional.message
   const { saveChatIdResponse, saveStatMessageResponse } = await dynamodb.saveMessage({ message })
   t.is(saveChatIdResponse, 'successfully put item into the database')
   t.is(saveStatMessageResponse, 'successfully put item into the database')
