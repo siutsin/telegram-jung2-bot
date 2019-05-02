@@ -3,15 +3,10 @@
   "message": {
     "message_id": 2,
     "from": {
-      "id": 3,
-      "is_bot": false,
-      "first_name": "first_name",
-      "last_name": "last_name",
-      "username": "username"
+      "is_bot": false
     },
     "chat": {
       "id": -4,
-      "title": "title",
       "type": "group",
       "all_members_are_administrators": true
     },
