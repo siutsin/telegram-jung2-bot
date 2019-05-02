@@ -37,30 +37,53 @@ export default class DynamoDB {
     return response
   }
 
+  buildExpression ({ message, days }) {
+    const updateExpressionArray = []
+    const ExpressionAttributeNames = {}
+    const ExpressionAttributeValues = {}
+    const Key = {
+      chatId: message.chat.id,
+      dateCreated: moment().utcOffset(8).format()
+    }
+
+    const mapping = {
+      'chat.title': 'chatTitle',
+      'from.id': 'userId',
+      'from.username': 'username',
+      'from.first_name': 'firstName',
+      'from.last_name': 'lastName'
+    }
+    Object.keys(mapping).forEach((key) => {
+      const attribute = mapping[key]
+      const path = key.split('.')
+      if (message[path[0]][path[1]]) {
+        updateExpressionArray.push(`#${attribute} = :${attribute}`)
+        ExpressionAttributeNames[`#${attribute}`] = attribute
+        ExpressionAttributeValues[`:${attribute}`] = message[path[0]][path[1]]
+      }
+    })
+
+    updateExpressionArray.push('#ttl = :ttl')
+    ExpressionAttributeNames['#ttl'] = 'ttl'
+    ExpressionAttributeValues[':ttl'] = moment().add(days, 'days').unix()
+
+    const UpdateExpression = `SET ${updateExpressionArray.join(', ')}`
+    return { Key, UpdateExpression, ExpressionAttributeNames, ExpressionAttributeValues }
+  }
+
   async saveStatMessage ({ message, days = 7 }) {
+    const {
+      Key,
+      UpdateExpression,
+      ExpressionAttributeNames,
+      ExpressionAttributeValues
+    } = this.buildExpression({ message, days })
     const params = {
       TableName: process.env.MESSAGE_TABLE,
-      Key: {
-        chatId: message.chat.id,
-        dateCreated: moment().utcOffset(8).format()
-      },
-      UpdateExpression: 'SET #ct = :ct, #ui = :ui, #un = :un, #fn = :fn, #ln = :ln, #ttl = :ttl',
-      ExpressionAttributeNames: {
-        '#ct': 'chatTitle',
-        '#ui': 'userId',
-        '#un': 'username',
-        '#fn': 'firstName',
-        '#ln': 'lastName',
-        '#ttl': 'ttl'
-      },
-      ExpressionAttributeValues: {
-        ':ct': message.chat.title,
-        ':ui': message.from.id,
-        ':un': message.from.username,
-        ':fn': message.from.first_name,
-        ':ln': message.from.last_name,
-        ':ttl': moment().add(days, 'days').unix()
-      }
+      Key,
+      UpdateExpression,
+      ExpressionAttributeNames,
+      ExpressionAttributeValues
     }
     this.logger.debug('params', params)
     const response = await this.documentClient.update(params).promise()
