@@ -9,9 +9,14 @@ import stubAllJungMessageResponse from './stub/allJungMessageResponse'
 
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
+const stubQueryMessage = { Items: 'successfully query items from the database' }
+
 test.before(t => {
   AWS.mock('DynamoDB.DocumentClient', 'scan', (params, callback) => {
     callback(null, stubAllJungDatabaseResponseReverseOrder)
+  })
+  AWS.mock('DynamoDB.DocumentClient', 'query', (params, callback) => {
+    callback(null, stubQueryMessage)
   })
 })
 
