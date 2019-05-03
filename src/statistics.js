@@ -16,8 +16,6 @@ export default class Statistics {
       soFar[row.userId] = soFar[row.userId] ? soFar[row.userId] + 1 : 1
       return soFar
     }, {})
-    // DynamoDB scan does not support sorting. Hence a manual sorting is required here.
-    // TODO: looks like a performance issue here.
     const usersCount = rows
       .sort((a, b) => moment(a.dateCreated).isAfter(moment(b.dateCreated)) ? -1 : 1)
       .reduce((soFar, row) => {
@@ -83,12 +81,16 @@ export default class Statistics {
     return fullMessage
   }
 
+  async generateReportByChatId (chatId, options) {
+    const rows = await this.dynamodb.getRowsByChatId({ chatId })
+    return this.generateReport(rows, options)
+  }
+
   async getStats (message, options) {
     this.logger.info(`getStats start at ${moment().utcOffset(8).format()}`)
     let returnMessage = ''
     try {
-      const rows = await this.dynamodb.getRowsByChatId({ chatId: message.chat.id })
-      const statsMessage = await this.generateReport(rows, options)
+      const statsMessage = await this.generateReportByChatId(message.chat.id, options)
       await this.jung2botUtil.sendMessage(message.chat.id, statsMessage)
       returnMessage = statsMessage
     } catch (e) {
