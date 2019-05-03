@@ -17,26 +17,6 @@ export default class DynamoDB {
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
   }
 
-  async saveChatId ({ message, days = 7 }) {
-    const params = {
-      TableName: process.env.CHATID_TABLE,
-      Key: { chatId: message.chat.id },
-      UpdateExpression: 'SET #dateCreated = :dateCreated, #ttl = :ttl',
-      ExpressionAttributeNames: {
-        '#dateCreated': 'dateCreated',
-        '#ttl': 'ttl'
-      },
-      ExpressionAttributeValues: {
-        ':dateCreated': moment().utcOffset(8).format(),
-        ':ttl': moment().utcOffset(8).add(days, 'days').unix()
-      }
-    }
-    this.logger.debug('params', params)
-    const response = await this.documentClient.update(params).promise()
-    this.logger.trace('response', response)
-    return response
-  }
-
   buildExpression ({ message, days }) {
     const updateExpressionArray = []
     const ExpressionAttributeNames = {}
@@ -71,7 +51,7 @@ export default class DynamoDB {
     return { Key, UpdateExpression, ExpressionAttributeNames, ExpressionAttributeValues }
   }
 
-  async saveStatMessage ({ message, days = 7 }) {
+  async saveStats ({ message, days = 7 }) {
     const {
       Key,
       UpdateExpression,
@@ -91,9 +71,29 @@ export default class DynamoDB {
     return response
   }
 
+  async saveChatId ({ message, days = 7 }) {
+    const params = {
+      TableName: process.env.CHATID_TABLE,
+      Key: { chatId: message.chat.id },
+      UpdateExpression: 'SET #dateCreated = :dateCreated, #ttl = :ttl',
+      ExpressionAttributeNames: {
+        '#dateCreated': 'dateCreated',
+        '#ttl': 'ttl'
+      },
+      ExpressionAttributeValues: {
+        ':dateCreated': moment().utcOffset(8).format(),
+        ':ttl': moment().utcOffset(8).add(days, 'days').unix()
+      }
+    }
+    this.logger.debug('params', params)
+    const response = await this.documentClient.update(params).promise()
+    this.logger.trace('response', response)
+    return response
+  }
+
   async saveMessage (options) {
     const saveChatIdPromise = this.saveChatId(options)
-    const saveStatMessagePromise = this.saveStatMessage(options)
+    const saveStatMessagePromise = this.saveStats(options)
     const promises = [saveChatIdPromise, saveStatMessagePromise]
     const [saveChatIdResponse, saveStatMessageResponse] = await Promise.all(promises)
     return { saveChatIdResponse, saveStatMessageResponse }
@@ -132,17 +132,29 @@ export default class DynamoDB {
     return rows
   }
 
-  async getAllRowsWithinDays ({ days = 7 } = {}) {
-    const params = {
-      TableName: process.env.MESSAGE_TABLE,
-      ScanIndexForward: false,
-      FilterExpression: 'dateCreated > :date_created',
-      ExpressionAttributeValues: {
-        ':date_created': moment().utcOffset(8).subtract(days, 'days').format()
+  async getAllGroupIds () {
+    const _getAllGroupIds = async (startKey) => {
+      const params = {
+        TableName: process.env.CHATID_TABLE
       }
+      if (startKey) {
+        params.ExclusiveStartKey = startKey
+      }
+      const result = await this.documentClient.scan(params).promise()
+      this.logger.debug(result)
+      return result
     }
-    const result = await this.documentClient.scan(params).promise()
-    this.logger.trace(result.Items)
-    return result.Items
+    let lastEvaluatedKey
+    let i = 0
+    let rows = []
+    do {
+      this.logger.info(`i: ${i} lastEvaluatedKey: ${JSON.stringify(lastEvaluatedKey)}`)
+      const result = await _getAllGroupIds(lastEvaluatedKey)
+      rows = rows.concat(result.Items)
+      lastEvaluatedKey = result.LastEvaluatedKey
+      i++
+    } while (lastEvaluatedKey)
+    this.logger.info(`_getAllGroupIds rows count: ${rows.length}`)
+    return rows
   }
 }
