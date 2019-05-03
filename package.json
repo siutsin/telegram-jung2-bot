@@ -34,7 +34,7 @@
   "dependencies": {
     "@babel/polyfill": "^7.4.4",
     "@babel/runtime": "^7.4.4",
-    "aws-sdk": "^2.448.0",
+    "aws-sdk": "^2.449.0",
     "axios": "^0.18.0",
     "bottleneck": "^2.18.0",
     "moment": "^2.24.0",
