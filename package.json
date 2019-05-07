@@ -62,7 +62,7 @@
     "serverless-domain-manager": "^3.2.1",
     "serverless-dotenv-plugin": "^2.0.1",
     "serverless-dynamodb-local": "^0.2.37",
-    "serverless-offline": "^4.9.4",
+    "serverless-offline": "^4.10.0",
     "serverless-plugin-dynamodb-autoscaling": "^3.1.0",
     "serverless-plugin-lambda-dead-letter": "^1.2.1",
     "serverless-webpack": "^5.3.0",
