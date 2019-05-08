@@ -60,7 +60,7 @@
     "nyc": "^14.1.0",
     "serverless": "^1.41.1",
     "serverless-domain-manager": "^3.2.1",
-    "serverless-dotenv-plugin": "^2.0.1",
+    "serverless-dotenv-plugin": "^2.1.1",
     "serverless-dynamodb-local": "^0.2.37",
     "serverless-offline": "^4.10.0",
     "serverless-plugin-dynamodb-autoscaling": "^3.1.0",
