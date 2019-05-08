@@ -52,7 +52,7 @@
     "babel-loader": "^8.0.5",
     "babel-plugin-source-map-support": "^2.0.1",
     "codecov": "^3.3.0",
-    "copy-dynamodb-table": "^2.0.16",
+    "copy-dynamodb-table": "^2.0.17",
     "coveralls": "^3.0.3",
     "dotenv": "^8.0.0",
     "lodash.isstring": "^4.0.1",
