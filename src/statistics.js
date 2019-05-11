@@ -44,7 +44,7 @@ export default class Statistics {
     }
   }
 
-  async generateReport (rows, options = {}) {
+  async generateReport (rows, options) {
     this.logger.info(`generateReport start at ${moment().utcOffset(8).format()}`)
     const normalisedRows = await this.normaliseRows(rows)
     const limit = options.limit || undefined
@@ -86,7 +86,7 @@ export default class Statistics {
     return this.generateReport(rows, options)
   }
 
-  async getStats (chatId, options = {}) {
+  async getStats (chatId, options) {
     this.logger.info(`getStats start at ${moment().utcOffset(8).format()}`)
     let returnMessage = ''
     if (options.offFromWork) {
@@ -106,7 +106,7 @@ export default class Statistics {
   }
 
   async allJung (chatId) {
-    return this.getStats(chatId)
+    return this.getStats(chatId, {})
   }
 
   async topTen (chatId) {
