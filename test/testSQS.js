@@ -9,6 +9,7 @@ import stubSQSResponse from './stub/sqsResponse'
 import stubTopTenEvent from './stub/onTopTenMessageEvent'
 import stubAllJungSQSEvent from './stub/onAllJungSQSEvent'
 import stubTopTenSQSEvent from './stub/onTopTenSQSEvent'
+import stubOffFromWorkSQSEvent from './stub/onOffFromWorkSQSEvent'
 import stubAllJungMessageResponse from './stub/allJungMessageResponse'
 import stubAllJungDBResponse from './stub/allJungDatabaseResponse'
 
@@ -71,5 +72,16 @@ test('onEvent - topten', async t => {
     })
   const sqs = new SQS()
   const response = await sqs.onEvent(stubTopTenSQSEvent)
+  t.is(response, stubDeleteMessage)
+})
+
+test('onEvent - offFromWork', async t => {
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .post('/sendMessage')
+    .reply(200, {
+      data: stubAllJungMessageResponse
+    })
+  const sqs = new SQS()
+  const response = await sqs.onEvent(stubOffFromWorkSQSEvent)
   t.is(response, stubDeleteMessage)
 })
