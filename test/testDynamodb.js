@@ -4,6 +4,7 @@ import dotenv from 'dotenv'
 import AWS from 'aws-sdk-mock'
 import DynamoDB from '../src/dynamodb'
 import stubTelegramNewMessage from './stub/telegramNewMessage'
+import stubTelegramNewMessageOptional from './stub/telegramNewMessageOptional'
 
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
@@ -26,9 +27,48 @@ test.afterEach.always(t => {
   AWS.restore()
 })
 
+test('buildExpression', t => {
+  const dynamodb = new DynamoDB()
+  const message = stubTelegramNewMessage.message
+  const {
+    Key,
+    UpdateExpression,
+    ExpressionAttributeNames,
+    ExpressionAttributeValues
+  } = dynamodb.buildExpression({ message })
+  t.is(Key.chatId, -4)
+  t.regex(Key.dateCreated, /[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\+[0-9]{2}:[0-9]{2}/)
+  t.is(UpdateExpression, 'SET #chatTitle = :chatTitle, #userId = :userId, #username = :username, #firstName = :firstName, #lastName = :lastName, #ttl = :ttl')
+  t.deepEqual(ExpressionAttributeNames, {
+    '#chatTitle': 'chatTitle',
+    '#firstName': 'firstName',
+    '#lastName': 'lastName',
+    '#ttl': 'ttl',
+    '#userId': 'userId',
+    '#username': 'username'
+  })
+  t.regex(ExpressionAttributeValues[':ttl'].toString(), /[0-9]{10}/)
+  delete ExpressionAttributeValues[':ttl']
+  t.deepEqual(ExpressionAttributeValues, {
+    ':chatTitle': 'title',
+    ':firstName': 'first_name',
+    ':lastName': 'last_name',
+    ':userId': 3,
+    ':username': 'username'
+  })
+})
+
 test('saveMessage', async t => {
   const dynamodb = new DynamoDB()
   const message = stubTelegramNewMessage.message
+  const { saveChatIdResponse, saveStatMessageResponse } = await dynamodb.saveMessage({ message })
+  t.is(saveChatIdResponse, 'successfully put item into the database')
+  t.is(saveStatMessageResponse, 'successfully put item into the database')
+})
+
+test('saveMessage - optional fields', async t => {
+  const dynamodb = new DynamoDB()
+  const message = stubTelegramNewMessageOptional.message
   const { saveChatIdResponse, saveStatMessageResponse } = await dynamodb.saveMessage({ message })
   t.is(saveChatIdResponse, 'successfully put item into the database')
   t.is(saveStatMessageResponse, 'successfully put item into the database')
@@ -61,16 +101,25 @@ test.serial('getRowsByChatId with LastEvaluatedKey', async t => {
   t.is(response[0], 'dummy')
 })
 
-test('getAllRowsWithinDays - 5 days', async t => {
+test.serial('getAllGroupIds with LastEvaluatedKey', async t => {
+  AWS.restore()
+  let i = 3
+  const stubObject = () => {
+    const obj = {
+      Items: ['dummy'],
+      LastEvaluatedKey: { d: 'ummy' }
+    }
+    if (i <= 0) { delete obj.LastEvaluatedKey }
+    i--
+    return obj
+  }
+  AWS.mock('DynamoDB.DocumentClient', 'scan', (params, callback) => {
+    const obj = stubObject()
+    callback(null, obj)
+  })
   const dynamodb = new DynamoDB()
-  const response = await dynamodb.getAllRowsWithinDays({ days: 5 })
-  t.is(response, stubQueryMessage.Items)
-})
-
-test('getAllRowsWithinDays - default 7 days', async t => {
-  const dynamodb = new DynamoDB()
-  const response = await dynamodb.getAllRowsWithinDays()
-  t.is(response, stubQueryMessage.Items)
+  const response = await dynamodb.getAllGroupIds()
+  t.is(response[0], 'dummy')
 })
 
 test('In serverless-offline environment', async t => {
