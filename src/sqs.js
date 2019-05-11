@@ -5,6 +5,7 @@ import Statistics from './statistics'
 
 const ACTION_KEY_TOPTEN = 'topten'
 const ACTION_KEY_ALLJUNG = 'alljung'
+const ACTION_KEY_OFF_FROM_WORK = 'offFromWork'
 
 export default class SQS {
   constructor () {
@@ -25,6 +26,9 @@ export default class SQS {
         break
       case ACTION_KEY_TOPTEN:
         await this.statistics.topTen(chatId)
+        break
+      case ACTION_KEY_OFF_FROM_WORK:
+        await this.statistics.offFromWork(chatId)
         break
     }
     const deleteParams = {
@@ -55,6 +59,24 @@ export default class SQS {
         }
       },
       MessageBody: 'sendTopTenMessage',
+      QueueUrl: process.env.EVENT_QUEUE_URL
+    })
+  }
+
+  async sendOffFromWorkMessage (chatId) {
+    this.logger.info(`SQS sendOffFromWorkMessage start at ${moment().utcOffset(8).format()}`)
+    return this.sendSQSMessage({
+      MessageAttributes: {
+        chatId: {
+          DataType: 'Number',
+          StringValue: chatId.toString()
+        },
+        action: {
+          DataType: 'String',
+          StringValue: ACTION_KEY_OFF_FROM_WORK
+        }
+      },
+      MessageBody: 'sendOffFromWorkMessage',
       QueueUrl: process.env.EVENT_QUEUE_URL
     })
   }

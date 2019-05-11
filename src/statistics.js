@@ -86,13 +86,16 @@ export default class Statistics {
     return this.generateReport(rows, options)
   }
 
-  async getStats (chatId, options) {
+  async getStats (chatId, options = {}) {
     this.logger.info(`getStats start at ${moment().utcOffset(8).format()}`)
     let returnMessage = ''
+    if (options.offFromWork) {
+      returnMessage = '夠鐘收工~~\n\n'
+    }
     try {
       const statsMessage = await this.generateReportByChatId(chatId, options)
-      await this.jung2botUtil.sendMessage(chatId, statsMessage)
-      returnMessage = statsMessage
+      returnMessage += statsMessage
+      await this.jung2botUtil.sendMessage(chatId, returnMessage)
     } catch (e) {
       this.logger.error(e.message)
       if (!e.message.match(/[45][0-9]{2}/)) { throw e }
@@ -108,5 +111,9 @@ export default class Statistics {
 
   async topTen (chatId) {
     return this.getStats(chatId, { limit: 10 })
+  }
+
+  async offFromWork (chatId) {
+    return this.getStats(chatId, { limit: 10, offFromWork: true })
   }
 }
