@@ -101,16 +101,25 @@ test.serial('getRowsByChatId with LastEvaluatedKey', async t => {
   t.is(response[0], 'dummy')
 })
 
-test('getAllRowsWithinDays - 5 days', async t => {
+test.serial('getAllGroupIds with LastEvaluatedKey', async t => {
+  AWS.restore()
+  let i = 3
+  const stubObject = () => {
+    const obj = {
+      Items: ['dummy'],
+      LastEvaluatedKey: { d: 'ummy' }
+    }
+    if (i <= 0) { delete obj.LastEvaluatedKey }
+    i--
+    return obj
+  }
+  AWS.mock('DynamoDB.DocumentClient', 'scan', (params, callback) => {
+    const obj = stubObject()
+    callback(null, obj)
+  })
   const dynamodb = new DynamoDB()
-  const response = await dynamodb.getAllRowsWithinDays({ days: 5 })
-  t.is(response, stubQueryMessage.Items)
-})
-
-test('getAllRowsWithinDays - default 7 days', async t => {
-  const dynamodb = new DynamoDB()
-  const response = await dynamodb.getAllRowsWithinDays()
-  t.is(response, stubQueryMessage.Items)
+  const response = await dynamodb.getAllGroupIds()
+  t.is(response[0], 'dummy')
 })
 
 test('In serverless-offline environment', async t => {

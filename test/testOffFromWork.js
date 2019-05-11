@@ -1,11 +1,11 @@
 import test from 'ava'
 import path from 'path'
 import AWS from 'aws-sdk-mock'
-import nock from 'nock'
-import OffFromWork from '../src/offFromWork'
 import dotenv from 'dotenv'
+import OffFromWork from '../src/offFromWork'
+
 import stubAllJungDatabaseResponseReverseOrder from './stub/allJungDatabaseResponseReverseOrder'
-import stubAllJungMessageResponse from './stub/allJungMessageResponse'
+import stubSQSResponse from './stub/sqsResponse'
 
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
@@ -13,10 +13,9 @@ test.before(t => {
   AWS.mock('DynamoDB.DocumentClient', 'scan', (params, callback) => {
     callback(null, stubAllJungDatabaseResponseReverseOrder)
   })
-})
-
-test.afterEach.always(async t => {
-  nock.cleanAll()
+  AWS.mock('SQS', 'sendMessage', (params, callback) => {
+    callback(null, stubSQSResponse)
+  })
 })
 
 test.after.always(t => {
@@ -24,37 +23,7 @@ test.after.always(t => {
 })
 
 test('off', async t => {
-  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
-    .persist()
-    .post('/sendMessage')
-    .reply(200, {
-      data: stubAllJungMessageResponse
-    })
   const offFromWork = new OffFromWork()
   const response = await offFromWork.off()
   t.truthy(response)
-})
-
-test.serial('off - should catch 4xx and 5xx error', async t => {
-  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
-    .persist()
-    .post('/sendMessage')
-    .reply(498, 'Request failed with status code 498')
-  const offFromWork = new OffFromWork()
-  const response = await offFromWork.off()
-  t.truthy(response)
-})
-
-test.serial.failing('off - with 999 error', async t => {
-  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
-    .persist()
-    .post('/sendMessage')
-    .reply(999, 'Request failed with status code 999')
-  try {
-    const offFromWork = new OffFromWork()
-    const response = await offFromWork.off()
-    t.falsy(response)
-  } catch (e) {
-    t.is(e.message, 'Request failed with status code 999')
-  }
 })
