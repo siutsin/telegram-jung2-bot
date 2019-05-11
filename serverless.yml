@@ -43,7 +43,7 @@ functions:
   messages:
     handler: src/handler.onMessage
     timeout: 30
-    memorySize: 128
+    memorySize: 256
     deadLetter:
       sns: ${self:service}-${self:provider.stage}-messages-dead-letter-topic
     events:
@@ -52,8 +52,8 @@ functions:
           method: post
   offFromWork:
     handler: src/handler.onOffFromWork
-    timeout: 900
-    memorySize: 3008
+    timeout: 120
+    memorySize: 1024
     deadLetter:
       sns: ${self:service}-${self:provider.stage}-offFromWork-dead-letter-topic
     events:
