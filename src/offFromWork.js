@@ -14,10 +14,6 @@ export default class OffFromWork {
   }
 
   async statsPerGroup (chatIds) {
-    // https://core.telegram.org/bots/faq#my-bot-is-hitting-limits-how-do-i-avoid-this
-    // If you're sending bulk notifications to multiple users, the API will not allow more than 30 messages
-    // per second or so. Consider spreading out notifications over large intervals of 8—12 hours for best results.
-    // Also note that your bot will not be able to send more than 20 messages per minute to the same group.
     this.logger.info(`statsPerGroup start at ${moment().utcOffset(8).format()}`)
     const limiter = new Bottleneck({ // 25 messages per second
       maxConcurrent: 1,

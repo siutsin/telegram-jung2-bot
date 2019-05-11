@@ -43,7 +43,7 @@ functions:
   messages:
     handler: src/handler.onMessage
     timeout: 30
-    memorySize: 1024
+    memorySize: 128
     deadLetter:
       sns: ${self:service}-${self:provider.stage}-messages-dead-letter-topic
     events:
@@ -60,8 +60,13 @@ functions:
       - schedule: cron(0 10 ? * MON-FRI *) # 10 am UTC = 6 pm HKT
   queryEvent:
     handler: src/handler.onAllJung
-    timeout: 300
+    timeout: 60
     memorySize: 1024
+    # https://core.telegram.org/bots/faq#my-bot-is-hitting-limits-how-do-i-avoid-this
+    # If you're sending bulk notifications to multiple users, the API will not allow more than 30 messages
+    # per second or so. Consider spreading out notifications over large intervals of 8—12 hours for best results.
+    # Also note that your bot will not be able to send more than 20 messages per minute to the same group.
+    reservedConcurrency: 25
     deadLetter:
       sns: ${self:service}-${self:provider.stage}-queryEvent-dead-letter-topic
     events:
@@ -160,4 +165,4 @@ resources:
     EventQueue:
       Type: AWS::SQS::Queue
       Properties:
-        VisibilityTimeout: 360
+        VisibilityTimeout: 80
