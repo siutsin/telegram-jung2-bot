@@ -19,10 +19,13 @@ export default class SQS {
     const message = record.messageAttributes
     const chatId = Number(message.chatId.stringValue)
     const action = message.action.stringValue
-    if (action === ACTION_KEY_ALLJUNG) {
-      await this.statistics.allJung(chatId)
-    } else if (action === ACTION_KEY_TOPTEN) {
-      await this.statistics.topTen(chatId)
+    switch (action) {
+      case ACTION_KEY_ALLJUNG:
+        await this.statistics.allJung(chatId)
+        break
+      case ACTION_KEY_TOPTEN:
+        await this.statistics.topTen(chatId)
+        break
     }
     const deleteParams = {
       QueueUrl: process.env.EVENT_QUEUE_URL,
