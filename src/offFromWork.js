@@ -3,21 +3,17 @@ import moment from 'moment'
 import Bottleneck from 'bottleneck'
 import DynamoDB from './dynamodb'
 import Jung2botUtil from './jung2botUtil'
-import Statistics from './statistics'
+import SQS from './sqs'
 
 export default class OffFromWork {
   constructor () {
     this.jung2botUtil = new Jung2botUtil()
     this.dynamodb = new DynamoDB()
-    this.statistics = new Statistics()
+    this.sqs = new SQS()
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
   }
 
   async statsPerGroup (chatIds) {
-    // https://core.telegram.org/bots/faq#my-bot-is-hitting-limits-how-do-i-avoid-this
-    // If you're sending bulk notifications to multiple users, the API will not allow more than 30 messages
-    // per second or so. Consider spreading out notifications over large intervals of 8—12 hours for best results.
-    // Also note that your bot will not be able to send more than 20 messages per minute to the same group.
     this.logger.info(`statsPerGroup start at ${moment().utcOffset(8).format()}`)
     const limiter = new Bottleneck({ // 25 messages per second
       maxConcurrent: 1,
@@ -26,31 +22,17 @@ export default class OffFromWork {
     this.logger.debug('chatIds:', chatIds)
     for (const chatId of chatIds) {
       this.logger.info(`chatId: ${chatId}`)
-      let report = await this.statistics.generateReportByChatId(chatId, { limit: 10 })
-      report = '夠鐘收工~~\n\n' + report
-      try {
-        await limiter.schedule(() => this.jung2botUtil.sendMessage(chatId, report))
-      } catch (e) {
-        this.logger.error(`statsPerGroup error - id: ${chatId}, error: ${e.message}`)
-        // allow only 4xx and 5xx telegram API error
-        if (!e.message.match(/[45][0-9]{2}/)) { throw e }
-      }
+      await limiter.schedule(() => this.sqs.sendOffFromWorkMessage(chatId))
     }
     this.logger.info(`statsPerGroup finish at ${moment().utcOffset(8).format()}`)
   }
 
   async off () {
     this.logger.info(`off start at ${moment().utcOffset(8).format()}`)
-    try {
-      const rows = await this.dynamodb.getAllGroupIds()
-      const chatIds = rows.map(o => o.chatId)
-      await this.statsPerGroup(chatIds)
-      this.logger.info(`off finish at ${moment().utcOffset(8).format()}`)
-      return true
-    } catch (e) {
-      this.logger.error(e.message)
-      this.logger.info(`off finish with error at ${moment().utcOffset(8).format()}`)
-      throw e
-    }
+    const rows = await this.dynamodb.getAllGroupIds()
+    const chatIds = rows.map(o => o.chatId)
+    await this.statsPerGroup(chatIds)
+    this.logger.info(`off finish at ${moment().utcOffset(8).format()}`)
+    return true
   }
 }
