@@ -17,19 +17,18 @@ This bot is created for counting the number of message per participant in the gr
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**
 
-- [telegram-jung2-bot](#telegram-jung2-bot)
-  - [Setup](#setup)
-    - [AWS Credential](#aws-credential)
-    - [Telegram API Token](#telegram-api-token)
-    - [Create `.env` files](#create-env-files)
-    - [Deploy! 🚀](#deploy-)
-  - [Usage](#usage)
-  - [Development](#development)
-    - [Test API and DB locally](#test-api-and-db-locally)
-  - [Sponsor](#sponsor)
-  - [Author](#author)
-  - [Code Style](#code-style)
-  - [License](#license)
+- [Setup](#setup)
+  - [AWS Credential](#aws-credential)
+  - [Telegram API Token](#telegram-api-token)
+  - [Create `.env` files](#create-env-files)
+  - [Deploy! 🚀](#deploy-)
+- [Usage](#usage)
+- [Development](#development)
+  - [Test API and DB locally](#test-api-and-db-locally)
+- [Sponsor](#sponsor)
+- [Author](#author)
+- [Code Style](#code-style)
+- [License](#license)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
