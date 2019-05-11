@@ -86,27 +86,27 @@ export default class Statistics {
     return this.generateReport(rows, options)
   }
 
-  async getStats (message, options) {
+  async getStats (chatId, options) {
     this.logger.info(`getStats start at ${moment().utcOffset(8).format()}`)
     let returnMessage = ''
     try {
-      const statsMessage = await this.generateReportByChatId(message.chat.id, options)
-      await this.jung2botUtil.sendMessage(message.chat.id, statsMessage)
+      const statsMessage = await this.generateReportByChatId(chatId, options)
+      await this.jung2botUtil.sendMessage(chatId, statsMessage)
       returnMessage = statsMessage
     } catch (e) {
       this.logger.error(e.message)
       if (!e.message.match(/[45][0-9]{2}/)) { throw e }
-      returnMessage = `bot is removed in group ${message.chat.id}`
+      returnMessage = `bot is removed in group ${chatId}`
     }
     this.logger.info(`getStats finish at ${moment().utcOffset(8).format()}`)
     return returnMessage
   }
 
-  async allJung (message) {
-    return this.getStats(message)
+  async allJung (chatId) {
+    return this.getStats(chatId)
   }
 
-  async topTen (message) {
-    return this.getStats(message, { limit: 10 })
+  async topTen (chatId) {
+    return this.getStats(chatId, { limit: 10 })
   }
 }

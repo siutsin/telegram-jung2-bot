@@ -9,7 +9,8 @@
         "apigateway:*",
         "lambda:*",
         "tag:*",
-        "xray:*"
+        "xray:*",
+        "sqs:*"
       ],
       "Resource": "*"
     }
