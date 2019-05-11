@@ -1,4 +1,6 @@
 import AWS from 'aws-sdk'
+import Pino from 'pino'
+import moment from 'moment'
 import Statistics from './statistics'
 
 const ACTION_KEY_TOPTEN = 'topten'
@@ -6,11 +8,13 @@ const ACTION_KEY_ALLJUNG = 'alljung'
 
 export default class SQS {
   constructor () {
+    this.logger = new Pino({ level: process.env.LOG_LEVEL })
     this.sqs = new AWS.SQS()
     this.statistics = new Statistics()
   }
 
   async onEvent (event) {
+    this.logger.info(`SQS onEvent start at ${moment().utcOffset(8).format()}`)
     const record = event.Records[0]
     const message = record.messageAttributes
     const chatId = Number(message.chatId.stringValue)
@@ -24,14 +28,18 @@ export default class SQS {
       QueueUrl: process.env.EVENT_QUEUE_URL,
       ReceiptHandle: record.receiptHandle
     }
-    return this.sqs.deleteMessage(deleteParams).promise()
+    const p = this.sqs.deleteMessage(deleteParams).promise()
+    this.logger.info(`SQS onEvent end at ${moment().utcOffset(8).format()}`)
+    return p
   }
 
   async sendSQSMessage (sqsParams) {
+    this.logger.info(`SQS sendSQSMessage start at ${moment().utcOffset(8).format()}`)
     return this.sqs.sendMessage(sqsParams).promise()
   }
 
   async sendTopTenMessage (message) {
+    this.logger.info(`SQS sendTopTenMessage start at ${moment().utcOffset(8).format()}`)
     return this.sendSQSMessage({
       MessageAttributes: {
         chatId: {
@@ -49,6 +57,7 @@ export default class SQS {
   }
 
   async sendAllJungMessage (message) {
+    this.logger.info(`SQS sendAllJungMessage start at ${moment().utcOffset(8).format()}`)
     return this.sendSQSMessage({
       MessageAttributes: {
         chatId: {
