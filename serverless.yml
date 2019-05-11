@@ -16,31 +16,28 @@ provider:
     TELEGRAM_BOT_TOKEN: ${ssm:${self:service}-${self:provider.stage}-telegram-api-token~true}
     MESSAGE_TABLE: ${self:service}-${self:provider.stage}-messages
     CHATID_TABLE: ${self:service}-${self:provider.stage}-chatIds
+    EVENT_QUEUE_URL: !Ref EventQueue
   tags:
     Name: jung2bot
   iamRoleStatements:
     - Effect: Allow
       Action:
         - 'dynamodb:*'
-      Resource: !Join
-        - ''
-        - - !GetAtt Jung2BotDynamoDB.Arn
-          - '*'
-    - Effect: Allow
-      Action:
-        - 'dynamodb:*'
-      Resource: !Join
-        - ''
-        - - !GetAtt ChatIDsDynamoDB.Arn
-          - '*'
+      Resource:
+        - !GetAtt Jung2BotDynamoDB.Arn
+        - !GetAtt ChatIDsDynamoDB.Arn
     - Effect: Allow
       Action:
         - 'sns:Publish'
-      Resource: !Ref MessagesDeadLetterTopic
+      Resource:
+        - !Ref MessagesDeadLetterTopic
+        - !Ref OffFromWorkDeadLetterTopic
+        - !Ref QueryEventDeadLetterTopic
     - Effect: Allow
       Action:
-        - 'sns:Publish'
-      Resource: !Ref OffFromWorkDeadLetterTopic
+        - 'sqs:SendMessage'
+      Resource:
+        - !GetAtt EventQueue.Arn
 
 functions:
   messages:
@@ -61,6 +58,15 @@ functions:
       sns: ${self:service}-${self:provider.stage}-offFromWork-dead-letter-topic
     events:
       - schedule: cron(0 10 ? * MON-FRI *) # 10 am UTC = 6 pm HKT
+  queryEvent:
+    handler: src/handler.onAllJung
+    timeout: 300
+    memorySize: 1024
+    deadLetter:
+      sns: ${self:service}-${self:provider.stage}-queryEvent-dead-letter-topic
+    events:
+      - sqs:
+          arn: !GetAtt EventQueue.Arn
 
 plugins:
   - serverless-domain-manager
@@ -150,3 +156,8 @@ resources:
           AttributeName: ttl
           Enabled: true
         TableName: ${self:service}-${self:provider.stage}-chatIds
+    # SQS for handling query events
+    EventQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        VisibilityTimeout: 360
