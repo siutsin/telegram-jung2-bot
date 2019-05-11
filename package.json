@@ -57,6 +57,7 @@
     "coveralls": "^3.0.3",
     "doctoc": "^1.4.0",
     "dotenv": "^8.0.0",
+    "husky": "^2.2.0",
     "lodash.isstring": "^4.0.1",
     "nock": "^10.0.6",
     "nyc": "^14.1.1",
