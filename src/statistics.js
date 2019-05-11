@@ -16,8 +16,6 @@ export default class Statistics {
       soFar[row.userId] = soFar[row.userId] ? soFar[row.userId] + 1 : 1
       return soFar
     }, {})
-    // DynamoDB scan does not support sorting. Hence a manual sorting is required here.
-    // TODO: looks like a performance issue here.
     const usersCount = rows
       .sort((a, b) => moment(a.dateCreated).isAfter(moment(b.dateCreated)) ? -1 : 1)
       .reduce((soFar, row) => {
@@ -46,7 +44,7 @@ export default class Statistics {
     }
   }
 
-  async generateReport (rows, options = {}) {
+  async generateReport (rows, options) {
     this.logger.info(`generateReport start at ${moment().utcOffset(8).format()}`)
     const normalisedRows = await this.normaliseRows(rows)
     const limit = options.limit || undefined
@@ -83,28 +81,39 @@ export default class Statistics {
     return fullMessage
   }
 
-  async getStats (message, options) {
+  async generateReportByChatId (chatId, options) {
+    const rows = await this.dynamodb.getRowsByChatId({ chatId })
+    return this.generateReport(rows, options)
+  }
+
+  async getStats (chatId, options) {
     this.logger.info(`getStats start at ${moment().utcOffset(8).format()}`)
     let returnMessage = ''
+    if (options.offFromWork) {
+      returnMessage = '夠鐘收工~~\n\n'
+    }
     try {
-      const rows = await this.dynamodb.getRowsByChatId({ chatId: message.chat.id })
-      const statsMessage = await this.generateReport(rows, options)
-      await this.jung2botUtil.sendMessage(message.chat.id, statsMessage)
-      returnMessage = statsMessage
+      const statsMessage = await this.generateReportByChatId(chatId, options)
+      returnMessage += statsMessage
+      await this.jung2botUtil.sendMessage(chatId, returnMessage)
     } catch (e) {
       this.logger.error(e.message)
       if (!e.message.match(/[45][0-9]{2}/)) { throw e }
-      returnMessage = `bot is removed in group ${message.chat.id}`
+      returnMessage = `bot is removed in group ${chatId}`
     }
     this.logger.info(`getStats finish at ${moment().utcOffset(8).format()}`)
     return returnMessage
   }
 
-  async allJung (message) {
-    return this.getStats(message)
+  async allJung (chatId) {
+    return this.getStats(chatId, {})
   }
 
-  async topTen (message) {
-    return this.getStats(message, { limit: 10 })
+  async topTen (chatId) {
+    return this.getStats(chatId, { limit: 10 })
+  }
+
+  async offFromWork (chatId) {
+    return this.getStats(chatId, { limit: 10, offFromWork: true })
   }
 }

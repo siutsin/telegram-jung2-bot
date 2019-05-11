@@ -10,7 +10,7 @@ import stubAllJungEvent from './stub/onAllJungMessageEvent'
 import stubHelpEvent from './stub/onHelpMessageEvent'
 import stubEditMessageEvent from './stub/onEditMessageEvent'
 import stubAllJungMessageResponse from './stub/allJungMessageResponse'
-import stubAllJungDatabaseResponse from './stub/allJungDatabaseResponse'
+import stubSQSResponse from './stub/sqsResponse'
 
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
@@ -18,8 +18,8 @@ test.beforeEach(async t => {
   AWS.mock('DynamoDB.DocumentClient', 'update', (params, callback) => {
     callback(null, { Items: 'successfully update items to the database' })
   })
-  AWS.mock('DynamoDB.DocumentClient', 'query', (params, callback) => {
-    callback(null, stubAllJungDatabaseResponse)
+  AWS.mock('SQS', 'sendMessage', (params, callback) => {
+    callback(null, stubSQSResponse)
   })
 })
 

@@ -16,37 +16,34 @@ provider:
     TELEGRAM_BOT_TOKEN: ${ssm:${self:service}-${self:provider.stage}-telegram-api-token~true}
     MESSAGE_TABLE: ${self:service}-${self:provider.stage}-messages
     CHATID_TABLE: ${self:service}-${self:provider.stage}-chatIds
+    EVENT_QUEUE_URL: !Ref EventQueue
   tags:
     Name: jung2bot
   iamRoleStatements:
     - Effect: Allow
       Action:
         - 'dynamodb:*'
-      Resource: !Join
-        - ''
-        - - !GetAtt Jung2BotDynamoDB.Arn
-          - '*'
-    - Effect: Allow
-      Action:
-        - 'dynamodb:*'
-      Resource: !Join
-        - ''
-        - - !GetAtt ChatIDsDynamoDB.Arn
-          - '*'
+      Resource:
+        - !GetAtt Jung2BotDynamoDB.Arn
+        - !GetAtt ChatIDsDynamoDB.Arn
     - Effect: Allow
       Action:
         - 'sns:Publish'
-      Resource: !Ref MessagesDeadLetterTopic
+      Resource:
+        - !Ref MessagesDeadLetterTopic
+        - !Ref OffFromWorkDeadLetterTopic
+        - !Ref QueryEventDeadLetterTopic
     - Effect: Allow
       Action:
-        - 'sns:Publish'
-      Resource: !Ref OffFromWorkDeadLetterTopic
+        - 'sqs:SendMessage'
+      Resource:
+        - !GetAtt EventQueue.Arn
 
 functions:
   messages:
     handler: src/handler.onMessage
     timeout: 30
-    memorySize: 1024
+    memorySize: 256
     deadLetter:
       sns: ${self:service}-${self:provider.stage}-messages-dead-letter-topic
     events:
@@ -55,12 +52,26 @@ functions:
           method: post
   offFromWork:
     handler: src/handler.onOffFromWork
-    timeout: 900
-    memorySize: 3008
+    timeout: 120
+    memorySize: 1024
     deadLetter:
       sns: ${self:service}-${self:provider.stage}-offFromWork-dead-letter-topic
     events:
       - schedule: cron(0 10 ? * MON-FRI *) # 10 am UTC = 6 pm HKT
+  queryEvent:
+    handler: src/handler.onAllJung
+    timeout: 60
+    memorySize: 1024
+    # https://core.telegram.org/bots/faq#my-bot-is-hitting-limits-how-do-i-avoid-this
+    # If you're sending bulk notifications to multiple users, the API will not allow more than 30 messages
+    # per second or so. Consider spreading out notifications over large intervals of 8—12 hours for best results.
+    # Also note that your bot will not be able to send more than 20 messages per minute to the same group.
+    reservedConcurrency: 25
+    deadLetter:
+      sns: ${self:service}-${self:provider.stage}-queryEvent-dead-letter-topic
+    events:
+      - sqs:
+          arn: !GetAtt EventQueue.Arn
 
 plugins:
   - serverless-domain-manager
@@ -150,3 +161,8 @@ resources:
           AttributeName: ttl
           Enabled: true
         TableName: ${self:service}-${self:provider.stage}-chatIds
+    # SQS for handling query events
+    EventQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        VisibilityTimeout: 80
