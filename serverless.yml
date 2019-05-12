@@ -60,8 +60,8 @@ functions:
       - schedule: cron(0 10 ? * MON-FRI *) # 10 am UTC = 6 pm HKT
   queryEvent:
     handler: src/handler.onAllJung
-    timeout: 60
-    memorySize: 1024
+    timeout: 600
+    memorySize: 3008
     # https://core.telegram.org/bots/faq#my-bot-is-hitting-limits-how-do-i-avoid-this
     # If you're sending bulk notifications to multiple users, the API will not allow more than 30 messages
     # per second or so. Consider spreading out notifications over large intervals of 8—12 hours for best results.
@@ -165,4 +165,6 @@ resources:
     EventQueue:
       Type: AWS::SQS::Queue
       Properties:
-        VisibilityTimeout: 80
+        VisibilityTimeout: 700
+        KmsDataKeyReusePeriodSeconds: 86400
+        KmsMasterKeyId: alias/aws/sqs
