@@ -6,15 +6,23 @@
       "Effect": "Allow",
       "Action": [
         "iam:GetRole",
-        "iam:PassRole",
-        "iam:DeleteRolePolicy",
+        "iam:UpdateAssumeRolePolicy",
+        "iam:UpdateRoleDescription",
         "iam:CreateRole",
         "iam:DeleteRole",
+        "iam:AttachRolePolicy",
         "iam:PutRolePolicy",
-        "iam:UpdateAssumeRolePolicy"
+        "iam:GetServiceLinkedRoleDeletionStatus",
+        "iam:PassRole",
+        "iam:CreateServiceLinkedRole",
+        "iam:DetachRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:UpdateRole",
+        "iam:DeleteServiceLinkedRole"
       ],
       "Resource": [
-        "arn:aws:iam::*:role/jung2bot-*"
+        "arn:aws:iam::*:role/jung2bot-*",
+        "arn:aws:iam::*:role/aws-service-role/ops.apigateway.amazonaws.com/AWSServiceRoleForAPIGateway"
       ]
     }
   ]
