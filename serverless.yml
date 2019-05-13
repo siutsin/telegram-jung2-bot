@@ -56,6 +56,7 @@ functions:
     timeout: 60
     # 2019-05-13 min: 83.9233 avg: 119.4465 max: 120.163
     memorySize: 256
+    tracing: Active
     deadLetter:
       sns: ${self:service}-${self:provider.stage}-offFromWork-dead-letter-topic
     events:
@@ -65,6 +66,7 @@ functions:
     timeout: 20
     # 2019-05-13 min: 120.163 avg: 150.9984 max: 165.9393
     memorySize: 256
+    tracing: Active
     # https://core.telegram.org/bots/faq#my-bot-is-hitting-limits-how-do-i-avoid-this
     # If you're sending bulk notifications to multiple users, the API will not allow more than 30 messages
     # per second or so. Consider spreading out notifications over large intervals of 8—12 hours for best results.
