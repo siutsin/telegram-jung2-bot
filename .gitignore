@@ -1,5 +1,6 @@
 # testing stub
-dynamodbSeed.json
+dynamodbChatIdSeed.json
+dynamodbMessagesSeed.json
 
 # webpack build output
 .webpack
