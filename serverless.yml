@@ -1,6 +1,6 @@
 service: jung2bot
 
-frameworkVersion: '>=1.40.0 <2.0.0'
+frameworkVersion: '>=1.42.0 <2.0.0'
 
 provider:
   name: aws
@@ -8,7 +8,12 @@ provider:
   stage: ${env:STAGE, 'dev'}
   region: ${env:REGION, 'us-east-1'}
   profile: ${env:PROFILE, ''}
-  logRetentionInDays: 1
+  logs:
+    restApi: true
+  logRetentionInDays: 3
+  tracing:
+    apiGateway: true
+    lambda: true
   deploymentBucket:
     serverSideEncryption: AES256
   environment:
@@ -62,7 +67,6 @@ functions:
     # max: 122.0703
     timeout: 600
     memorySize: 256
-    tracing: Active
     deadLetter:
       sns: ${self:service}-${self:provider.stage}-offFromWork-dead-letter-topic
     events:
@@ -75,7 +79,6 @@ functions:
     # max: 278.4729
     timeout: 20
     memorySize: 320
-    tracing: Active
     # https://core.telegram.org/bots/faq#my-bot-is-hitting-limits-how-do-i-avoid-this
     # If you're sending bulk notifications to multiple users, the API will not allow more than 30 messages
     # per second or so. Consider spreading out notifications over large intervals of 8—12 hours for best results.
