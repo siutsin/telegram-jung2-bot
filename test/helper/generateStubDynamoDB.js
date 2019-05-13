@@ -5,9 +5,10 @@ require('dotenv').config({ path: '.env.development' })
 
 const NUMBER_OF_USERS = 200
 const NUMBER_OF_MESSAGES = 80000
-const BATCH_SIZE = 100
+const OFFSET_DATE_CREATED = -2
 const TTL_DAYS = 90
 const TABLE = ''
+const BATCH_SIZE = 500
 
 const credentials = new AWS.SharedIniFileCredentials({ profile: process.env.PROFILE })
 AWS.config.credentials = credentials
@@ -23,8 +24,15 @@ async function saveStats ({ message, days = TTL_DAYS, i }) {
     username: message.from.username,
     firstName: message.from.first_name,
     lastName: message.from.last_name,
-    dateCreated: moment().utcOffset(8).subtract(i, 'seconds').format(),
-    ttl: moment().utcOffset(8).add(days, 'days').unix()
+    dateCreated: moment()
+      .utcOffset(8)
+      .add(OFFSET_DATE_CREATED, 'days')
+      .subtract(i, 'seconds')
+      .format(),
+    ttl: moment()
+      .utcOffset(8)
+      .add(days, 'days')
+      .unix()
   }
   return documentClient.put({ TableName: TABLE, Item: item }).promise()
 }
