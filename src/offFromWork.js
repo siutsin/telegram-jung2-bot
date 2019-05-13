@@ -1,6 +1,5 @@
 import Pino from 'pino'
 import moment from 'moment'
-import Bottleneck from 'bottleneck'
 import DynamoDB from './dynamodb'
 import Jung2botUtil from './jung2botUtil'
 import SQS from './sqs'
@@ -15,14 +14,21 @@ export default class OffFromWork {
 
   async statsPerGroup (chatIds) {
     this.logger.info(`statsPerGroup start at ${moment().utcOffset(8).format()}`)
-    const limiter = new Bottleneck({ // 25 messages per second
-      maxConcurrent: 1,
-      minTime: 40
-    })
     this.logger.debug('chatIds:', chatIds)
+    const MAX_CONCURRENT = 100
+    let promiseArray = []
     for (const chatId of chatIds) {
       this.logger.info(`chatId: ${chatId}`)
-      await limiter.schedule(() => this.sqs.sendOffFromWorkMessage(chatId))
+      if (promiseArray.length < MAX_CONCURRENT) {
+        promiseArray.push(this.sqs.sendOffFromWorkMessage(chatId))
+      }
+      if (promiseArray.length >= MAX_CONCURRENT) {
+        await Promise.all(promiseArray)
+        promiseArray.length = 0
+      }
+    }
+    if (promiseArray.length > 0) {
+      await Promise.all(promiseArray)
     }
     this.logger.info(`statsPerGroup finish at ${moment().utcOffset(8).format()}`)
   }

@@ -53,7 +53,7 @@ functions:
           method: post
   offFromWork:
     handler: src/handler.onOffFromWork
-    timeout: 60
+    timeout: 600
     # 2019-05-13 min: 83.9233 avg: 119.4465 max: 120.163
     memorySize: 256
     tracing: Active
