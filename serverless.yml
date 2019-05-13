@@ -184,6 +184,6 @@ resources:
     EventQueue:
       Type: AWS::SQS::Queue
       Properties:
-        VisibilityTimeout: 30
+        VisibilityTimeout: 70
         KmsDataKeyReusePeriodSeconds: 86400
         KmsMasterKeyId: alias/aws/sqs
