@@ -13,11 +13,11 @@ export default class OffFromWork {
 
   async statsPerGroup (chatIds) {
     this.logger.info(`statsPerGroup start at ${moment().utcOffset(8).format()}`)
-    this.logger.debug('chatIds:', chatIds)
     const limiter = new Bottleneck({ // 100 per second
       maxConcurrent: 1,
       minTime: 10
     })
+    this.logger.debug('chatIds:', chatIds)
     for (const chatId of chatIds) {
       this.logger.info(`chatId: ${chatId}`)
       await limiter.schedule(() => this.sqs.sendOffFromWorkMessage(chatId))

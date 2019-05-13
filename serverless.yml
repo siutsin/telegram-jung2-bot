@@ -42,8 +42,11 @@ provider:
 functions:
   messages:
     handler: src/handler.onMessage
+    # 2019-05-13 onMessage memory usage:
+    # min: 83.9233 mb
+    # max: 120.163 mb
+    # avg: 119.4465 mb
     timeout: 10
-    # 2019-05-13 min: 83.9233 max: 120.163 avg: 119.4465
     memorySize: 128
     deadLetter:
       sns: ${self:service}-${self:provider.stage}-messages-dead-letter-topic
@@ -53,8 +56,11 @@ functions:
           method: post
   offFromWork:
     handler: src/handler.onOffFromWork
+    # 2019-05-13 onOffFromWork memory usage:
+    # min: 84.877
+    # avg: 97.2748
+    # max: 122.0703
     timeout: 600
-    # 2019-05-13 min: 83.9233 avg: 119.4465 max: 120.163
     memorySize: 256
     tracing: Active
     deadLetter:
@@ -63,9 +69,12 @@ functions:
       - schedule: cron(0 10 ? * MON-FRI *) # 10 am UTC = 6 pm HKT
   queryEvent:
     handler: src/handler.onEvent
+    # 2019-05-13 onEvent memory usage:
+    # min: 83.9233
+    # avg: 164.8052
+    # max: 278.4729
     timeout: 20
-    # 2019-05-13 min: 120.163 avg: 150.9984 max: 165.9393
-    memorySize: 256
+    memorySize: 320
     tracing: Active
     # https://core.telegram.org/bots/faq#my-bot-is-hitting-limits-how-do-i-avoid-this
     # If you're sending bulk notifications to multiple users, the API will not allow more than 30 messages
