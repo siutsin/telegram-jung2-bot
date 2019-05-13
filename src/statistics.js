@@ -17,7 +17,6 @@ export default class Statistics {
       return soFar
     }, {})
     const usersCount = rows
-      .sort((a, b) => moment(a.dateCreated).isAfter(moment(b.dateCreated)) ? -1 : 1)
       .reduce((soFar, row) => {
         if (!soFar.check[row.userId]) {
           soFar.check[row.userId] = true
