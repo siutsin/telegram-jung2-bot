@@ -77,7 +77,7 @@ functions:
     # min: 83.9233
     # avg: 164.8052
     # max: 278.4729
-    timeout: 20
+    timeout: 60
     memorySize: 320
     # https://core.telegram.org/bots/faq#my-bot-is-hitting-limits-how-do-i-avoid-this
     # If you're sending bulk notifications to multiple users, the API will not allow more than 30 messages
