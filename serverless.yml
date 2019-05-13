@@ -1,6 +1,6 @@
 service: jung2bot
 
-frameworkVersion: '>=1.40.0 <2.0.0'
+frameworkVersion: '>=1.42.0 <2.0.0'
 
 provider:
   name: aws
@@ -8,7 +8,12 @@ provider:
   stage: ${env:STAGE, 'dev'}
   region: ${env:REGION, 'us-east-1'}
   profile: ${env:PROFILE, ''}
-  logRetentionInDays: 1
+  logs:
+    restApi: true
+  logRetentionInDays: 3
+  tracing:
+    apiGateway: true
+    lambda: true
   deploymentBucket:
     serverSideEncryption: AES256
   environment:
@@ -42,8 +47,12 @@ provider:
 functions:
   messages:
     handler: src/handler.onMessage
-    timeout: 30
-    memorySize: 256
+    # 2019-05-13 onMessage memory usage:
+    # min: 83.9233 mb
+    # max: 120.163 mb
+    # avg: 119.4465 mb
+    timeout: 10
+    memorySize: 128
     deadLetter:
       sns: ${self:service}-${self:provider.stage}-messages-dead-letter-topic
     events:
@@ -52,16 +61,24 @@ functions:
           method: post
   offFromWork:
     handler: src/handler.onOffFromWork
-    timeout: 60
+    # 2019-05-13 onOffFromWork memory usage:
+    # min: 84.877
+    # avg: 97.2748
+    # max: 122.0703
+    timeout: 600
     memorySize: 256
     deadLetter:
       sns: ${self:service}-${self:provider.stage}-offFromWork-dead-letter-topic
     events:
       - schedule: cron(0 10 ? * MON-FRI *) # 10 am UTC = 6 pm HKT
   queryEvent:
-    handler: src/handler.onAllJung
-    timeout: 120
-    memorySize: 512
+    handler: src/handler.onEvent
+    # 2019-05-13 onEvent memory usage:
+    # min: 83.9233
+    # avg: 164.8052
+    # max: 278.4729
+    timeout: 60
+    memorySize: 320
     # https://core.telegram.org/bots/faq#my-bot-is-hitting-limits-how-do-i-avoid-this
     # If you're sending bulk notifications to multiple users, the API will not allow more than 30 messages
     # per second or so. Consider spreading out notifications over large intervals of 8—12 hours for best results.
@@ -100,7 +117,9 @@ custom:
       domain:
         sources:
           - table: ${self:service}-${self:provider.stage}-messages
-            sources: [./test/helper/dynamodbSeed.json]
+            sources: [./test/helper/dynamodbMessagesSeed.json]
+          - table: ${self:service}-${self:provider.stage}-chatIds
+            sources: [./test/helper/dynamodbChatIdSeed.json]
   # serverless-plugin-dynamodb-autoscaling
   dynamodbAutoscaling:
     tablesConfig:
@@ -165,6 +184,6 @@ resources:
     EventQueue:
       Type: AWS::SQS::Queue
       Properties:
-        VisibilityTimeout: 150
+        VisibilityTimeout: 30
         KmsDataKeyReusePeriodSeconds: 86400
         KmsMasterKeyId: alias/aws/sqs
