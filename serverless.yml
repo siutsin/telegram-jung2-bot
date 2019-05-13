@@ -105,7 +105,9 @@ custom:
       domain:
         sources:
           - table: ${self:service}-${self:provider.stage}-messages
-            sources: [./test/helper/dynamodbSeed.json]
+            sources: [./test/helper/dynamodbMessagesSeed.json]
+          - table: ${self:service}-${self:provider.stage}-chatIds
+            sources: [./test/helper/dynamodbChatIdSeed.json]
   # serverless-plugin-dynamodb-autoscaling
   dynamodbAutoscaling:
     tablesConfig:

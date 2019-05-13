@@ -31,7 +31,7 @@
     "lint": "standard",
     "lint-fix": "standard --fix",
     "housekeeping": "./scripts/housekeeping.sh",
-    "generateSeed": "node ./test/helper/generateDynamodbSeed.js",
+    "generateSeed": "node test/helper/generateDynamodbMessagesSeed.js && node test/helper/generateDynamodbChatIdSeed.js",
     "generateStubDynamoDB": "node ./test/helper/generateStubDynamoDB.js",
     "offline": "kill $(lsof -t -i :8000); npm run generateSeed && sls offline start"
   },
