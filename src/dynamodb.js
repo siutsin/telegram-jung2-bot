@@ -141,7 +141,7 @@ export default class DynamoDB {
         params.ExclusiveStartKey = startKey
       }
       const result = await this.documentClient.scan(params).promise()
-      this.logger.debug(result)
+      this.logger.trace(result)
       return result
     }
     let lastEvaluatedKey

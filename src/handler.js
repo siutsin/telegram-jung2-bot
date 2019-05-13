@@ -8,4 +8,4 @@ const sqs = new SQS()
 
 export const onOffFromWork = async () => offFromWork.off()
 export const onMessage = async (event) => messages.newMessage(event)
-export const onAllJung = async (event) => sqs.onEvent(event)
+export const onEvent = async (event) => sqs.onEvent(event)

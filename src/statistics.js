@@ -81,7 +81,9 @@ export default class Statistics {
   }
 
   async generateReportByChatId (chatId, options) {
+    this.logger.info(`generateReportByChatId start at ${moment().utcOffset(8).format()}`)
     const rows = await this.dynamodb.getRowsByChatId({ chatId })
+    this.logger.info(`generateReportByChatId finish at ${moment().utcOffset(8).format()}`)
     return this.generateReport(rows, options)
   }
 
@@ -94,6 +96,7 @@ export default class Statistics {
     try {
       const statsMessage = await this.generateReportByChatId(chatId, options)
       returnMessage += statsMessage
+      this.logger.info(`got stats report, sending to telegram at ${moment().utcOffset(8).format()}`)
       await this.jung2botUtil.sendMessage(chatId, returnMessage)
     } catch (e) {
       this.logger.error(e.message)
