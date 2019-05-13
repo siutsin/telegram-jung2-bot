@@ -1,17 +1,21 @@
 {
   "name": "telegram-jung2-bot",
-  "version": "3.0.8",
+  "version": "3.0.9",
   "private": true,
   "repository": {
     "type": "git",
     "url": "git+https://github.com/siutsin/telegram-jung2-bot.git"
   },
   "keywords": [
+    "冗",
+    "冗PowerBot",
+    "冗員",
     "jung2bot",
     "jung2_bot",
     "telegram",
     "bot",
     "group",
+    "chat",
     "stats"
   ],
   "author": "Simon Li <li@siutsin.com>",
@@ -28,8 +32,7 @@
     "lint-fix": "standard --fix",
     "housekeeping": "./scripts/housekeeping.sh",
     "generateSeed": "node ./test/helper/generateDynamodbSeed.js",
-    "migrateTestingDB": "node ./test/helper/migrateDynamodb.js",
-    "migrateTTL": "node ./test/helper/ttlFromStringToNumber.js",
+    "generateStubDynamoDB": "node ./test/helper/generateStubDynamoDB.js",
     "offline": "kill $(lsof -t -i :8000); npm run generateSeed && sls offline start"
   },
   "dependencies": {
