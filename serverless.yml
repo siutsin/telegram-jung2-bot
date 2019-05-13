@@ -59,9 +59,9 @@ functions:
     events:
       - schedule: cron(0 10 ? * MON-FRI *) # 10 am UTC = 6 pm HKT
   queryEvent:
-    handler: src/handler.onAllJung
     timeout: 120
     memorySize: 512
+    handler: src/handler.onEvent
     # https://core.telegram.org/bots/faq#my-bot-is-hitting-limits-how-do-i-avoid-this
     # If you're sending bulk notifications to multiple users, the API will not allow more than 30 messages
     # per second or so. Consider spreading out notifications over large intervals of 8—12 hours for best results.
