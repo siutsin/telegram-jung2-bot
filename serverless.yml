@@ -89,6 +89,18 @@ functions:
     events:
       - sqs:
           arn: !GetAtt EventQueue.Arn
+  scaleUpBeforeOffFromWork:
+    handler: src/handler.onScaleUp
+    # 2019-05-14 onOffFromWork memory usage:
+    # min: ??
+    # avg: ??
+    # max: ??
+    timeout: 60
+    memorySize: 128
+    deadLetter:
+      sns: ${self:service}-${self:provider.stage}-scaleUpBeforeOffFromWork-dead-letter-topic
+    events:
+      - schedule: cron(59 9 ? * MON-FRI *) # 9:59 am UTC = 5:59 pm HKT
 
 plugins:
   - serverless-domain-manager

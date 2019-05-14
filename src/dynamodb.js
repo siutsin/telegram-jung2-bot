@@ -13,6 +13,7 @@ export default class DynamoDB {
         secretAccessKey: 'DEFAULT_SECRET'
       }
     }
+    this.dynamoDB = new AWS.DynamoDB(options)
     this.documentClient = new AWS.DynamoDB.DocumentClient(options)
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
   }
@@ -156,5 +157,29 @@ export default class DynamoDB {
     } while (lastEvaluatedKey)
     this.logger.info(`_getAllGroupIds rows count: ${rows.length}`)
     return rows
+  }
+
+  async scaleUp () {
+    const describeParams = {
+      TableName: process.env.MESSAGE_TABLE
+    }
+    const describeResponse = await this.dynamoDB.describeTable(describeParams).promise()
+    const WriteCapacityUnits = describeResponse.Table.ProvisionedThroughput.WriteCapacityUnits
+    const updateParams = {
+      ProvisionedThroughput: {
+        ReadCapacityUnits: 150,
+        WriteCapacityUnits
+      },
+      TableName: process.env.MESSAGE_TABLE
+    }
+    try {
+      const response = await this.dynamoDB.updateTable(updateParams).promise()
+      this.logger.debug(response)
+      return response
+    } catch (e) {
+      this.logger.warn(e.message)
+      if (!e.message.includes('Subscriber limit exceeded')) { throw e }
+      return e.message
+    }
   }
 }
