@@ -34,6 +34,7 @@ provider:
         - !Ref MessagesDeadLetterTopic
         - !Ref OffFromWorkDeadLetterTopic
         - !Ref QueryEventDeadLetterTopic
+        - !Ref ScaleUpBeforeOffFromWorkDeadLetterTopic
     - Effect: Allow
       Action:
         - 'sqs:SendMessage'
