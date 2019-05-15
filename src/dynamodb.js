@@ -167,7 +167,7 @@ export default class DynamoDB {
     const WriteCapacityUnits = describeResponse.Table.ProvisionedThroughput.WriteCapacityUnits
     const updateParams = {
       ProvisionedThroughput: {
-        ReadCapacityUnits: 150,
+        ReadCapacityUnits: process.env.SCALE_UP_READ_CAPACITY,
         WriteCapacityUnits
       },
       TableName: process.env.MESSAGE_TABLE

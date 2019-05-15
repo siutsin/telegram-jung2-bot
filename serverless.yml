@@ -17,6 +17,7 @@ provider:
     MESSAGE_TABLE: ${self:service}-${self:provider.stage}-messages
     CHATID_TABLE: ${self:service}-${self:provider.stage}-chatIds
     EVENT_QUEUE_URL: !Ref EventQueue
+    SCALE_UP_READ_CAPACITY: ${self:custom.jung2bot.scaleUpBeforeOffFromWork.ReadCapacityUnits.${self:provider.stage}, 1}
   tags:
     Name: jung2bot
   iamRoleStatements:
@@ -82,7 +83,11 @@ functions:
     # If you're sending bulk notifications to multiple users, the API will not allow more than 30 messages
     # per second or so. Consider spreading out notifications over large intervals of 8—12 hours for best results.
     # Also note that your bot will not be able to send more than 20 messages per minute to the same group.
-    reservedConcurrency: 25
+    #
+    # Cloudformation will return `ResourceConflictException` exception if the reservedConcurrency is changed.
+    # Workaround will be manually changing the `reservedConcurrency` in the console and deploy.
+    # Reference: https://github.com/serverless/serverless/issues/4964#issuecomment-406570150
+    reservedConcurrency: ${self:custom.jung2bot.queryEvent.reservedConcurrency.${self:provider.stage}, 1}
     tracing: Active
     deadLetter:
       sns: ${self:service}-${self:provider.stage}-queryEvent-dead-letter-topic
@@ -114,8 +119,20 @@ plugins:
   - serverless-offline
 
 custom:
+  # jung2bot
+  # Intrinsic functions is not working within the functions block
+  # Reference: https://stackoverflow.com/a/54065636/837059
   jung2bot:
-    MESSAGE_TABLE_GSI: chatId-dateCreated-GSI
+    scaleUpBeforeOffFromWork:
+      ReadCapacityUnits:
+        local: 1
+        dev: 15
+        prod: 150
+    queryEvent:
+      reservedConcurrency:
+        local: 1
+        dev: 5
+        prod: 50
   # serverless-domain-manager
   customDomain:
     domainName: ${env:DOMAIN}
