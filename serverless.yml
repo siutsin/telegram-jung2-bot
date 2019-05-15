@@ -10,7 +10,7 @@ provider:
   profile: ${env:PROFILE, ''}
   logs:
     restApi: true
-  logRetentionInDays: 3
+  logRetentionInDays: 1
   tracing:
     apiGateway: true
     lambda: true
