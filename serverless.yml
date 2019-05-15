@@ -8,12 +8,7 @@ provider:
   stage: ${env:STAGE, 'dev'}
   region: ${env:REGION, 'us-east-1'}
   profile: ${env:PROFILE, ''}
-  logs:
-    restApi: true
   logRetentionInDays: 1
-  tracing:
-    apiGateway: true
-    lambda: true
   deploymentBucket:
     serverSideEncryption: AES256
   environment:
@@ -69,6 +64,7 @@ functions:
     # peak duration: 75.3s
     timeout: 600
     memorySize: 192
+    tracing: Active
     deadLetter:
       sns: ${self:service}-${self:provider.stage}-offFromWork-dead-letter-topic
     events:
@@ -87,6 +83,7 @@ functions:
     # per second or so. Consider spreading out notifications over large intervals of 8—12 hours for best results.
     # Also note that your bot will not be able to send more than 20 messages per minute to the same group.
     reservedConcurrency: 25
+    tracing: Active
     deadLetter:
       sns: ${self:service}-${self:provider.stage}-queryEvent-dead-letter-topic
     events:
@@ -101,6 +98,7 @@ functions:
     # peak duration: 1.4s
     timeout: 60
     memorySize: 128
+    tracing: Active
     deadLetter:
       sns: ${self:service}-${self:provider.stage}-scaleUpBeforeOffFromWork-dead-letter-topic
     events:
