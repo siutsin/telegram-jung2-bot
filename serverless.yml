@@ -10,7 +10,7 @@ provider:
   profile: ${env:PROFILE, ''}
   logs:
     restApi: true
-  logRetentionInDays: 3
+  logRetentionInDays: 1
   tracing:
     apiGateway: true
     lambda: true
@@ -47,10 +47,11 @@ provider:
 functions:
   messages:
     handler: src/handler.onMessage
-    # 2019-05-13 onMessage memory usage:
-    # min: 83.9233 mb
-    # max: 120.163 mb
-    # avg: 119.4465 mb
+    # 2019-05-15 onMessage:
+    # min: 87.738 mb
+    # avg: 115.2237 mb
+    # max: 116.3483 mb
+    # peak duration: 7.2s
     timeout: 10
     memorySize: 128
     deadLetter:
@@ -61,10 +62,11 @@ functions:
           method: post
   offFromWork:
     handler: src/handler.onOffFromWork
-    # 2019-05-13 onOffFromWork memory usage:
-    # min: 84.877
-    # avg: 97.2748
-    # max: 122.0703
+    # 2019-05-15 onOffFromWork:
+    # min: 129.6997 mb
+    # avg: 129.6997 mb
+    # max: 129.6997 mb
+    # peak duration: 75.3s
     timeout: 600
     memorySize: 256
     deadLetter:
@@ -73,10 +75,11 @@ functions:
       - schedule: cron(0 10 ? * MON-FRI *) # 10 am UTC = 6 pm HKT
   queryEvent:
     handler: src/handler.onEvent
-    # 2019-05-13 onEvent memory usage:
-    # min: 83.9233
-    # avg: 164.8052
-    # max: 278.4729
+    # 2019-05-15 onEvent:
+    # min: 119.2093 mb
+    # avg: 150.016 mb
+    # max: 228.8818 mb
+    # peak duration: 44.5s
     timeout: 60
     memorySize: 320
     # https://core.telegram.org/bots/faq#my-bot-is-hitting-limits-how-do-i-avoid-this
@@ -91,10 +94,11 @@ functions:
           arn: !GetAtt EventQueue.Arn
   scaleUpBeforeOffFromWork:
     handler: src/handler.onScaleUp
-    # 2019-05-14 onOffFromWork memory usage:
-    # min: ??
-    # avg: ??
-    # max: ??
+    # 2019-05-15 scaleUpBeforeOffFromWork:
+    # min: ?? mb
+    # avg: ?? mb
+    # max: ?? mb
+    # peak duration: ??s
     timeout: 60
     memorySize: 128
     deadLetter:
