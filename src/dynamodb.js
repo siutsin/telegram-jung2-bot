@@ -165,9 +165,11 @@ export default class DynamoDB {
     }
     const describeResponse = await this.dynamoDB.describeTable(describeParams).promise()
     const WriteCapacityUnits = describeResponse.Table.ProvisionedThroughput.WriteCapacityUnits
+    const readCapacityNumber = Number(process.env.SCALE_UP_READ_CAPACITY)
+    const ReadCapacityUnits = readCapacityNumber || describeResponse.Table.ProvisionedThroughput.ReadCapacityUnits
     const updateParams = {
       ProvisionedThroughput: {
-        ReadCapacityUnits: 150,
+        ReadCapacityUnits,
         WriteCapacityUnits
       },
       TableName: process.env.MESSAGE_TABLE
@@ -178,8 +180,12 @@ export default class DynamoDB {
       return response
     } catch (e) {
       this.logger.warn(e.message)
-      if (!e.message.includes('Subscriber limit exceeded')) { throw e }
-      return e.message
+      if (e.message.includes('Subscriber limit exceeded') ||
+        e.message.includes('The provisioned throughput for the table will not change') ||
+        e.message.includes('Attempt to change a resource which is still in use')) {
+        return e.message
+      }
+      throw e
     }
   }
 }

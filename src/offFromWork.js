@@ -13,9 +13,9 @@ export default class OffFromWork {
 
   async statsPerGroup (chatIds) {
     this.logger.info(`statsPerGroup start at ${moment().utcOffset(8).format()}`)
-    const limiter = new Bottleneck({ // 100 per second
+    const limiter = new Bottleneck({ // 200 per second
       maxConcurrent: 1,
-      minTime: 10
+      minTime: 5
     })
     this.logger.debug('chatIds:', chatIds)
     for (const chatId of chatIds) {

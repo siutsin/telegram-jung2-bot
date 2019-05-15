@@ -11,7 +11,8 @@ test.beforeEach(t => {
     callback(null, {
       Table: {
         ProvisionedThroughput: {
-          WriteCapacityUnits: 1
+          WriteCapacityUnits: 1,
+          ReadCapacityUnits: 1
         }
       }
     })
@@ -42,6 +43,36 @@ test.serial('scale up - Subscriber limit exceeded', async t => {
   const dynamoDB = new DynamoDB()
   const response = await dynamoDB.scaleUp()
   t.truthy(response.includes('Subscriber limit exceeded'))
+})
+
+test.serial('scale up - The provisioned throughput for the table will not change', async t => {
+  AWS.mock('DynamoDB', 'updateTable', (params, callback) => {
+    callback(new Error('The provisioned throughput for the table will not change blah blah blah'))
+  })
+  const dynamoDB = new DynamoDB()
+  const response = await dynamoDB.scaleUp()
+  t.truthy(response.includes('The provisioned throughput for the table will not change'))
+})
+
+test.serial('scale up - Attempt to change a resource which is still in use', async t => {
+  AWS.mock('DynamoDB', 'updateTable', (params, callback) => {
+    callback(new Error('Attempt to change a resource which is still in use blah blah blah'))
+  })
+  const dynamoDB = new DynamoDB()
+  const response = await dynamoDB.scaleUp()
+  t.truthy(response.includes('Attempt to change a resource which is still in use'))
+})
+
+test.serial('scale up - undefined SCALE_UP_READ_CAPACITY', async t => {
+  AWS.mock('DynamoDB', 'updateTable', (params, callback) => {
+    callback(new Error('The provisioned throughput for the table will not change blah blah blah'))
+  })
+  const temp = process.env.SCALE_UP_READ_CAPACITY
+  process.env.SCALE_UP_READ_CAPACITY = 'some string'
+  const dynamoDB = new DynamoDB()
+  const response = await dynamoDB.scaleUp()
+  t.truthy(response.includes('The provisioned throughput for the table will not change'))
+  process.env.SCALE_UP_READ_CAPACITY = temp
 })
 
 test.serial('scale up - Other error', async t => {
