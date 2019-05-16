@@ -4,7 +4,7 @@ frameworkVersion: '>=1.42.0 <2.0.0'
 
 provider:
   name: aws
-  runtime: nodejs8.10
+  runtime: nodejs10.x
   stage: ${env:STAGE, 'dev'}
   region: ${env:REGION, 'us-east-1'}
   profile: ${env:PROFILE, ''}
