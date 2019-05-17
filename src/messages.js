@@ -18,7 +18,7 @@ export default class Messages {
     try {
       const params = JSON.parse(event.body)
       this.logger.trace('params', params)
-      if (!params.message) {
+      if (!params.message || params.message.chat.type !== 'group') {
         // handle edited_message
         return { statusCode: 204 }
       }
