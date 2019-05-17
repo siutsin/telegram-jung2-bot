@@ -18,11 +18,11 @@ export default class Messages {
     try {
       const params = JSON.parse(event.body)
       this.logger.trace('params', params)
-      if (!params.message || params.message.chat.type !== 'group') {
-        // handle edited_message
+      const message = params.message
+      if (!message || !message.chat.type.includes('group')) {
+        // handle edited_message and non group
         return { statusCode: 204 }
       }
-      const message = params.message
       await this.dynamodb.saveMessage({ message })
       if (message.entities &&
         message.entities[0] &&
