@@ -9,6 +9,11 @@ provider:
   region: ${env:REGION, 'us-east-1'}
   profile: ${env:PROFILE, ''}
   logRetentionInDays: 1
+  logs:
+    restApi: true
+  tracing:
+    apiGateway: true
+    lambda: true
   deploymentBucket:
     serverSideEncryption: AES256
   environment:
@@ -49,8 +54,8 @@ functions:
     # avg: 115.1558 mb
     # max: 120.163 mb
     # peak duration: 7.4s
-    timeout: 10
-    memorySize: 128
+    timeout: 60
+    memorySize: 192
     deadLetter:
       sns: ${self:service}-${self:provider.stage}-messages-dead-letter-topic
     events:
