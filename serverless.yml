@@ -9,6 +9,11 @@ provider:
   region: ${env:REGION, 'us-east-1'}
   profile: ${env:PROFILE, ''}
   logRetentionInDays: 1
+  logs:
+    restApi: true
+  tracing:
+    apiGateway: true
+    lambda: true
   deploymentBucket:
     serverSideEncryption: AES256
   environment:
