@@ -10,10 +10,10 @@ provider:
   profile: ${env:PROFILE, ''}
   logRetentionInDays: 1
 #  logs:
-#    restApi: ${env:ENABLE_X_RAY, false}
+#    restApi: true
 #  tracing:
-#    apiGateway: ${env:ENABLE_X_RAY, false}
-#    lambda: ${env:ENABLE_X_RAY, false}
+#    apiGateway: true
+#    lambda: true
   deploymentBucket:
     serverSideEncryption: AES256
   environment:
