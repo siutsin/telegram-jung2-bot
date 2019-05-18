@@ -38,11 +38,11 @@
   "dependencies": {
     "@babel/polyfill": "^7.4.4",
     "@babel/runtime": "^7.4.4",
-    "aws-sdk": "^2.456.0",
+    "aws-sdk": "^2.458.0",
     "axios": "^0.18.0",
     "bottleneck": "^2.18.1",
     "moment": "^2.24.0",
-    "pino": "^5.12.4",
+    "pino": "^5.12.5",
     "pino-pretty": "^3.0.0",
     "source-map-support": "^0.5.12"
   },
@@ -68,7 +68,7 @@
     "serverless-domain-manager": "^3.2.2",
     "serverless-dotenv-plugin": "^2.1.1",
     "serverless-dynamodb-local": "^0.2.37",
-    "serverless-offline": "^4.10.2",
+    "serverless-offline": "^4.10.3",
     "serverless-plugin-dynamodb-autoscaling": "^3.1.0",
     "serverless-plugin-lambda-dead-letter": "^1.2.1",
     "serverless-webpack": "^5.3.0",
