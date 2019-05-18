@@ -61,16 +61,16 @@ test('buildExpression', t => {
 test('saveMessage', async t => {
   const dynamodb = new DynamoDB()
   const message = stubTelegramNewMessage.message
-  const { saveChatIdResponse, saveStatMessageResponse } = await dynamodb.saveMessage({ message })
-  t.is(saveChatIdResponse, 'successfully put item into the database')
+  const { updateChatIdResponse, saveStatMessageResponse } = await dynamodb.saveMessage({ message })
+  t.is(updateChatIdResponse, 'successfully put item into the database')
   t.is(saveStatMessageResponse, 'successfully put item into the database')
 })
 
 test('saveMessage - optional fields', async t => {
   const dynamodb = new DynamoDB()
   const message = stubTelegramNewMessageOptional.message
-  const { saveChatIdResponse, saveStatMessageResponse } = await dynamodb.saveMessage({ message })
-  t.is(saveChatIdResponse, 'successfully put item into the database')
+  const { updateChatIdResponse, saveStatMessageResponse } = await dynamodb.saveMessage({ message })
+  t.is(updateChatIdResponse, 'successfully put item into the database')
   t.is(saveStatMessageResponse, 'successfully put item into the database')
 })
 
@@ -127,8 +127,8 @@ test('In serverless-offline environment', async t => {
   process.env.IS_OFFLINE = true
   const dynamodb = new DynamoDB()
   const message = stubTelegramNewMessage.message
-  const { saveChatIdResponse, saveStatMessageResponse } = await dynamodb.saveMessage({ message })
-  t.is(saveChatIdResponse, 'successfully put item into the database')
+  const { updateChatIdResponse, saveStatMessageResponse } = await dynamodb.saveMessage({ message })
+  t.is(updateChatIdResponse, 'successfully put item into the database')
   t.is(saveStatMessageResponse, 'successfully put item into the database')
   process.env.IS_OFFLINE = cache
 })

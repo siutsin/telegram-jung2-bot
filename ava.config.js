@@ -9,6 +9,7 @@ export default function factory () {
     ],
     cache: true,
     concurrency: 5,
-    failFast: false
+    failFast: false,
+    timeout: '10s'
   }
 }

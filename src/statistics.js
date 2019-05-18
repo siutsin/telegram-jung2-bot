@@ -77,14 +77,16 @@ export default class Statistics {
     const fullMessage = header + body + footer
     this.logger.trace('fullMessage', fullMessage)
     this.logger.info(`generateReport finish at ${moment().utcOffset(8).format()}`)
-    return fullMessage
+    return { fullMessage, userCount: normalisedRows.rankings.length, messageCount: normalisedRows.totalMessage }
   }
 
   async generateReportByChatId (chatId, options) {
     this.logger.info(`generateReportByChatId start at ${moment().utcOffset(8).format()}`)
     const rows = await this.dynamodb.getRowsByChatId({ chatId })
+    const { fullMessage, userCount, messageCount } = await this.generateReport(rows, options)
+    await this.dynamodb.updateChatIdMessagesCount({ chatId, userCount, messageCount })
     this.logger.info(`generateReportByChatId finish at ${moment().utcOffset(8).format()}`)
-    return this.generateReport(rows, options)
+    return fullMessage
   }
 
   async getStats (chatId, options) {
