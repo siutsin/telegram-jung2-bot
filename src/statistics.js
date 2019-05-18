@@ -45,21 +45,48 @@ export default class Statistics {
   }
 
   buildHeader ({ limit, reverse, chatTitle }) {
+    this.logger.info(`buildHeader start at ${moment().utcOffset(8).format()}`)
     let header = `圍爐區: ${chatTitle}`
     header += `\n\n`
     header += `${limit ? 'Top ' + limit : 'All'} `
     header += `${reverse ? '潛水員s' : '冗員s'} `
-    header += `in the last 7 days (last 上水 time):`
+    header += `in the last 7 days`
+    header += `${reverse ? ':' : ' (last 上水 time):'}`
     header += `\n\n`
+    this.logger.info(`buildHeader finish at ${moment().utcOffset(8).format()}`)
     return header
   }
 
-  buildBody ({ limit, normalisedRows }) {
+  buildBodyForDiver ({ limit, normalisedRows }) {
+    this.logger.info(`buildBodyForDiver start at ${moment().utcOffset(8).format()}`)
+    const cloneNormalisedRows = JSON.parse(JSON.stringify(normalisedRows))
+    cloneNormalisedRows.rankings.sort((a, b) => moment(a.dateCreated).isBefore(moment(b.dateCreated)) ? -1 : 1)
+    // TODO: limit is always 10 for now
+    if (cloneNormalisedRows.rankings.length < limit) {
+      limit = cloneNormalisedRows.rankings.length
+    }
+    let diverBody = ''
+    for (let i = 0; i < limit; i++) {
+      const o = cloneNormalisedRows.rankings[i]
+      const timeAgo = moment(o.dateCreated).fromNow()
+      const item = `${i + 1}. ${o.fullName} - ${timeAgo}\n`
+      diverBody += item
+    }
+    this.logger.info(`buildBodyForDiver finish at ${moment().utcOffset(8).format()}`)
+    return diverBody
+  }
+
+  buildBody ({ limit, reverse, normalisedRows }) {
+    this.logger.info(`buildBody start at ${moment().utcOffset(8).format()}`)
     // Maximum length for a message is 4096 UTF8 characters
     // https://core.telegram.org/method/messages.sendMessage
     const telegramMessageLimit = 3800
     let isReachingTelegramMessageLimit = false
     let body = ''
+    if (reverse) {
+      body += 'By 冗power:'
+      body += '\n'
+    }
     const loopLimit = limit ? Math.min(limit, normalisedRows.rankings.length) : normalisedRows.rankings.length
     for (let i = 0; i < loopLimit; i++) {
       if (body.length < telegramMessageLimit) {
@@ -73,11 +100,20 @@ export default class Statistics {
         break
       }
     }
-    body = isReachingTelegramMessageLimit ? `${body}...\n...\n` : body
+    if (isReachingTelegramMessageLimit) {
+      body = `${body}...\n...\n`
+    } else if (reverse) {
+      body += '\n'
+      body += 'By last 上水:'
+      body += '\n'
+      body += this.buildBodyForDiver({ limit, normalisedRows })
+    }
+    this.logger.info(`buildBody finish at ${moment().utcOffset(8).format()}`)
     return body
   }
 
   buildFooter ({ normalisedRows, reverse }) {
+    this.logger.info(`buildFooter start at ${moment().utcOffset(8).format()}`)
     let footer = `\nTotal messages: ${normalisedRows.totalMessage}`
     footer += `\n\n`
     if (reverse) {
@@ -85,6 +121,7 @@ export default class Statistics {
       footer += `\n`
     }
     footer += `Last Update: ${moment().utcOffset(8).format()}`
+    this.logger.info(`buildFooter finish at ${moment().utcOffset(8).format()}`)
     return footer
   }
 
