@@ -11,7 +11,7 @@ Add the bot to your group at [@jung2_bot](https://bit.ly/github-jung2bot)
 
 <b>冗員</b>[jung2jyun4] Excess personnel in Cantonese
 
-This bot is created for counting the number of message per participant in the group.
+This bot is created for counting the number of messages per participant in a chat group.
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -65,8 +65,9 @@ $ sls deploy
 
 |command|info|
 |---|---|
-|`/topten`|Show the percentage of top ten participants for the past 7 days|
-|`/alljung`|Show the percentage of all participants for the past 7 days|
+|`/topten`|Show the percentage of top ten participants for the past seven days|
+|`/topdiver`|Show the percentage of top ten divers for the past seven days (Requires at least one message from the user to be counted)|
+|`/alljung`|Show the percentage of all participants for the past seven days|
 |`/junghelp`|Show help message|
 
 ## Development

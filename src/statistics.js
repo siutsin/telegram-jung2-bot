@@ -10,8 +10,9 @@ export default class Statistics {
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
   }
 
-  async normaliseRows (rows) {
+  async normaliseRows (rows, options) {
     this.logger.info(`normaliseRows start at ${moment().utcOffset(8).format()}`)
+    const reverse = options.reverse || undefined
     const tally = rows.reduce((soFar, row) => {
       soFar[row.userId] = soFar[row.userId] ? soFar[row.userId] + 1 : 1
       return soFar
@@ -35,7 +36,7 @@ export default class Statistics {
       o.count = tally[o.userId]
       return o
     })
-    rankings.sort((a, b) => b.count - a.count)
+    rankings.sort((a, b) => reverse ? a.count - b.count : b.count - a.count)
     this.logger.info(`normaliseRows finish at ${moment().utcOffset(8).format()}`)
     return {
       totalMessage: rows.length,
@@ -43,19 +44,21 @@ export default class Statistics {
     }
   }
 
-  async generateReport (rows, options) {
-    this.logger.info(`generateReport start at ${moment().utcOffset(8).format()}`)
-    const normalisedRows = await this.normaliseRows(rows)
-    const limit = options.limit || undefined
+  buildHeader ({ limit, reverse, chatTitle }) {
+    let header = `圍爐區: ${chatTitle}`
+    header += `\n\n`
+    header += `${limit ? 'Top ' + limit : 'All'} `
+    header += `${reverse ? '潛水員s' : '冗員s'} `
+    header += `in the last 7 days (last 上水 time):`
+    header += `\n\n`
+    return header
+  }
 
-    this.logger.debug('normalisedRows.rankings', normalisedRows.rankings)
-
+  buildBody ({ limit, normalisedRows }) {
+    // Maximum length for a message is 4096 UTF8 characters
+    // https://core.telegram.org/method/messages.sendMessage
     const telegramMessageLimit = 3800
     let isReachingTelegramMessageLimit = false
-
-    const chatTitle = normalisedRows.rankings[0].chatTitle
-    const header = `圍爐區: ${chatTitle}\n\n${limit ? 'Top ' + limit : 'All'} 冗員s in the last 7 days (last 上水 time):\n\n`
-
     let body = ''
     const loopLimit = limit ? Math.min(limit, normalisedRows.rankings.length) : normalisedRows.rankings.length
     for (let i = 0; i < loopLimit; i++) {
@@ -71,9 +74,29 @@ export default class Statistics {
       }
     }
     body = isReachingTelegramMessageLimit ? `${body}...\n...\n` : body
+    return body
+  }
 
-    const footer = `\nTotal messages: ${normalisedRows.totalMessage}`
+  buildFooter ({ normalisedRows, reverse }) {
+    let footer = `\nTotal messages: ${normalisedRows.totalMessage}`
+    footer += `\n\n`
+    if (reverse) {
+      footer += `between, 深潛會搵唔到 ho chi is`
+      footer += `\n`
+    }
+    footer += `Last Update: ${moment().utcOffset(8).format()}`
+    return footer
+  }
 
+  async generateReport (rows, options) {
+    this.logger.info(`generateReport start at ${moment().utcOffset(8).format()}`)
+    const normalisedRows = await this.normaliseRows(rows, options)
+    this.logger.debug('normalisedRows.rankings', normalisedRows.rankings)
+    options.normalisedRows = normalisedRows
+    options.chatTitle = normalisedRows.rankings[0].chatTitle
+    const header = this.buildHeader(options)
+    const body = this.buildBody(options)
+    const footer = this.buildFooter(options)
     const fullMessage = header + body + footer
     this.logger.trace('fullMessage', fullMessage)
     this.logger.info(`generateReport finish at ${moment().utcOffset(8).format()}`)
@@ -115,6 +138,10 @@ export default class Statistics {
 
   async topTen (chatId) {
     return this.getStats(chatId, { limit: 10 })
+  }
+
+  async topDiver (chatId) {
+    return this.getStats(chatId, { limit: 10, reverse: true })
   }
 
   async offFromWork (chatId) {
