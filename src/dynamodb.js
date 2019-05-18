@@ -76,7 +76,7 @@ export default class DynamoDB {
     const params = {
       TableName: process.env.CHATID_TABLE,
       Key: { chatId: message.chat.id },
-      UpdateExpression: 'SET #chatTitle =:chatTitle, #dateCreated = :dateCreated, #ttl = :ttl',
+      UpdateExpression: 'SET #chatTitle = :chatTitle, #dateCreated = :dateCreated, #ttl = :ttl',
       ExpressionAttributeNames: {
         '#chatTitle': 'chatTitle',
         '#dateCreated': 'dateCreated',
@@ -86,6 +86,28 @@ export default class DynamoDB {
         ':chatTitle': message.chat.title,
         ':dateCreated': moment().utcOffset(8).format(),
         ':ttl': moment().utcOffset(8).add(days, 'days').unix()
+      }
+    }
+    this.logger.debug('params', params)
+    const response = await this.documentClient.update(params).promise()
+    this.logger.trace('response', response)
+    return response
+  }
+
+  async updateChatIdMessagesCount ({ chatId, userCount, messageCount }) {
+    const params = {
+      TableName: process.env.CHATID_TABLE,
+      Key: { chatId },
+      UpdateExpression: 'SET #userCount = :userCount, #messageCount = :messageCount, #countTimestamp = :countTimestamp',
+      ExpressionAttributeNames: {
+        '#userCount': 'userCount',
+        '#messageCount': 'messageCount',
+        '#countTimestamp': 'countTimestamp'
+      },
+      ExpressionAttributeValues: {
+        ':userCount': userCount,
+        ':messageCount': messageCount,
+        ':countTimestamp': moment().utcOffset(8).format()
       }
     }
     this.logger.debug('params', params)
