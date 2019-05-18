@@ -44,10 +44,8 @@ export default class Statistics {
     }
   }
 
-  buildHeader (options) {
-    const limit = options.limit || undefined
-    const reverse = options.reverse || undefined
-    let header = `圍爐區: ${options.chatTitle}`
+  buildHeader ({ limit, reverse, chatTitle }) {
+    let header = `圍爐區: ${chatTitle}`
     header += `\n\n`
     header += `${limit ? 'Top ' + limit : 'All'} `
     header += `${reverse ? '潛水員s' : '冗員s'} `
@@ -56,19 +54,11 @@ export default class Statistics {
     return header
   }
 
-  async generateReport (rows, options) {
-    this.logger.info(`generateReport start at ${moment().utcOffset(8).format()}`)
-    const limit = options.limit || undefined
-
-    const normalisedRows = await this.normaliseRows(rows, options)
-    this.logger.debug('normalisedRows.rankings', normalisedRows.rankings)
-
+  buildBody ({ limit, normalisedRows }) {
+    // Maximum length for a message is 4096 UTF8 characters
+    // https://core.telegram.org/method/messages.sendMessage
     const telegramMessageLimit = 3800
     let isReachingTelegramMessageLimit = false
-
-    options.chatTitle = normalisedRows.rankings[0].chatTitle
-    const header = this.buildHeader(options)
-
     let body = ''
     const loopLimit = limit ? Math.min(limit, normalisedRows.rankings.length) : normalisedRows.rankings.length
     for (let i = 0; i < loopLimit; i++) {
@@ -84,9 +74,29 @@ export default class Statistics {
       }
     }
     body = isReachingTelegramMessageLimit ? `${body}...\n...\n` : body
+    return body
+  }
 
-    const footer = `\nTotal messages: ${normalisedRows.totalMessage}`
+  buildFooter ({ normalisedRows, reverse }) {
+    let footer = `\nTotal messages: ${normalisedRows.totalMessage}`
+    footer += `\n\n`
+    if (reverse) {
+      footer += `between, 深潛會搵唔到 ho chi is`
+      footer += `\n`
+    }
+    footer += `Last Update: ${moment().utcOffset(8).format()}`
+    return footer
+  }
 
+  async generateReport (rows, options) {
+    this.logger.info(`generateReport start at ${moment().utcOffset(8).format()}`)
+    const normalisedRows = await this.normaliseRows(rows, options)
+    this.logger.debug('normalisedRows.rankings', normalisedRows.rankings)
+    options.normalisedRows = normalisedRows
+    options.chatTitle = normalisedRows.rankings[0].chatTitle
+    const header = this.buildHeader(options)
+    const body = this.buildBody(options)
+    const footer = this.buildFooter(options)
     const fullMessage = header + body + footer
     this.logger.trace('fullMessage', fullMessage)
     this.logger.info(`generateReport finish at ${moment().utcOffset(8).format()}`)
