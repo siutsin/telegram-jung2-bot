@@ -49,11 +49,11 @@ provider:
 functions:
   messages:
     handler: src/handler.onMessage
-    # 2019-05-15 onMessage:
-    # min: 80.1086 mb
-    # avg: 115.1558 mb
-    # max: 120.163 mb
-    # peak duration: 7.4s
+    # 2019-05-18 onMessage:
+    # min: 104.9042 mb
+    # avg: 174.0444 mb
+    # max: 183.1055 mb
+    # peak duration: 9.1s
     timeout: 30
     memorySize: 192
     deadLetter:
@@ -64,11 +64,11 @@ functions:
           method: post
   offFromWork:
     handler: src/handler.onOffFromWork
-    # 2019-05-15 onOffFromWork:
+    # 2019-05-18 onOffFromWork:
     # min: 126.8387 mb
-    # avg: 128.2692 mb
-    # max: 129.6997 mb
-    # peak duration: 75.3s
+    # avg: 155.6873 mb
+    # max: 183.1055 mb
+    # peak duration: 88.4s
     timeout: 600
     memorySize: 192
     tracing: Active
@@ -78,12 +78,12 @@ functions:
       - schedule: cron(0 10 ? * MON-FRI *) # 10 am UTC = 6 pm HKT
   queryEvent:
     handler: src/handler.onEvent
-    # 2019-05-15 onEvent:
-    # min: 119.2093 mb
-    # avg: 146.7965 mb
-    # max: 228.8818 mb
-    # peak duration: 44.5s
-    timeout: 60
+    # 2019-05-18 onEvent:
+    # min: 108.7189 mb
+    # avg: 196.4851 mb
+    # max: 242.2333 mb
+    # peak duration: 53.6s
+    timeout: 90
     memorySize: 320
     # https://core.telegram.org/bots/faq#my-bot-is-hitting-limits-how-do-i-avoid-this
     # If you're sending bulk notifications to multiple users, the API will not allow more than 30 messages
@@ -102,12 +102,12 @@ functions:
           arn: !GetAtt EventQueue.Arn
   scaleUpBeforeOffFromWork:
     handler: src/handler.onScaleUp
-    # 2019-05-15 scaleUpBeforeOffFromWork:
+    # 2019-05-18 scaleUpBeforeOffFromWork:
     # min: 115.3946 mb
-    # avg: 115.3946 mb
-    # max: 115.3946 mb
-    # peak duration: 1.4s
-    timeout: 60
+    # avg: 121.7524 mb
+    # max: 122.0703 mb
+    # peak duration: 3.6s
+    timeout: 10
     memorySize: 128
     tracing: Active
     deadLetter:
@@ -219,6 +219,6 @@ resources:
     EventQueue:
       Type: AWS::SQS::Queue
       Properties:
-        VisibilityTimeout: 70
+        VisibilityTimeout: 100
         KmsDataKeyReusePeriodSeconds: 86400
         KmsMasterKeyId: alias/aws/sqs
