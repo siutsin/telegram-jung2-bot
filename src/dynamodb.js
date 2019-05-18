@@ -72,7 +72,7 @@ export default class DynamoDB {
     return response
   }
 
-  async saveChatId ({ message, days = 7 }) {
+  async updateChatId ({ message, days = 7 }) {
     const params = {
       TableName: process.env.CHATID_TABLE,
       Key: { chatId: message.chat.id },
@@ -95,11 +95,11 @@ export default class DynamoDB {
   }
 
   async saveMessage (options) {
-    const saveChatIdPromise = this.saveChatId(options)
+    const updateChatIdPromise = this.updateChatId(options)
     const saveStatMessagePromise = this.saveStats(options)
-    const promises = [saveChatIdPromise, saveStatMessagePromise]
-    const [saveChatIdResponse, saveStatMessageResponse] = await Promise.all(promises)
-    return { saveChatIdResponse, saveStatMessageResponse }
+    const promises = [updateChatIdPromise, saveStatMessagePromise]
+    const [updateChatIdResponse, saveStatMessageResponse] = await Promise.all(promises)
+    return { updateChatIdResponse, saveStatMessageResponse }
   }
 
   async getRowsByChatId ({ chatId, days = 7 }) {
