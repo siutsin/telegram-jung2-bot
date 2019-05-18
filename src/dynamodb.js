@@ -72,16 +72,18 @@ export default class DynamoDB {
     return response
   }
 
-  async saveChatId ({ message, days = 7 }) {
+  async updateChatId ({ message, days = 7 }) {
     const params = {
       TableName: process.env.CHATID_TABLE,
       Key: { chatId: message.chat.id },
-      UpdateExpression: 'SET #dateCreated = :dateCreated, #ttl = :ttl',
+      UpdateExpression: 'SET #chatTitle = :chatTitle, #dateCreated = :dateCreated, #ttl = :ttl',
       ExpressionAttributeNames: {
+        '#chatTitle': 'chatTitle',
         '#dateCreated': 'dateCreated',
         '#ttl': 'ttl'
       },
       ExpressionAttributeValues: {
+        ':chatTitle': message.chat.title,
         ':dateCreated': moment().utcOffset(8).format(),
         ':ttl': moment().utcOffset(8).add(days, 'days').unix()
       }
@@ -92,12 +94,34 @@ export default class DynamoDB {
     return response
   }
 
+  async updateChatIdMessagesCount ({ chatId, userCount, messageCount }) {
+    const params = {
+      TableName: process.env.CHATID_TABLE,
+      Key: { chatId },
+      UpdateExpression: 'SET #userCount = :userCount, #messageCount = :messageCount, #countTimestamp = :countTimestamp',
+      ExpressionAttributeNames: {
+        '#userCount': 'userCount',
+        '#messageCount': 'messageCount',
+        '#countTimestamp': 'countTimestamp'
+      },
+      ExpressionAttributeValues: {
+        ':userCount': userCount,
+        ':messageCount': messageCount,
+        ':countTimestamp': moment().utcOffset(8).format()
+      }
+    }
+    this.logger.debug('params', params)
+    const response = await this.documentClient.update(params).promise()
+    this.logger.trace('response', response)
+    return response
+  }
+
   async saveMessage (options) {
-    const saveChatIdPromise = this.saveChatId(options)
+    const updateChatIdPromise = this.updateChatId(options)
     const saveStatMessagePromise = this.saveStats(options)
-    const promises = [saveChatIdPromise, saveStatMessagePromise]
-    const [saveChatIdResponse, saveStatMessageResponse] = await Promise.all(promises)
-    return { saveChatIdResponse, saveStatMessageResponse }
+    const promises = [updateChatIdPromise, saveStatMessagePromise]
+    const [updateChatIdResponse, saveStatMessageResponse] = await Promise.all(promises)
+    return { updateChatIdResponse, saveStatMessageResponse }
   }
 
   async getRowsByChatId ({ chatId, days = 7 }) {
