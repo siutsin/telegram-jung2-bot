@@ -12,7 +12,7 @@ import stubAllJungMessageResponse from './stub/allJungMessageResponse'
 
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
-test.before(t => {
+test.beforeEach(t => {
   AWS.mock('DynamoDB.DocumentClient', 'query', (params, callback) => {
     callback(null, stubAllJungDBResponse)
   })
@@ -23,9 +23,6 @@ test.before(t => {
 
 test.afterEach.always(t => {
   nock.cleanAll()
-})
-
-test.after.always(t => {
   AWS.restore()
 })
 
@@ -37,7 +34,7 @@ test('/topten', async t => {
     })
   const statistics = new Statistics()
   const response = await statistics.topTen(stubTopTen.message.chat.id)
-  t.regex(response, /Top [0-9]+ 冗員s in the last 7 days/)
+  t.regex(response, /Top [0-9]+ 冗員s in the last 7 days \(last 上水 time\):/)
   t.regex(response, /1\. [a-zA-Z0-9 .]+% \(.*\)/)
   t.regex(response, /2\. [a-zA-Z0-9 .]+% \(.*\)/)
   t.regex(response, /3\. [a-zA-Z0-9 .]+% \(.*\)/)
@@ -50,8 +47,7 @@ test('/topten', async t => {
   t.regex(response, /10\. [a-zA-Z0-9 .]+% \(.*\)/)
   t.regex(response, /Total messages: [1-9]+[0-9]*/)
   t.regex(response, /Last Update/)
-  const shouldNotHave11 = /11\. [a-zA-Z0-9 .]+% \(.*\)/.test(response)
-  t.falsy(shouldNotHave11, 'should not have 11')
+  t.falsy(/11\. [a-zA-Z0-9 .]+% \(.*\)/.test(response), 'should not have 11')
 })
 
 test('/topdiver', async t => {
@@ -63,6 +59,7 @@ test('/topdiver', async t => {
   const statistics = new Statistics()
   const response = await statistics.topDiver(stubTopDiver.message.chat.id)
   t.regex(response, /Top [0-9]+ 潛水員s in the last 7 days/)
+  t.regex(response, /By 冗power:/)
   t.regex(response, /1\. [a-zA-Z0-9 .]+% \(.*\)/)
   t.regex(response, /2\. [a-zA-Z0-9 .]+% \(.*\)/)
   t.regex(response, /3\. [a-zA-Z0-9 .]+% \(.*\)/)
@@ -73,11 +70,62 @@ test('/topdiver', async t => {
   t.regex(response, /8\. [a-zA-Z0-9 .]+% \(.*\)/)
   t.regex(response, /9\. [a-zA-Z0-9 .]+% \(.*\)/)
   t.regex(response, /10\. [a-zA-Z0-9 .]+% \(.*\)/)
+  t.regex(response, /By last 上水:/)
+  t.regex(response, /1\. [a-zA-Z0-9 .]+ - .*/)
+  t.regex(response, /2\. [a-zA-Z0-9 .]+ - .*/)
+  t.regex(response, /3\. [a-zA-Z0-9 .]+ - .*/)
+  t.regex(response, /4\. [a-zA-Z0-9 .]+ - .*/)
+  t.regex(response, /5\. [a-zA-Z0-9 .]+ - .*/)
+  t.regex(response, /6\. [a-zA-Z0-9 .]+ - .*/)
+  t.regex(response, /7\. [a-zA-Z0-9 .]+ - .*/)
+  t.regex(response, /8\. [a-zA-Z0-9 .]+ - .*/)
+  t.regex(response, /9\. [a-zA-Z0-9 .]+ - .*/)
+  t.regex(response, /10\. [a-zA-Z0-9 .]+ - .*/)
   t.regex(response, /Total messages: [1-9]+[0-9]*/)
   t.regex(response, /深潛會搵唔到/)
   t.regex(response, /Last Update/)
-  const shouldNotHave11 = /11\. [a-zA-Z0-9 .]+% \(.*\)/.test(response)
-  t.falsy(shouldNotHave11, 'should not have 11')
+  t.falsy(/11\. [a-zA-Z0-9 .]+% \(.*\)/.test(response), 'should not have 11')
+  t.falsy(/11\. [a-zA-Z0-9 .]+ - .*/.test(response), 'should not have 11')
+})
+
+test.serial('/topdiver - less than 10 users in a group', async t => {
+  AWS.restore('DynamoDB.DocumentClient', 'query')
+  AWS.mock('DynamoDB.DocumentClient', 'query', (params, callback) => {
+    callback(null, {
+      'Items': [
+        {
+          'chatTitle': 'chatTitle 2',
+          'firstName': 'firstName345',
+          'lastName': 'lastName345',
+          'dateCreated': '2019-03-16T02:26:19+08:00',
+          'chatId': 2,
+          'id': '41bd62f3-3cea-48e7-9762-f3b78e1bcd88',
+          'userId': 92,
+          'username': 'username345'
+        }
+      ],
+      'Count': 1,
+      'ScannedCount': 1
+    })
+  })
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .post('/sendMessage')
+    .reply(200, {
+      data: stubAllJungMessageResponse
+    })
+  const statistics = new Statistics()
+  const response = await statistics.topDiver(stubTopDiver.message.chat.id)
+  console.log(response)
+  t.regex(response, /Top [0-9]+ 潛水員s in the last 7 days/)
+  t.regex(response, /By 冗power:/)
+  t.regex(response, /1\. [a-zA-Z0-9 .]+% \(.*\)/)
+  t.regex(response, /By last 上水:/)
+  t.regex(response, /1\. [a-zA-Z0-9 .]+ - .*/)
+  t.regex(response, /Total messages: [1-9]+[0-9]*/)
+  t.regex(response, /深潛會搵唔到/)
+  t.regex(response, /Last Update/)
+  t.falsy(/2\. [a-zA-Z0-9 .]+% \(.*\)/.test(response), 'should not have 2')
+  t.falsy(/2\. [a-zA-Z0-9 .]+ - .*/.test(response), 'should not have 2')
 })
 
 test('/alljung', async t => {
@@ -88,7 +136,7 @@ test('/alljung', async t => {
     })
   const statistics = new Statistics()
   const response = await statistics.allJung(stubAllJung.message.chat.id)
-  t.regex(response, /All 冗員s in the last 7 days/)
+  t.regex(response, /All 冗員s in the last 7 days \(last 上水 time\):/)
   t.regex(response, /1\. [a-zA-Z0-9 .]+% \(.*\)/)
   t.regex(response, /2\. [a-zA-Z0-9 .]+% \(.*\)/)
   t.regex(response, /3\. [a-zA-Z0-9 .]+% \(.*\)/)
