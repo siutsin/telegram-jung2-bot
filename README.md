@@ -66,6 +66,7 @@ $ sls deploy
 |command|info|
 |---|---|
 |`/topten`|Show the percentage of top ten participants for the past 7 days|
+|`/topdiver`|Show the percentage of top ten divers for the past 7 days|
 |`/alljung`|Show the percentage of all participants for the past 7 days|
 |`/junghelp`|Show help message|
 
