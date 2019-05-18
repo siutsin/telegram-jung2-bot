@@ -15,6 +15,9 @@ test.before(t => {
   AWS.mock('DynamoDB.DocumentClient', 'query', (params, callback) => {
     callback(null, stubAllJungDBResponse)
   })
+  AWS.mock('DynamoDB.DocumentClient', 'update', (params, callback) => {
+    callback(null, { Items: 'successfully update items to the database' })
+  })
 })
 
 test.afterEach.always(t => {
