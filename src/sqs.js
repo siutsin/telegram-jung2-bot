@@ -4,6 +4,7 @@ import moment from 'moment'
 import Statistics from './statistics'
 
 const ACTION_KEY_TOPTEN = 'topten'
+const ACTION_KEY_TOPDIVER = 'topdiver'
 const ACTION_KEY_ALLJUNG = 'alljung'
 const ACTION_KEY_OFF_FROM_WORK = 'offFromWork'
 
@@ -26,6 +27,9 @@ export default class SQS {
         break
       case ACTION_KEY_TOPTEN:
         await this.statistics.topTen(chatId)
+        break
+      case ACTION_KEY_TOPDIVER:
+        await this.statistics.topDiver(chatId)
         break
       case ACTION_KEY_OFF_FROM_WORK:
         await this.statistics.offFromWork(chatId)
@@ -59,6 +63,24 @@ export default class SQS {
         }
       },
       MessageBody: 'sendTopTenMessage',
+      QueueUrl: process.env.EVENT_QUEUE_URL
+    })
+  }
+
+  async sendTopDiverMessage (message) {
+    this.logger.info(`SQS sendTopDiverMessage start at ${moment().utcOffset(8).format()}`)
+    return this.sendSQSMessage({
+      MessageAttributes: {
+        chatId: {
+          DataType: 'Number',
+          StringValue: message.chat.id.toString()
+        },
+        action: {
+          DataType: 'String',
+          StringValue: ACTION_KEY_TOPDIVER
+        }
+      },
+      MessageBody: 'sendTopDiverMessage',
       QueueUrl: process.env.EVENT_QUEUE_URL
     })
   }
