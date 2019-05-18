@@ -54,7 +54,7 @@ functions:
     # avg: 115.1558 mb
     # max: 120.163 mb
     # peak duration: 7.4s
-    timeout: 60
+    timeout: 30
     memorySize: 192
     deadLetter:
       sns: ${self:service}-${self:provider.stage}-messages-dead-letter-topic
