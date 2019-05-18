@@ -39,6 +39,11 @@ export default class Messages {
           await this.sqs.sendTopTenMessage(message)
           this.logger.info(`newMessage topTen finish at ${moment().utcOffset(8).format()}`)
         }
+        if (text.match(/\/top[dD]iver/)) {
+          this.logger.info(`newMessage topDiver start at ${moment().utcOffset(8).format()}`)
+          await this.sqs.sendTopDiverMessage(message)
+          this.logger.info(`newMessage topDiver finish at ${moment().utcOffset(8).format()}`)
+        }
         if (text.match(/\/all[jJ]ung/)) {
           this.logger.info(`newMessage alljung start at ${moment().utcOffset(8).format()}`)
           await this.sqs.sendAllJungMessage(message)

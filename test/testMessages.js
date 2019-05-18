@@ -6,6 +6,7 @@ import nock from 'nock'
 import Messages from '../src/messages'
 import stubEvent from './stub/onMessageEvent'
 import stubTopTenEvent from './stub/onTopTenMessageEvent'
+import stubTopDiverEvent from './stub/onTopDiverMessageEvent'
 import stubAllJungEvent from './stub/onAllJungMessageEvent'
 import stubHelpEvent from './stub/onHelpMessageEvent'
 import stubEditMessageEvent from './stub/onEditMessageEvent'
@@ -53,6 +54,17 @@ test('newMessage - /topten', async t => {
     })
   const messages = new Messages()
   const response = await messages.newMessage(stubTopTenEvent)
+  t.is(response.statusCode, 200)
+})
+
+test('newMessage - /topdiver', async t => {
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .post('/sendMessage')
+    .reply(200, {
+      data: stubAllJungMessageResponse
+    })
+  const messages = new Messages()
+  const response = await messages.newMessage(stubTopDiverEvent)
   t.is(response.statusCode, 200)
 })
 

@@ -10,8 +10,9 @@ export default class Statistics {
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
   }
 
-  async normaliseRows (rows) {
+  async normaliseRows (rows, options) {
     this.logger.info(`normaliseRows start at ${moment().utcOffset(8).format()}`)
+    const reverse = options.reverse || undefined
     const tally = rows.reduce((soFar, row) => {
       soFar[row.userId] = soFar[row.userId] ? soFar[row.userId] + 1 : 1
       return soFar
@@ -35,7 +36,7 @@ export default class Statistics {
       o.count = tally[o.userId]
       return o
     })
-    rankings.sort((a, b) => b.count - a.count)
+    rankings.sort((a, b) => reverse ? a.count - b.count : b.count - a.count)
     this.logger.info(`normaliseRows finish at ${moment().utcOffset(8).format()}`)
     return {
       totalMessage: rows.length,
@@ -43,18 +44,30 @@ export default class Statistics {
     }
   }
 
+  buildHeader (options) {
+    const limit = options.limit || undefined
+    const reverse = options.reverse || undefined
+    let header = `圍爐區: ${options.chatTitle}`
+    header += `\n\n`
+    header += `${limit ? 'Top ' + limit : 'All'} `
+    header += `${reverse ? '潛水員s' : '冗員s'} `
+    header += `in the last 7 days (last 上水 time):`
+    header += `\n\n`
+    return header
+  }
+
   async generateReport (rows, options) {
     this.logger.info(`generateReport start at ${moment().utcOffset(8).format()}`)
-    const normalisedRows = await this.normaliseRows(rows)
     const limit = options.limit || undefined
 
+    const normalisedRows = await this.normaliseRows(rows, options)
     this.logger.debug('normalisedRows.rankings', normalisedRows.rankings)
 
     const telegramMessageLimit = 3800
     let isReachingTelegramMessageLimit = false
 
-    const chatTitle = normalisedRows.rankings[0].chatTitle
-    const header = `圍爐區: ${chatTitle}\n\n${limit ? 'Top ' + limit : 'All'} 冗員s in the last 7 days (last 上水 time):\n\n`
+    options.chatTitle = normalisedRows.rankings[0].chatTitle
+    const header = this.buildHeader(options)
 
     let body = ''
     const loopLimit = limit ? Math.min(limit, normalisedRows.rankings.length) : normalisedRows.rankings.length
@@ -115,6 +128,10 @@ export default class Statistics {
 
   async topTen (chatId) {
     return this.getStats(chatId, { limit: 10 })
+  }
+
+  async topDiver (chatId) {
+    return this.getStats(chatId, { limit: 10, reverse: true })
   }
 
   async offFromWork (chatId) {
