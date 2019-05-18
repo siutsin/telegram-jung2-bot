@@ -115,7 +115,6 @@ test.serial('/topdiver - less than 10 users in a group', async t => {
     })
   const statistics = new Statistics()
   const response = await statistics.topDiver(stubTopDiver.message.chat.id)
-  console.log(response)
   t.regex(response, /Top [0-9]+ 潛水員s in the last 7 days/)
   t.regex(response, /By 冗power:/)
   t.regex(response, /1\. [a-zA-Z0-9 .]+% \(.*\)/)
