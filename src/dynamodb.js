@@ -76,15 +76,15 @@ export default class DynamoDB {
     const params = {
       TableName: process.env.CHATID_TABLE,
       Key: { chatId: message.chat.id },
-      UpdateExpression: 'SET #chatTitle = :chatTitle, #dateCreated = :dateCreated, #ttl = :ttl',
+      UpdateExpression: 'SET #ct = :ct, #dc = :dc, #ttl = :ttl',
       ExpressionAttributeNames: {
-        '#chatTitle': 'chatTitle',
-        '#dateCreated': 'dateCreated',
+        '#ct': 'chatTitle',
+        '#dc': 'dateCreated',
         '#ttl': 'ttl'
       },
       ExpressionAttributeValues: {
-        ':chatTitle': message.chat.title,
-        ':dateCreated': moment().utcOffset(8).format(),
+        ':ct': message.chat.title,
+        ':dc': moment().utcOffset(8).format(),
         ':ttl': moment().utcOffset(8).add(days, 'days').unix()
       }
     }
@@ -98,16 +98,18 @@ export default class DynamoDB {
     const params = {
       TableName: process.env.CHATID_TABLE,
       Key: { chatId },
-      UpdateExpression: 'SET #userCount = :userCount, #messageCount = :messageCount, #countTimestamp = :countTimestamp',
+      UpdateExpression: 'SET #uc = :uc, #mc = :mc, #mpu = :mpu, #ct = :ct',
       ExpressionAttributeNames: {
-        '#userCount': 'userCount',
-        '#messageCount': 'messageCount',
-        '#countTimestamp': 'countTimestamp'
+        '#uc': 'userCount',
+        '#mc': 'messageCount',
+        '#mpu': 'messagePerUser',
+        '#ct': 'countTimestamp'
       },
       ExpressionAttributeValues: {
-        ':userCount': userCount,
-        ':messageCount': messageCount,
-        ':countTimestamp': moment().utcOffset(8).format()
+        ':uc': userCount,
+        ':mc': messageCount,
+        ':mpu': messageCount / userCount,
+        ':ct': moment().utcOffset(8).format()
       }
     }
     this.logger.debug('params', params)
