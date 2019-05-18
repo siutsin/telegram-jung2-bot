@@ -172,7 +172,6 @@ resources:
     # Messages DynamoDB Table
     Jung2BotDynamoDB:
       Type: AWS::DynamoDB::Table
-      DeletionPolicy: Retain
       Properties:
         AttributeDefinitions:
           - AttributeName: chatId
@@ -198,7 +197,6 @@ resources:
     # ChatId DynamoDB Table
     ChatIDsDynamoDB:
       Type: AWS::DynamoDB::Table
-      DeletionPolicy: Retain
       Properties:
         AttributeDefinitions:
           - AttributeName: chatId
