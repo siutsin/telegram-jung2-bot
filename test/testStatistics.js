@@ -28,6 +28,7 @@ test.afterEach.always(t => {
 
 test('/topten', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
     .post('/sendMessage')
     .reply(200, {
       data: stubAllJungMessageResponse
@@ -52,6 +53,7 @@ test('/topten', async t => {
 
 test('/topdiver', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
     .post('/sendMessage')
     .reply(200, {
       data: stubAllJungMessageResponse
@@ -109,6 +111,7 @@ test.serial('/topdiver - less than 10 users in a group', async t => {
     })
   })
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
     .post('/sendMessage')
     .reply(200, {
       data: stubAllJungMessageResponse
@@ -129,6 +132,7 @@ test.serial('/topdiver - less than 10 users in a group', async t => {
 
 test('/alljung', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
     .post('/sendMessage')
     .reply(200, {
       data: stubAllJungMessageResponse
@@ -153,6 +157,7 @@ test('/alljung', async t => {
 
 test('/topten with 4xx error', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
     .post('/sendMessage')
     .reply(497, 'Request failed with status code 497')
   const statistics = new Statistics()
@@ -160,8 +165,9 @@ test('/topten with 4xx error', async t => {
   t.truthy(result)
 })
 
-test('/topten with 9xx error', async t => {
+test.serial('/topten with 9xx error', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
     .post('/sendMessage')
     .reply(996, 'Request failed with status code 996')
   const statistics = new Statistics()
