@@ -49,6 +49,7 @@ test('/topten', async t => {
   t.regex(response, /9\. [a-zA-Z0-9 .]+% \(.*\)/)
   t.regex(response, /10\. [a-zA-Z0-9 .]+% \(.*\)/)
   t.regex(response, /Total messages: [1-9]+[0-9]*/)
+  t.regex(response, /Last Update/)
   const shouldNotHave11 = /11\. [a-zA-Z0-9 .]+% \(.*\)/.test(response)
   t.falsy(shouldNotHave11, 'should not have 11')
 })
@@ -73,6 +74,8 @@ test('/topdiver', async t => {
   t.regex(response, /9\. [a-zA-Z0-9 .]+% \(.*\)/)
   t.regex(response, /10\. [a-zA-Z0-9 .]+% \(.*\)/)
   t.regex(response, /Total messages: [1-9]+[0-9]*/)
+  t.regex(response, /深潛會搵唔到/)
+  t.regex(response, /Last Update/)
   const shouldNotHave11 = /11\. [a-zA-Z0-9 .]+% \(.*\)/.test(response)
   t.falsy(shouldNotHave11, 'should not have 11')
 })
@@ -98,6 +101,7 @@ test('/alljung', async t => {
   t.regex(response, /10\. [a-zA-Z0-9 .]+% \(.*\)/)
   t.regex(response, /11\. [a-zA-Z0-9 .]+% \(.*\)/)
   t.regex(response, /Total messages: [1-9]+[0-9]*/)
+  t.regex(response, /Last Update/)
 })
 
 test('/topten with 4xx error', async t => {
