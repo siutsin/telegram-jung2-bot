@@ -9,11 +9,11 @@ provider:
   region: ${env:REGION, 'us-east-1'}
   profile: ${env:PROFILE, ''}
   logRetentionInDays: 1
-  logs:
-    restApi: true
-  tracing:
-    apiGateway: true
-    lambda: true
+#  logs:
+#    restApi: ${env:ENABLE_X_RAY, false}
+#  tracing:
+#    apiGateway: ${env:ENABLE_X_RAY, false}
+#    lambda: ${env:ENABLE_X_RAY, false}
   deploymentBucket:
     serverSideEncryption: AES256
   environment:
