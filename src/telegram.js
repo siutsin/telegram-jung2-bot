@@ -27,7 +27,9 @@ export default class Telegram {
       }
     }
     const response = await axios.get(url, config)
-    const data = response.data.data
+    this.logger.debug('response.status', response.status)
+    this.logger.debug('response.data', response.data)
+    const data = response.data
     const adminIds = data.result.map(o => o.user.id)
     return adminIds.includes(userId)
   }

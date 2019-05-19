@@ -37,9 +37,7 @@ test('isAdmin - true', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .get('/getChatAdministrators')
     .query({ chat_id: 123 })
-    .reply(200, {
-      data: stubGetChatAdministratorsResponse
-    })
+    .reply(200, stubGetChatAdministratorsResponse)
   const telegram = new Telegram()
   const response = await telegram.isAdmin({ chatId: 123, userId: 234 })
   t.truthy(response)
@@ -49,9 +47,7 @@ test('isAdmin - false', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .get('/getChatAdministrators')
     .query({ chat_id: 123 })
-    .reply(200, {
-      data: stubGetChatAdministratorsResponse
-    })
+    .reply(200, stubGetChatAdministratorsResponse)
   const telegram = new Telegram()
   const response = await telegram.isAdmin({ chatId: 123, userId: 999 })
   t.falsy(response)
