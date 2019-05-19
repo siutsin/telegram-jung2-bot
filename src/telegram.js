@@ -1,7 +1,7 @@
 import axios from 'axios'
 import Pino from 'pino'
 
-export default class jung2botUtil {
+export default class Telegram {
   constructor () {
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
   }
