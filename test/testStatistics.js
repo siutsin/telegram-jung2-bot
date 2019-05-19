@@ -28,6 +28,7 @@ test.afterEach.always(t => {
 
 test('/topten', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
     .post('/sendMessage')
     .reply(200, {
       data: stubAllJungMessageResponse
@@ -52,6 +53,7 @@ test('/topten', async t => {
 
 test('/topdiver', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
     .post('/sendMessage')
     .reply(200, {
       data: stubAllJungMessageResponse
@@ -89,8 +91,7 @@ test('/topdiver', async t => {
 })
 
 test.serial('/topdiver - less than 10 users in a group', async t => {
-  AWS.restore('DynamoDB.DocumentClient', 'query')
-  AWS.mock('DynamoDB.DocumentClient', 'query', (params, callback) => {
+  AWS.remock('DynamoDB.DocumentClient', 'query', (params, callback) => {
     callback(null, {
       'Items': [
         {
@@ -109,13 +110,13 @@ test.serial('/topdiver - less than 10 users in a group', async t => {
     })
   })
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
     .post('/sendMessage')
     .reply(200, {
       data: stubAllJungMessageResponse
     })
   const statistics = new Statistics()
   const response = await statistics.topDiver(stubTopDiver.message.chat.id)
-  console.log(response)
   t.regex(response, /Top [0-9]+ 潛水員s in the last 7 days/)
   t.regex(response, /By 冗power:/)
   t.regex(response, /1\. [a-zA-Z0-9 .]+% \(.*\)/)
@@ -130,6 +131,7 @@ test.serial('/topdiver - less than 10 users in a group', async t => {
 
 test('/alljung', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
     .post('/sendMessage')
     .reply(200, {
       data: stubAllJungMessageResponse
@@ -152,8 +154,9 @@ test('/alljung', async t => {
   t.regex(response, /Last Update/)
 })
 
-test('/topten with 4xx error', async t => {
+test.serial('/topten with 4xx error', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
     .post('/sendMessage')
     .reply(497, 'Request failed with status code 497')
   const statistics = new Statistics()
@@ -161,8 +164,9 @@ test('/topten with 4xx error', async t => {
   t.truthy(result)
 })
 
-test('/topten with 9xx error', async t => {
+test.serial('/topten with 9xx error', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
     .post('/sendMessage')
     .reply(996, 'Request failed with status code 996')
   const statistics = new Statistics()
