@@ -11,8 +11,11 @@ import stubAllJungSQSEvent from './stub/onAllJungSQSEvent'
 import stubTopTenSQSEvent from './stub/onTopTenSQSEvent'
 import stubTopDiverSQSEvent from './stub/onTopDiverSQSEvent'
 import stubOffFromWorkSQSEvent from './stub/onOffFromWorkSQSEvent'
+import stubEnableAllJungSQSEvent from './stub/onEnableAllJungSQSEvent'
+import stubDisableAllJungSQSEvent from './stub/onDisableAllJungSQSEvent'
 import stubAllJungMessageResponse from './stub/allJungMessageResponse'
 import stubAllJungDBResponse from './stub/allJungDatabaseResponse'
+import stubGetChatAdministratorsResponse from './stub/getChatAdministratorsResponse'
 
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
@@ -95,5 +98,85 @@ test('onEvent - offFromWork', async t => {
     })
   const sqs = new SQS()
   const response = await sqs.onEvent(stubOffFromWorkSQSEvent)
+  t.is(response, stubDeleteMessage)
+})
+
+test.serial('onEvent - enableAllJung', async t => {
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .post('/sendMessage')
+    .reply(200, {
+      data: stubAllJungMessageResponse
+    })
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .get('/getChatAdministrators')
+    .query({ chat_id: -123 })
+    .reply(200, {
+      data: stubGetChatAdministratorsResponse
+    })
+  const sqs = new SQS()
+  const response = await sqs.onEvent(stubEnableAllJungSQSEvent)
+  t.is(response, stubDeleteMessage)
+})
+
+test.serial('onEvent - enableAllJung - not admin', async t => {
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .post('/sendMessage')
+    .reply(200, {
+      data: stubAllJungMessageResponse
+    })
+  const clone = JSON.parse(JSON.stringify(stubGetChatAdministratorsResponse))
+  clone.result[0].user.id = 999
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .get('/getChatAdministrators')
+    .query({ chat_id: -123 })
+    .reply(200, {
+      data: clone
+    })
+  const sqs = new SQS()
+  const response = await sqs.onEvent(stubEnableAllJungSQSEvent)
+  t.is(response, stubDeleteMessage)
+})
+
+test.serial('onEvent - disableAllJung', async t => {
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .post('/sendMessage')
+    .reply(200, {
+      data: stubAllJungMessageResponse
+    })
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .get('/getChatAdministrators')
+    .query({ chat_id: -123 })
+    .reply(200, {
+      data: stubGetChatAdministratorsResponse
+    })
+  const sqs = new SQS()
+  const response = await sqs.onEvent(stubDisableAllJungSQSEvent)
+  t.is(response, stubDeleteMessage)
+})
+
+test.serial('onEvent - disableAllJung - not admin', async t => {
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .post('/sendMessage')
+    .reply(200, {
+      data: stubAllJungMessageResponse
+    })
+  const clone = JSON.parse(JSON.stringify(stubGetChatAdministratorsResponse))
+  clone.result[0].user.id = 999
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .get('/getChatAdministrators')
+    .query({ chat_id: -123 })
+    .reply(200, {
+      data: clone
+    })
+  const sqs = new SQS()
+  const response = await sqs.onEvent(stubDisableAllJungSQSEvent)
   t.is(response, stubDeleteMessage)
 })

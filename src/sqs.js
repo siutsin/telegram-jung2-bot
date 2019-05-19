@@ -161,7 +161,7 @@ export default class SQS {
 
   async sendEnableAllJungMessage (message) {
     this.logger.info(`SQS sendEnableAllJungMessage start at ${moment().utcOffset(8).format()}`)
-    return this.sendSQSMessage({
+    return this.sqs.sendMessage({
       MessageAttributes: {
         chatId: {
           DataType: 'Number',
@@ -183,7 +183,7 @@ export default class SQS {
 
   async sendDisableAllJungMessage (message) {
     this.logger.info(`SQS sendDisableAllJungMessage start at ${moment().utcOffset(8).format()}`)
-    return this.sendSQSMessage({
+    return this.sqs.sendMessage({
       MessageAttributes: {
         chatId: {
           DataType: 'Number',
