@@ -85,7 +85,23 @@ test('newMessage - /alljung', async t => {
   t.is(response.statusCode, 200)
 })
 
-test('newMessage - /enableAllJung', async t => {
+test('newMessage - /enableAllJung - not all admin', async t => {
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .post('/sendMessage')
+    .reply(200, {
+      data: stubAllJungMessageResponse
+    })
+  const clone = JSON.parse(JSON.stringify(stubEnableAllJungEvent))
+  const body = JSON.parse(clone.body)
+  delete body.message.chat.all_members_are_administrators
+  clone.body = JSON.stringify(body)
+  const messages = new Messages()
+  const response = await messages.newMessage(clone)
+  t.is(response.statusCode, 200)
+})
+
+test('newMessage - /enableAllJung - all admin', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .persist()
     .post('/sendMessage')
@@ -97,7 +113,23 @@ test('newMessage - /enableAllJung', async t => {
   t.is(response.statusCode, 200)
 })
 
-test('newMessage - /disableAllJung', async t => {
+test('newMessage - /disableAllJung - not all admin', async t => {
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .post('/sendMessage')
+    .reply(200, {
+      data: stubAllJungMessageResponse
+    })
+  const clone = JSON.parse(JSON.stringify(stubDisableAllJungEvent))
+  const body = JSON.parse(clone.body)
+  delete body.message.chat.all_members_are_administrators
+  clone.body = JSON.stringify(body)
+  const messages = new Messages()
+  const response = await messages.newMessage(clone)
+  t.is(response.statusCode, 200)
+})
+
+test('newMessage - /disableAllJung - all admin', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .persist()
     .post('/sendMessage')

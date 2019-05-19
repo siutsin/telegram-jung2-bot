@@ -137,6 +137,20 @@ test.serial('onEvent - enableAllJung - not admin', async t => {
   t.is(response, stubDeleteMessage)
 })
 
+test.serial('onEvent - enableAllJung - all admin', async t => {
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .post('/sendMessage')
+    .reply(200, {
+      data: stubAllJungMessageResponse
+    })
+  const clone = JSON.parse(JSON.stringify(stubEnableAllJungSQSEvent))
+  clone.Records[0].messageAttributes.allAdmin.stringValue = '1'
+  const sqs = new SQS()
+  const response = await sqs.onEvent(clone)
+  t.is(response, stubDeleteMessage)
+})
+
 test.serial('onEvent - disableAllJung', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .persist()
@@ -170,6 +184,20 @@ test.serial('onEvent - disableAllJung - not admin', async t => {
     .reply(200, clone)
   const sqs = new SQS()
   const response = await sqs.onEvent(stubDisableAllJungSQSEvent)
+  t.is(response, stubDeleteMessage)
+})
+
+test.serial('onEvent - disableAllJung - all admin', async t => {
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .post('/sendMessage')
+    .reply(200, {
+      data: stubAllJungMessageResponse
+    })
+  const clone = JSON.parse(JSON.stringify(stubDisableAllJungSQSEvent))
+  clone.Records[0].messageAttributes.allAdmin.stringValue = '1'
+  const sqs = new SQS()
+  const response = await sqs.onEvent(clone)
   t.is(response, stubDeleteMessage)
 })
 
