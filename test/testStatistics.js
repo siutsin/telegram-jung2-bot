@@ -91,8 +91,7 @@ test('/topdiver', async t => {
 })
 
 test.serial('/topdiver - less than 10 users in a group', async t => {
-  AWS.restore('DynamoDB.DocumentClient', 'query')
-  AWS.mock('DynamoDB.DocumentClient', 'query', (params, callback) => {
+  AWS.remock('DynamoDB.DocumentClient', 'query', (params, callback) => {
     callback(null, {
       'Items': [
         {
@@ -155,7 +154,7 @@ test('/alljung', async t => {
   t.regex(response, /Last Update/)
 })
 
-test('/topten with 4xx error', async t => {
+test.serial('/topten with 4xx error', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .persist()
     .post('/sendMessage')
