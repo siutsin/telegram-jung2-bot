@@ -112,9 +112,7 @@ test.serial('onEvent - enableAllJung', async t => {
     .persist()
     .get('/getChatAdministrators')
     .query({ chat_id: -123 })
-    .reply(200, {
-      data: stubGetChatAdministratorsResponse
-    })
+    .reply(200, stubGetChatAdministratorsResponse)
   const sqs = new SQS()
   const response = await sqs.onEvent(stubEnableAllJungSQSEvent)
   t.is(response, stubDeleteMessage)
@@ -133,9 +131,7 @@ test.serial('onEvent - enableAllJung - not admin', async t => {
     .persist()
     .get('/getChatAdministrators')
     .query({ chat_id: -123 })
-    .reply(200, {
-      data: clone
-    })
+    .reply(200, clone)
   const sqs = new SQS()
   const response = await sqs.onEvent(stubEnableAllJungSQSEvent)
   t.is(response, stubDeleteMessage)
@@ -152,9 +148,7 @@ test.serial('onEvent - disableAllJung', async t => {
     .persist()
     .get('/getChatAdministrators')
     .query({ chat_id: -123 })
-    .reply(200, {
-      data: stubGetChatAdministratorsResponse
-    })
+    .reply(200, stubGetChatAdministratorsResponse)
   const sqs = new SQS()
   const response = await sqs.onEvent(stubDisableAllJungSQSEvent)
   t.is(response, stubDeleteMessage)
@@ -173,10 +167,18 @@ test.serial('onEvent - disableAllJung - not admin', async t => {
     .persist()
     .get('/getChatAdministrators')
     .query({ chat_id: -123 })
-    .reply(200, {
-      data: clone
-    })
+    .reply(200, clone)
   const sqs = new SQS()
   const response = await sqs.onEvent(stubDisableAllJungSQSEvent)
   t.is(response, stubDeleteMessage)
+})
+
+test.serial('onEvent with error', async t => {
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .post('/sendMessage')
+    .reply(987, 'Request failed with status code 987')
+  const sqs = new SQS()
+  const response = await sqs.onEvent(stubAllJungSQSEvent)
+  t.is(response, 'Request failed with status code 987')
 })

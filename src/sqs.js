@@ -25,48 +25,55 @@ export default class SQS {
 
   async onEvent (event) {
     this.logger.info(`SQS onEvent start at ${moment().utcOffset(8).format()}`)
-    const record = event.Records[0]
-    const message = record.messageAttributes
-    const chatId = Number(message.chatId.stringValue)
-    let userId
-    const action = message.action.stringValue
-    switch (action) {
-      case ACTION_KEY_ALLJUNG:
-        this.logger.info(`SQS onEvent alljung start at ${moment().utcOffset(8).format()}`)
-        await this.statistics.allJung(chatId)
-        break
-      case ACTION_KEY_JUNGHELP:
-        this.logger.info(`SQS onEvent junghelp start at ${moment().utcOffset(8).format()}`)
-        await this.help.sendHelpMessage(chatId)
-        break
-      case ACTION_KEY_OFF_FROM_WORK:
-        this.logger.info(`SQS onEvent offFromWork start at ${moment().utcOffset(8).format()}`)
-        await this.statistics.offFromWork(chatId)
-        break
-      case ACTION_KEY_TOPDIVER:
-        this.logger.info(`SQS onEvent topdiver start at ${moment().utcOffset(8).format()}`)
-        await this.statistics.topDiver(chatId)
-        break
-      case ACTION_KEY_TOPTEN:
-        this.logger.info(`SQS onEvent topten start at ${moment().utcOffset(8).format()}`)
-        await this.statistics.topTen(chatId)
-        break
-      case ACTION_KEY_ENABLE_ALLJUNG:
-        userId = Number(message.userId.stringValue)
-        await this.settings.enableAllJung({ chatId, userId })
-        break
-      case ACTION_KEY_DISABLE_ALLJUNG:
-        userId = Number(message.userId.stringValue)
-        await this.settings.disableAllJung({ chatId, userId })
-        break
+    this.logger.info('event', event)
+    try {
+      const record = event.Records[0]
+      const message = record.messageAttributes
+      const chatId = Number(message.chatId.stringValue)
+      let userId
+      const action = message.action.stringValue
+      switch (action) {
+        case ACTION_KEY_ALLJUNG:
+          this.logger.info(`SQS onEvent alljung start at ${moment().utcOffset(8).format()}`)
+          await this.statistics.allJung(chatId)
+          break
+        case ACTION_KEY_JUNGHELP:
+          this.logger.info(`SQS onEvent junghelp start at ${moment().utcOffset(8).format()}`)
+          await this.help.sendHelpMessage(chatId)
+          break
+        case ACTION_KEY_OFF_FROM_WORK:
+          this.logger.info(`SQS onEvent offFromWork start at ${moment().utcOffset(8).format()}`)
+          await this.statistics.offFromWork(chatId)
+          break
+        case ACTION_KEY_TOPDIVER:
+          this.logger.info(`SQS onEvent topdiver start at ${moment().utcOffset(8).format()}`)
+          await this.statistics.topDiver(chatId)
+          break
+        case ACTION_KEY_TOPTEN:
+          this.logger.info(`SQS onEvent topten start at ${moment().utcOffset(8).format()}`)
+          await this.statistics.topTen(chatId)
+          break
+        case ACTION_KEY_ENABLE_ALLJUNG:
+          userId = Number(message.userId.stringValue)
+          await this.settings.enableAllJung({ chatId, userId })
+          break
+        case ACTION_KEY_DISABLE_ALLJUNG:
+          userId = Number(message.userId.stringValue)
+          await this.settings.disableAllJung({ chatId, userId })
+          break
+      }
+      const deleteParams = {
+        QueueUrl: process.env.EVENT_QUEUE_URL,
+        ReceiptHandle: record.receiptHandle
+      }
+      const p = this.sqs.deleteMessage(deleteParams).promise()
+      this.logger.info(`SQS onEvent end at ${moment().utcOffset(8).format()}`)
+      return p
+    } catch (e) {
+      this.logger.error(e.message)
+      this.logger.info(`SQS onEvent end with error at ${moment().utcOffset(8).format()}`)
+      return e.message
     }
-    const deleteParams = {
-      QueueUrl: process.env.EVENT_QUEUE_URL,
-      ReceiptHandle: record.receiptHandle
-    }
-    const p = this.sqs.deleteMessage(deleteParams).promise()
-    this.logger.info(`SQS onEvent end at ${moment().utcOffset(8).format()}`)
-    return p
   }
 
   async sendJungHelpMessage (message) {

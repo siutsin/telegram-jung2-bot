@@ -9,19 +9,17 @@ export default class Settings {
 
   async enableAllJung ({ chatId, userId }) {
     const isAdmin = await this.telegram.isAdmin({ chatId, userId })
-    let resultMessage = ''
     if (isAdmin) {
       await this.dynamodb.enableAllJung({ chatId })
+      await this.telegram.sendMessage(chatId, 'Enabled AllJung command')
     }
-    return this.telegram.sendMessage(chatId, resultMessage)
   }
 
   async disableAllJung ({ chatId, userId }) {
     const isAdmin = await this.telegram.isAdmin({ chatId, userId })
-    let resultMessage = ''
     if (isAdmin) {
       await this.dynamodb.disableAllJung({ chatId })
+      await this.telegram.sendMessage(chatId, 'Disabled AllJung command')
     }
-    return this.telegram.sendMessage(chatId, resultMessage)
   }
 }
