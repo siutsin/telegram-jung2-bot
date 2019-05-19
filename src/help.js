@@ -1,8 +1,8 @@
-import Jung2botUtil from './jung2botUtil'
+import Telegram from './telegram'
 
 export default class Help {
   constructor () {
-    this.jung2botUtil = new Jung2botUtil()
+    this.telegram = new Telegram()
   }
 
   async sendHelpMessage (message) {
@@ -21,6 +21,6 @@ Issue/Suggestion: https://github.com/siutsin/telegram-jung2-bot/issues
 
 May your 冗 power powerful -- Simon
 `
-    return this.jung2botUtil.sendMessage(message.chat.id, helpMessage)
+    return this.telegram.sendMessage(message.chat.id, helpMessage)
   }
 }

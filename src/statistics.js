@@ -1,11 +1,11 @@
 import DynamoDB from './dynamodb'
-import Jung2botUtil from './jung2botUtil'
+import Telegram from './telegram'
 import moment from 'moment'
 import Pino from 'pino'
 
 export default class Statistics {
   constructor () {
-    this.jung2botUtil = new Jung2botUtil()
+    this.telegram = new Telegram()
     this.dynamodb = new DynamoDB()
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
   }
@@ -159,7 +159,7 @@ export default class Statistics {
       const statsMessage = await this.generateReportByChatId(chatId, options)
       returnMessage += statsMessage
       this.logger.info(`got stats report, sending to telegram at ${moment().utcOffset(8).format()}`)
-      await this.jung2botUtil.sendMessage(chatId, returnMessage)
+      await this.telegram.sendMessage(chatId, returnMessage)
     } catch (e) {
       this.logger.error(e.message)
       if (!e.message.match(/[45][0-9]{2}/)) { throw e }
