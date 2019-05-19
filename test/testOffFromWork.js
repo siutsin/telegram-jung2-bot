@@ -9,7 +9,7 @@ import stubSQSResponse from './stub/sqsResponse'
 
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
-test.before(t => {
+test.beforeEach(t => {
   AWS.mock('DynamoDB.DocumentClient', 'scan', (params, callback) => {
     callback(null, stubChatIdScanResponse)
   })
@@ -18,7 +18,7 @@ test.before(t => {
   })
 })
 
-test.after.always(t => {
+test.afterEach.always(t => {
   AWS.restore()
 })
 

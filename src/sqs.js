@@ -2,7 +2,9 @@ import AWS from 'aws-sdk'
 import Pino from 'pino'
 import moment from 'moment'
 import Statistics from './statistics'
+import Help from './help'
 
+const ACTION_KEY_JUNGHELP = 'junghelp'
 const ACTION_KEY_TOPTEN = 'topten'
 const ACTION_KEY_TOPDIVER = 'topdiver'
 const ACTION_KEY_ALLJUNG = 'alljung'
@@ -13,6 +15,7 @@ export default class SQS {
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
     this.sqs = new AWS.SQS()
     this.statistics = new Statistics()
+    this.help = new Help()
   }
 
   async onEvent (event) {
@@ -22,6 +25,9 @@ export default class SQS {
     const chatId = Number(message.chatId.stringValue)
     const action = message.action.stringValue
     switch (action) {
+      case ACTION_KEY_JUNGHELP:
+        await this.help.sendHelpMessage(chatId)
+        break
       case ACTION_KEY_ALLJUNG:
         await this.statistics.allJung(chatId)
         break
@@ -47,6 +53,24 @@ export default class SQS {
   async sendSQSMessage (sqsParams) {
     this.logger.info(`SQS sendSQSMessage start at ${moment().utcOffset(8).format()}`)
     return this.sqs.sendMessage(sqsParams).promise()
+  }
+
+  async sendJungHelpMessage (message) {
+    this.logger.info(`SQS sendJungHelpMessage start at ${moment().utcOffset(8).format()}`)
+    return this.sendSQSMessage({
+      MessageAttributes: {
+        chatId: {
+          DataType: 'Number',
+          StringValue: message.chat.id.toString()
+        },
+        action: {
+          DataType: 'String',
+          StringValue: ACTION_KEY_JUNGHELP
+        }
+      },
+      MessageBody: 'sendJungHelpMessage',
+      QueueUrl: process.env.EVENT_QUEUE_URL
+    })
   }
 
   async sendTopTenMessage (message) {
