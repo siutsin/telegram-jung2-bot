@@ -84,7 +84,7 @@ export default class SQS {
       },
       MessageBody: 'sendJungHelpMessage',
       QueueUrl: process.env.EVENT_QUEUE_URL
-    })
+    }).promise()
   }
 
   async sendTopTenMessage (message) {
@@ -102,7 +102,7 @@ export default class SQS {
       },
       MessageBody: 'sendTopTenMessage',
       QueueUrl: process.env.EVENT_QUEUE_URL
-    })
+    }).promise()
   }
 
   async sendTopDiverMessage (message) {
@@ -120,7 +120,7 @@ export default class SQS {
       },
       MessageBody: 'sendTopDiverMessage',
       QueueUrl: process.env.EVENT_QUEUE_URL
-    })
+    }).promise()
   }
 
   async sendOffFromWorkMessage (chatId) {
@@ -138,7 +138,7 @@ export default class SQS {
       },
       MessageBody: 'sendOffFromWorkMessage',
       QueueUrl: process.env.EVENT_QUEUE_URL
-    })
+    }).promise()
   }
 
   async sendAllJungMessage (message) {
@@ -156,7 +156,7 @@ export default class SQS {
       },
       MessageBody: 'sendAllJungMessage',
       QueueUrl: process.env.EVENT_QUEUE_URL
-    })
+    }).promise()
   }
 
   async sendEnableAllJungMessage (message) {
@@ -178,7 +178,7 @@ export default class SQS {
       },
       MessageBody: 'sendEnableAllJungMessage',
       QueueUrl: process.env.EVENT_QUEUE_URL
-    })
+    }).promise()
   }
 
   async sendDisableAllJungMessage (message) {
@@ -200,6 +200,6 @@ export default class SQS {
       },
       MessageBody: 'sendDisableAllJungMessage',
       QueueUrl: process.env.EVENT_QUEUE_URL
-    })
+    }).promise()
   }
 }
