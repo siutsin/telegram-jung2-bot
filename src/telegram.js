@@ -5,6 +5,7 @@ export default class Telegram {
   constructor () {
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
   }
+
   async sendMessage (chatId, message) {
     // TODO: TELEGRAM_BOT_TOKEN should be loaded from SSM Parameter Store
     const url = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`
@@ -16,5 +17,18 @@ export default class Telegram {
     this.logger.debug('response.status', response.status)
     this.logger.debug('response.data', response.data)
     return response
+  }
+
+  async isAdmin ({ chatId, userId }) {
+    const url = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/getChatAdministrators`
+    const config = {
+      params: {
+        chat_id: chatId
+      }
+    }
+    const response = await axios.get(url, config)
+    const data = response.data.data
+    const adminIds = data.result.map(o => o.user.id)
+    return adminIds.includes(userId)
   }
 }
