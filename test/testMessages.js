@@ -37,7 +37,6 @@ test('newMessage', async t => {
 
 test('newMessage - /junghelp', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
-    .persist()
     .post('/sendMessage')
     .reply(200, {
       data: stubAllJungMessageResponse
@@ -49,7 +48,6 @@ test('newMessage - /junghelp', async t => {
 
 test('newMessage - /topten', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
-    .persist()
     .post('/sendMessage')
     .reply(200, {
       data: stubAllJungMessageResponse
@@ -61,7 +59,6 @@ test('newMessage - /topten', async t => {
 
 test('newMessage - /topdiver', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
-    .persist()
     .post('/sendMessage')
     .reply(200, {
       data: stubAllJungMessageResponse
@@ -73,7 +70,6 @@ test('newMessage - /topdiver', async t => {
 
 test('newMessage - /alljung', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
-    .persist()
     .post('/sendMessage')
     .reply(200, {
       data: stubAllJungMessageResponse
