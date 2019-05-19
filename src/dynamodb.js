@@ -94,6 +94,42 @@ export default class DynamoDB {
     return response
   }
 
+  async enableAllJung ({ chatId }) {
+    const params = {
+      TableName: process.env.CHATID_TABLE,
+      Key: { chatId },
+      UpdateExpression: 'SET #eaj = :eaj',
+      ExpressionAttributeNames: {
+        '#eaj': 'enableAllJung'
+      },
+      ExpressionAttributeValues: {
+        ':eaj': true
+      }
+    }
+    this.logger.debug('params', params)
+    const response = await this.documentClient.update(params).promise()
+    this.logger.trace('response', response)
+    return response
+  }
+
+  async disableAllJung ({ chatId }) {
+    const params = {
+      TableName: process.env.CHATID_TABLE,
+      Key: { chatId },
+      UpdateExpression: 'SET #eaj = :eaj',
+      ExpressionAttributeNames: {
+        '#eaj': 'enableAllJung'
+      },
+      ExpressionAttributeValues: {
+        ':eaj': false
+      }
+    }
+    this.logger.debug('params', params)
+    const response = await this.documentClient.update(params).promise()
+    this.logger.trace('response', response)
+    return response
+  }
+
   async updateChatIdMessagesCount ({ chatId, userCount, messageCount }) {
     const params = {
       TableName: process.env.CHATID_TABLE,

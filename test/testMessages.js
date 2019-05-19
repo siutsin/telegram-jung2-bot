@@ -10,6 +10,8 @@ import stubTopDiverEvent from './stub/onTopDiverMessageEvent'
 import stubAllJungEvent from './stub/onAllJungMessageEvent'
 import stubHelpEvent from './stub/onHelpMessageEvent'
 import stubEditMessageEvent from './stub/onEditMessageEvent'
+import stubEnableAllJungEvent from './stub/onEnableAllJungMessageEvent'
+import stubDisableAllJungEvent from './stub/onDisableAllJungMessageEvent'
 import stubAllJungMessageResponse from './stub/allJungMessageResponse'
 import stubSQSResponse from './stub/sqsResponse'
 
@@ -80,6 +82,30 @@ test('newMessage - /alljung', async t => {
     })
   const messages = new Messages()
   const response = await messages.newMessage(stubAllJungEvent)
+  t.is(response.statusCode, 200)
+})
+
+test('newMessage - /enableAllJung', async t => {
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .post('/sendMessage')
+    .reply(200, {
+      data: stubAllJungMessageResponse
+    })
+  const messages = new Messages()
+  const response = await messages.newMessage(stubEnableAllJungEvent)
+  t.is(response.statusCode, 200)
+})
+
+test('newMessage - /disableAllJung', async t => {
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .post('/sendMessage')
+    .reply(200, {
+      data: stubAllJungMessageResponse
+    })
+  const messages = new Messages()
+  const response = await messages.newMessage(stubDisableAllJungEvent)
   t.is(response.statusCode, 200)
 })
 
