@@ -23,6 +23,12 @@
           "binaryListValues": [],
           "dataType": "Number"
         },
+        "allAdmin": {
+          "stringValue": "0",
+          "stringListValues": [],
+          "binaryListValues": [],
+          "dataType": "Number"
+        },
         "action": {
           "stringValue": "disableAllJung",
           "stringListValues": [],

@@ -30,7 +30,6 @@ export default class SQS {
       const record = event.Records[0]
       const message = record.messageAttributes
       const chatId = Number(message.chatId.stringValue)
-      let userId
       const action = message.action.stringValue
       switch (action) {
         case ACTION_KEY_ALLJUNG:
@@ -54,12 +53,18 @@ export default class SQS {
           await this.statistics.topTen(chatId)
           break
         case ACTION_KEY_ENABLE_ALLJUNG:
-          userId = Number(message.userId.stringValue)
-          await this.settings.enableAllJung({ chatId, userId })
+          await this.settings.enableAllJung({
+            chatId,
+            userId: Number(message.userId.stringValue),
+            allAdmin: Number(message.allAdmin.stringValue) === 1
+          })
           break
         case ACTION_KEY_DISABLE_ALLJUNG:
-          userId = Number(message.userId.stringValue)
-          await this.settings.disableAllJung({ chatId, userId })
+          await this.settings.disableAllJung({
+            chatId,
+            userId: Number(message.userId.stringValue),
+            allAdmin: Number(message.allAdmin.stringValue) === 1
+          })
           break
       }
       const deleteParams = {
@@ -178,6 +183,10 @@ export default class SQS {
           DataType: 'Number',
           StringValue: message.from.id.toString()
         },
+        allAdmin: {
+          DataType: 'Number',
+          StringValue: message.chat.all_members_are_administrators ? '1' : '0'
+        },
         action: {
           DataType: 'String',
           StringValue: ACTION_KEY_ENABLE_ALLJUNG
@@ -199,6 +208,10 @@ export default class SQS {
         userId: {
           DataType: 'Number',
           StringValue: message.from.id.toString()
+        },
+        allAdmin: {
+          DataType: 'Number',
+          StringValue: message.chat.all_members_are_administrators ? '1' : '0'
         },
         action: {
           DataType: 'String',
