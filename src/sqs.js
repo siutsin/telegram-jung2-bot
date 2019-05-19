@@ -3,11 +3,14 @@ import Pino from 'pino'
 import moment from 'moment'
 import Statistics from './statistics'
 import Settings from './settings'
+import Help from './help'
 
-const ACTION_KEY_TOPTEN = 'topten'
-const ACTION_KEY_TOPDIVER = 'topdiver'
 const ACTION_KEY_ALLJUNG = 'alljung'
+const ACTION_KEY_JUNGHELP = 'junghelp'
 const ACTION_KEY_OFF_FROM_WORK = 'offFromWork'
+const ACTION_KEY_TOPDIVER = 'topdiver'
+const ACTION_KEY_TOPTEN = 'topten'
+// Admin Only
 const ACTION_KEY_ENABLE_ALLJUNG = 'enableAllJung'
 const ACTION_KEY_DISABLE_ALLJUNG = 'disableAllJung'
 
@@ -17,6 +20,7 @@ export default class SQS {
     this.sqs = new AWS.SQS()
     this.statistics = new Statistics()
     this.settings = new Settings()
+    this.help = new Help()
   }
 
   async onEvent (event) {
@@ -28,16 +32,24 @@ export default class SQS {
     const action = message.action.stringValue
     switch (action) {
       case ACTION_KEY_ALLJUNG:
+        this.logger.info(`SQS onEvent alljung start at ${moment().utcOffset(8).format()}`)
         await this.statistics.allJung(chatId)
         break
-      case ACTION_KEY_TOPTEN:
-        await this.statistics.topTen(chatId)
-        break
-      case ACTION_KEY_TOPDIVER:
-        await this.statistics.topDiver(chatId)
+      case ACTION_KEY_JUNGHELP:
+        this.logger.info(`SQS onEvent junghelp start at ${moment().utcOffset(8).format()}`)
+        await this.help.sendHelpMessage(chatId)
         break
       case ACTION_KEY_OFF_FROM_WORK:
+        this.logger.info(`SQS onEvent offFromWork start at ${moment().utcOffset(8).format()}`)
         await this.statistics.offFromWork(chatId)
+        break
+      case ACTION_KEY_TOPDIVER:
+        this.logger.info(`SQS onEvent topdiver start at ${moment().utcOffset(8).format()}`)
+        await this.statistics.topDiver(chatId)
+        break
+      case ACTION_KEY_TOPTEN:
+        this.logger.info(`SQS onEvent topten start at ${moment().utcOffset(8).format()}`)
+        await this.statistics.topTen(chatId)
         break
       case ACTION_KEY_ENABLE_ALLJUNG:
         userId = Number(message.userId.stringValue)
@@ -57,14 +69,27 @@ export default class SQS {
     return p
   }
 
-  async sendSQSMessage (sqsParams) {
-    this.logger.info(`SQS sendSQSMessage start at ${moment().utcOffset(8).format()}`)
-    return this.sqs.sendMessage(sqsParams).promise()
+  async sendJungHelpMessage (message) {
+    this.logger.info(`SQS sendJungHelpMessage start at ${moment().utcOffset(8).format()}`)
+    return this.sqs.sendMessage({
+      MessageAttributes: {
+        chatId: {
+          DataType: 'Number',
+          StringValue: message.chat.id.toString()
+        },
+        action: {
+          DataType: 'String',
+          StringValue: ACTION_KEY_JUNGHELP
+        }
+      },
+      MessageBody: 'sendJungHelpMessage',
+      QueueUrl: process.env.EVENT_QUEUE_URL
+    })
   }
 
   async sendTopTenMessage (message) {
     this.logger.info(`SQS sendTopTenMessage start at ${moment().utcOffset(8).format()}`)
-    return this.sendSQSMessage({
+    return this.sqs.sendMessage({
       MessageAttributes: {
         chatId: {
           DataType: 'Number',
@@ -82,7 +107,7 @@ export default class SQS {
 
   async sendTopDiverMessage (message) {
     this.logger.info(`SQS sendTopDiverMessage start at ${moment().utcOffset(8).format()}`)
-    return this.sendSQSMessage({
+    return this.sqs.sendMessage({
       MessageAttributes: {
         chatId: {
           DataType: 'Number',
@@ -100,7 +125,7 @@ export default class SQS {
 
   async sendOffFromWorkMessage (chatId) {
     this.logger.info(`SQS sendOffFromWorkMessage start at ${moment().utcOffset(8).format()}`)
-    return this.sendSQSMessage({
+    return this.sqs.sendMessage({
       MessageAttributes: {
         chatId: {
           DataType: 'Number',
@@ -118,7 +143,7 @@ export default class SQS {
 
   async sendAllJungMessage (message) {
     this.logger.info(`SQS sendAllJungMessage start at ${moment().utcOffset(8).format()}`)
-    return this.sendSQSMessage({
+    return this.sqs.sendMessage({
       MessageAttributes: {
         chatId: {
           DataType: 'Number',
