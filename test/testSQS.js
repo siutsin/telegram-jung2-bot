@@ -6,7 +6,7 @@ import AWS from 'aws-sdk-mock'
 import SQS from '../src/sqs'
 
 import stubSQSResponse from './stub/sqsResponse'
-import stubJungHelpSQSEvent from './stub/onJungHelpSQSEvent'
+import stubTopTenEvent from './stub/onTopTenMessageEvent'
 import stubAllJungSQSEvent from './stub/onAllJungSQSEvent'
 import stubTopTenSQSEvent from './stub/onTopTenSQSEvent'
 import stubTopDiverSQSEvent from './stub/onTopDiverSQSEvent'
@@ -18,7 +18,7 @@ dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
 const stubDeleteMessage = { Dummy: 'deleteMessage' }
 
-test.beforeEach(t => {
+test.before(t => {
   AWS.mock('SQS', 'sendMessage', (params, callback) => {
     callback(null, stubSQSResponse)
   })
@@ -35,24 +35,38 @@ test.beforeEach(t => {
 
 test.afterEach.always(t => {
   nock.cleanAll()
+})
+
+test.after.always(t => {
   AWS.restore()
 })
 
-test('onEvent - junghelp', async t => {
-  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
-    .persist()
-    .post('/sendMessage')
-    .reply(200, {
-      data: stubAllJungMessageResponse
-    })
+test('sendTopTenMessage', async t => {
+  const event = JSON.parse(stubTopTenEvent.body)
+  const message = event.message
   const sqs = new SQS()
-  const response = await sqs.onEvent(stubJungHelpSQSEvent)
-  t.is(response, stubDeleteMessage)
+  const response = await sqs.sendTopTenMessage(message)
+  t.is(response, stubSQSResponse)
+})
+
+test('sendTopDiverMessage', async t => {
+  const event = JSON.parse(stubTopTenEvent.body)
+  const message = event.message
+  const sqs = new SQS()
+  const response = await sqs.sendTopDiverMessage(message)
+  t.is(response, stubSQSResponse)
+})
+
+test('sendAllJungMessage', async t => {
+  const event = JSON.parse(stubTopTenEvent.body)
+  const message = event.message
+  const sqs = new SQS()
+  const response = await sqs.sendAllJungMessage(message)
+  t.is(response, stubSQSResponse)
 })
 
 test('onEvent - alljung', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
-    .persist()
     .post('/sendMessage')
     .reply(200, {
       data: stubAllJungMessageResponse
@@ -64,7 +78,6 @@ test('onEvent - alljung', async t => {
 
 test('onEvent - topten', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
-    .persist()
     .post('/sendMessage')
     .reply(200, {
       data: stubAllJungMessageResponse
@@ -76,7 +89,6 @@ test('onEvent - topten', async t => {
 
 test('onEvent - topdiver', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
-    .persist()
     .post('/sendMessage')
     .reply(200, {
       data: stubAllJungMessageResponse
@@ -88,7 +100,6 @@ test('onEvent - topdiver', async t => {
 
 test('onEvent - offFromWork', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
-    .persist()
     .post('/sendMessage')
     .reply(200, {
       data: stubAllJungMessageResponse
