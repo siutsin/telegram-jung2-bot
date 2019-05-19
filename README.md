@@ -23,6 +23,7 @@ This bot is created for counting the number of messages per participant in a cha
   - [Create `.env` files](#create-env-files)
   - [Deploy! 🚀](#deploy-)
 - [Usage](#usage)
+  - [Admin Only](#admin-only)
 - [Development](#development)
   - [Test API and DB locally](#test-api-and-db-locally)
 - [Sponsor](#sponsor)
@@ -69,6 +70,12 @@ $ sls deploy
 |`/topdiver`|Show the percentage of top ten divers for the past seven days (Requires at least one message from the user to be counted)|
 |`/alljung`|Show the percentage of all participants for the past seven days|
 |`/junghelp`|Show help message|
+
+### Admin Only
+|command|info|
+|---|---|
+|`/enablealljung`|Enable /alljung command|
+|`/disablealljung`|Disable /alljung command|
 
 ## Development
 

@@ -17,6 +17,10 @@ Commands:
 /alljung  show all 冗員s
 /junghelp  show help message
 
+Admin Only:
+/enablealljung  enable /alljung command
+/disablealljung  disable /alljung command
+
 Issue/Suggestion: https://github.com/siutsin/telegram-jung2-bot/issues
 
 May your 冗 power powerful -- Simon
