@@ -1,15 +1,17 @@
 import Pino from 'pino'
 import moment from 'moment'
 import DynamoDB from './dynamodb'
-import Help from './help'
 import SQS from './sqs'
 
 export default class Messages {
   constructor () {
     this.dynamodb = new DynamoDB()
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
-    this.help = new Help()
     this.sqs = new SQS()
+  }
+
+  isBotCommand (message) {
+    return message.entities && message.entities[0] && message.entities[0].type === 'bot_command'
   }
 
   async newMessage (event) {
@@ -24,14 +26,12 @@ export default class Messages {
         return { statusCode: 204 }
       }
       await this.dynamodb.saveMessage({ message })
-      if (message.entities &&
-        message.entities[0] &&
-        message.entities[0].type === 'bot_command') {
+      if (this.isBotCommand(message)) {
         const text = message.text
         this.logger.info(text)
         if (text.match(/\/jung[hH]elp/)) {
           this.logger.info(`newMessage help start at ${moment().utcOffset(8).format()}`)
-          await this.help.sendHelpMessage(message)
+          await this.sqs.sendJungHelpMessage(message)
           this.logger.info(`newMessage help finish at ${moment().utcOffset(8).format()}`)
         }
         if (text.match(/\/top[tT]en/)) {

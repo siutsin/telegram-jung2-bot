@@ -5,7 +5,7 @@ export default class Help {
     this.jung2botUtil = new Jung2botUtil()
   }
 
-  async sendHelpMessage (message) {
+  async sendHelpMessage (chatId) {
     const helpMessage = `
 冗員[jung2jyun4] Excess personnel in Cantonese
 
@@ -21,6 +21,6 @@ Issue/Suggestion: https://github.com/siutsin/telegram-jung2-bot/issues
 
 May your 冗 power powerful -- Simon
 `
-    return this.jung2botUtil.sendMessage(message.chat.id, helpMessage)
+    return this.jung2botUtil.sendMessage(chatId, helpMessage)
   }
 }
