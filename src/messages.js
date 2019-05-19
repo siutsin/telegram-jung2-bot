@@ -49,6 +49,16 @@ export default class Messages {
           await this.sqs.sendAllJungMessage(message)
           this.logger.info(`newMessage alljung finish at ${moment().utcOffset(8).format()}`)
         }
+        if (text.match(/\/enable[aA]ll[jJ]ung/)) {
+          this.logger.info(`newMessage enableAllJung start at ${moment().utcOffset(8).format()}`)
+          await this.sqs.sendEnableAllJungMessage(message)
+          this.logger.info(`newMessage enableAllJung finish at ${moment().utcOffset(8).format()}`)
+        }
+        if (text.match(/\/disable[aA]ll[jJ]ung/)) {
+          this.logger.info(`newMessage disableAllJung start at ${moment().utcOffset(8).format()}`)
+          await this.sqs.sendDisableAllJungMessage(message)
+          this.logger.info(`newMessage disableAllJung finish at ${moment().utcOffset(8).format()}`)
+        }
       }
       this.logger.info(`newMessage finish at ${moment().utcOffset(8).format()}`)
       return { statusCode: 200 }

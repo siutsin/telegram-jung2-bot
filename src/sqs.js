@@ -2,17 +2,21 @@ import AWS from 'aws-sdk'
 import Pino from 'pino'
 import moment from 'moment'
 import Statistics from './statistics'
+import Settings from './settings'
 
 const ACTION_KEY_TOPTEN = 'topten'
 const ACTION_KEY_TOPDIVER = 'topdiver'
 const ACTION_KEY_ALLJUNG = 'alljung'
 const ACTION_KEY_OFF_FROM_WORK = 'offFromWork'
+const ACTION_KEY_ENABLE_ALLJUNG = 'enableAllJung'
+const ACTION_KEY_DISABLE_ALLJUNG = 'disableAllJung'
 
 export default class SQS {
   constructor () {
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
     this.sqs = new AWS.SQS()
     this.statistics = new Statistics()
+    this.settings = new Settings()
   }
 
   async onEvent (event) {
@@ -20,6 +24,7 @@ export default class SQS {
     const record = event.Records[0]
     const message = record.messageAttributes
     const chatId = Number(message.chatId.stringValue)
+    let userId
     const action = message.action.stringValue
     switch (action) {
       case ACTION_KEY_ALLJUNG:
@@ -33,6 +38,14 @@ export default class SQS {
         break
       case ACTION_KEY_OFF_FROM_WORK:
         await this.statistics.offFromWork(chatId)
+        break
+      case ACTION_KEY_ENABLE_ALLJUNG:
+        userId = Number(message.userId.stringValue)
+        await this.settings.enableAllJung({ chatId, userId })
+        break
+      case ACTION_KEY_DISABLE_ALLJUNG:
+        userId = Number(message.userId.stringValue)
+        await this.settings.disableAllJung({ chatId, userId })
         break
     }
     const deleteParams = {
@@ -117,6 +130,50 @@ export default class SQS {
         }
       },
       MessageBody: 'sendAllJungMessage',
+      QueueUrl: process.env.EVENT_QUEUE_URL
+    })
+  }
+
+  async sendEnableAllJungMessage (message) {
+    this.logger.info(`SQS sendEnableAllJungMessage start at ${moment().utcOffset(8).format()}`)
+    return this.sendSQSMessage({
+      MessageAttributes: {
+        chatId: {
+          DataType: 'Number',
+          StringValue: message.chat.id.toString()
+        },
+        userId: {
+          DataType: 'Number',
+          StringValue: message.from.id.toString()
+        },
+        action: {
+          DataType: 'String',
+          StringValue: ACTION_KEY_ENABLE_ALLJUNG
+        }
+      },
+      MessageBody: 'sendEnableAllJungMessage',
+      QueueUrl: process.env.EVENT_QUEUE_URL
+    })
+  }
+
+  async sendDisableAllJungMessage (message) {
+    this.logger.info(`SQS sendDisableAllJungMessage start at ${moment().utcOffset(8).format()}`)
+    return this.sendSQSMessage({
+      MessageAttributes: {
+        chatId: {
+          DataType: 'Number',
+          StringValue: message.chat.id.toString()
+        },
+        userId: {
+          DataType: 'Number',
+          StringValue: message.from.id.toString()
+        },
+        action: {
+          DataType: 'String',
+          StringValue: ACTION_KEY_DISABLE_ALLJUNG
+        }
+      },
+      MessageBody: 'sendDisableAllJungMessage',
       QueueUrl: process.env.EVENT_QUEUE_URL
     })
   }
