@@ -15,7 +15,7 @@ else
    exit 1
 fi
 
-sls deploy --conceal &>/dev/null
+sls deploy --conceal --force &>/dev/null
 
 echo "Successful deployment for ${TRAVIS_BRANCH}"
 
