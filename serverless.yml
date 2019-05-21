@@ -5,6 +5,7 @@ frameworkVersion: '>=1.42.0 <2.0.0'
 provider:
   name: aws
   runtime: nodejs10.x
+  versionFunctions: false
   stage: ${env:STAGE, 'dev'}
   region: ${env:REGION, 'us-east-1'}
   profile: ${env:PROFILE, ''}
@@ -108,7 +109,7 @@ functions:
     # max: 122.0703 mb
     # peak duration: 3.6s
     timeout: 10
-    memorySize: 128
+    memorySize: 192
     tracing: Active
     deadLetter:
       sns: ${self:service}-${self:provider.stage}-scaleUpBeforeOffFromWork-dead-letter-topic
@@ -132,13 +133,13 @@ custom:
     scaleUpBeforeOffFromWork:
       ReadCapacityUnits:
         local: 1
-        dev: 15
+        dev: 1
         prod: 500
     queryEvent:
       reservedConcurrency:
         local: 1
         dev: 5
-        prod: 50
+        prod: 100
   # serverless-domain-manager
   customDomain:
     domainName: ${env:DOMAIN}
