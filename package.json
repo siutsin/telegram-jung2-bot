@@ -1,6 +1,6 @@
 {
   "name": "telegram-jung2-bot",
-  "version": "3.2.3",
+  "version": "3.2.4",
   "private": true,
   "repository": {
     "type": "git",
@@ -37,20 +37,20 @@
   },
   "dependencies": {
     "@babel/polyfill": "^7.4.4",
-    "@babel/runtime": "^7.4.4",
-    "aws-sdk": "^2.458.0",
+    "@babel/runtime": "^7.4.5",
+    "aws-sdk": "^2.463.0",
     "axios": "^0.18.0",
     "bottleneck": "^2.18.1",
     "moment": "^2.24.0",
     "pino": "^5.12.5",
-    "pino-pretty": "^3.0.0",
+    "pino-pretty": "^3.0.1",
     "source-map-support": "^0.5.12"
   },
   "devDependencies": {
     "@babel/cli": "^7.4.4",
-    "@babel/core": "^7.4.4",
+    "@babel/core": "^7.4.5",
     "@babel/plugin-transform-runtime": "^7.4.4",
-    "@babel/preset-env": "^7.4.4",
+    "@babel/preset-env": "^7.4.5",
     "ava": "^1.4.1",
     "aws-sdk-mock": "^4.4.0",
     "babel-loader": "^8.0.6",
@@ -64,15 +64,15 @@
     "lodash.isstring": "^4.0.1",
     "nock": "^10.0.6",
     "nyc": "^14.1.1",
-    "serverless": "^1.42.3",
+    "serverless": "^1.43.0",
     "serverless-domain-manager": "^3.2.2",
     "serverless-dotenv-plugin": "^2.1.1",
     "serverless-dynamodb-local": "^0.2.37",
-    "serverless-offline": "^4.10.3",
+    "serverless-offline": "^4.10.6",
     "serverless-plugin-dynamodb-autoscaling": "^3.1.0",
     "serverless-plugin-lambda-dead-letter": "^1.2.1",
     "serverless-webpack": "^5.3.0",
     "standard": "^12.0.1",
-    "webpack": "^4.31.0"
+    "webpack": "^4.32.2"
   }
 }
