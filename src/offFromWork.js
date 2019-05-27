@@ -1,6 +1,5 @@
 import Pino from 'pino'
 import moment from 'moment'
-import Bottleneck from 'bottleneck'
 import DynamoDB from './dynamodb'
 import SQS from './sqs'
 
@@ -13,15 +12,13 @@ export default class OffFromWork {
 
   async statsPerGroup (chatIds) {
     this.logger.info(`statsPerGroup start at ${moment().utcOffset(8).format()}`)
-    const limiter = new Bottleneck({ // 200 per second
-      maxConcurrent: 1,
-      minTime: 5
-    })
     this.logger.debug('chatIds:', chatIds)
+    let promises = []
     for (const chatId of chatIds) {
       this.logger.info(`chatId: ${chatId}`)
-      await limiter.schedule(() => this.sqs.sendOffFromWorkMessage(chatId))
+      promises.push(this.sqs.sendOffFromWorkMessage(chatId))
     }
+    await Promise.all(promises)
     this.logger.info(`statsPerGroup finish at ${moment().utcOffset(8).format()}`)
   }
 
