@@ -15,10 +15,9 @@ test('sendHelpMessage', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .persist()
     .post('/sendMessage')
-    .reply(200, {
-      data: stubHelpMessageResponse
-    })
+    .reply(200, stubHelpMessageResponse)
   const help = new Help()
-  const response = await help.sendHelpMessage(123)
-  t.is(response.data.data.result.text, stubHelpMessageResponse.result.text)
+  const response = await help.sendHelpMessage({ chatId: 123, chatTitle: 'someTitle' })
+  t.regex(response, /圍爐區: someTitle/)
+  t.regex(response, /冗員\[jung2jyun4] Excess personnel in Cantonese/)
 })
