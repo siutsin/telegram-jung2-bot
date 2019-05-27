@@ -1,6 +1,6 @@
 {
   "name": "telegram-jung2-bot",
-  "version": "3.2.5",
+  "version": "3.2.6",
   "private": true,
   "repository": {
     "type": "git",
@@ -40,6 +40,7 @@
     "@babel/runtime": "^7.4.5",
     "aws-sdk": "^2.463.0",
     "axios": "^0.18.0",
+    "bottleneck": "^2.18.1",
     "moment": "^2.24.0",
     "pino": "^5.12.5",
     "pino-pretty": "^3.0.1",
