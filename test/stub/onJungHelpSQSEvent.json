@@ -17,6 +17,12 @@
           "binaryListValues": [],
           "dataType": "Number"
         },
+        "chatTitle": {
+          "stringValue": "title",
+          "stringListValues": [],
+          "binaryListValues": [],
+          "dataType": "String"
+        },
         "action": {
           "stringValue": "junghelp",
           "stringListValues": [],
