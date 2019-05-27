@@ -31,7 +31,8 @@ export default class SQS {
         break
       case ACTION_KEY_JUNGHELP:
         this.logger.info(`SQS onEvent junghelp start at ${moment().utcOffset(8).format()}`)
-        await this.help.sendHelpMessage(chatId)
+        const chatTitle = message.chatTitle.stringValue
+        await this.help.sendHelpMessage({ chatId, chatTitle })
         break
       case ACTION_KEY_OFF_FROM_WORK:
         this.logger.info(`SQS onEvent offFromWork start at ${moment().utcOffset(8).format()}`)
@@ -62,6 +63,10 @@ export default class SQS {
         chatId: {
           DataType: 'Number',
           StringValue: message.chat.id.toString()
+        },
+        chatTitle: {
+          DataType: 'String',
+          StringValue: message.chat.title
         },
         action: {
           DataType: 'String',
