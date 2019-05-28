@@ -43,7 +43,7 @@
     "bottleneck": "^2.18.1",
     "moment": "^2.24.0",
     "pino": "^5.12.6",
-    "pino-pretty": "^3.0.1",
+    "pino-pretty": "^3.1.0",
     "source-map-support": "^0.5.12"
   },
   "devDependencies": {
