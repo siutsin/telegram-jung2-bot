@@ -24,28 +24,33 @@ export default class SQS {
     const message = record.messageAttributes
     const chatId = Number(message.chatId.stringValue)
     const action = message.action.stringValue
-    switch (action) {
-      case ACTION_KEY_ALLJUNG:
-        this.logger.info(`SQS onEvent alljung start at ${moment().utcOffset(8).format()}`)
-        await this.statistics.allJung(chatId)
-        break
-      case ACTION_KEY_JUNGHELP:
-        this.logger.info(`SQS onEvent junghelp start at ${moment().utcOffset(8).format()}`)
-        const chatTitle = message.chatTitle.stringValue
-        await this.help.sendHelpMessage({ chatId, chatTitle })
-        break
-      case ACTION_KEY_OFF_FROM_WORK:
-        this.logger.info(`SQS onEvent offFromWork start at ${moment().utcOffset(8).format()}`)
-        await this.statistics.offFromWork(chatId)
-        break
-      case ACTION_KEY_TOPDIVER:
-        this.logger.info(`SQS onEvent topdiver start at ${moment().utcOffset(8).format()}`)
-        await this.statistics.topDiver(chatId)
-        break
-      case ACTION_KEY_TOPTEN:
-        this.logger.info(`SQS onEvent topten start at ${moment().utcOffset(8).format()}`)
-        await this.statistics.topTen(chatId)
-        break
+    try {
+      switch (action) {
+        case ACTION_KEY_ALLJUNG:
+          this.logger.info(`SQS onEvent alljung start at ${moment().utcOffset(8).format()}`)
+          await this.statistics.allJung(chatId)
+          break
+        case ACTION_KEY_JUNGHELP:
+          this.logger.info(`SQS onEvent junghelp start at ${moment().utcOffset(8).format()}`)
+          const chatTitle = message.chatTitle.stringValue
+          await this.help.sendHelpMessage({ chatId, chatTitle })
+          break
+        case ACTION_KEY_OFF_FROM_WORK:
+          this.logger.info(`SQS onEvent offFromWork start at ${moment().utcOffset(8).format()}`)
+          await this.statistics.offFromWork(chatId)
+          break
+        case ACTION_KEY_TOPDIVER:
+          this.logger.info(`SQS onEvent topdiver start at ${moment().utcOffset(8).format()}`)
+          await this.statistics.topDiver(chatId)
+          break
+        case ACTION_KEY_TOPTEN:
+          this.logger.info(`SQS onEvent topten start at ${moment().utcOffset(8).format()}`)
+          await this.statistics.topTen(chatId)
+          break
+      }
+    } catch (e) {
+      this.logger.error('onEvent error', e)
+      this.logger.error('onEvent error sqs message', message)
     }
     const deleteParams = {
       QueueUrl: process.env.EVENT_QUEUE_URL,
