@@ -114,7 +114,7 @@ functions:
     deadLetter:
       sns: ${self:service}-${self:provider.stage}-scaleUpBeforeOffFromWork-dead-letter-topic
     events:
-      - schedule: cron(57-59 9 ? * MON-FRI *) # 9:57-59 am UTC = 5:57-59 pm HKT
+      - schedule: cron(53-59 9 ? * MON-FRI *) # 9:53-59 am UTC = 5:53-59 pm HKT
 
 plugins:
   - serverless-domain-manager
