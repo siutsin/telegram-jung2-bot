@@ -1,6 +1,6 @@
 {
   "name": "telegram-jung2-bot",
-  "version": "3.2.6",
+  "version": "3.2.7",
   "private": true,
   "repository": {
     "type": "git",
@@ -38,12 +38,12 @@
   "dependencies": {
     "@babel/polyfill": "^7.4.4",
     "@babel/runtime": "^7.4.5",
-    "aws-sdk": "^2.463.0",
+    "aws-sdk": "^2.465.0",
     "axios": "^0.18.0",
     "bottleneck": "^2.18.1",
     "moment": "^2.24.0",
-    "pino": "^5.12.5",
-    "pino-pretty": "^3.0.1",
+    "pino": "^5.12.6",
+    "pino-pretty": "^3.1.0",
     "source-map-support": "^0.5.12"
   },
   "devDependencies": {
@@ -64,7 +64,7 @@
     "lodash.isstring": "^4.0.1",
     "nock": "^10.0.6",
     "nyc": "^14.1.1",
-    "serverless": "^1.43.0",
+    "serverless": "^1.44.1",
     "serverless-domain-manager": "^3.2.2",
     "serverless-dotenv-plugin": "^2.1.1",
     "serverless-dynamodb-local": "^0.2.37",
