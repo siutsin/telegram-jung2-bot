@@ -42,9 +42,7 @@ test('onEvent - junghelp', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .persist()
     .post('/sendMessage')
-    .reply(200, {
-      data: stubAllJungMessageResponse
-    })
+    .reply(200, stubAllJungMessageResponse)
   const sqs = new SQS()
   const response = await sqs.onEvent(stubJungHelpSQSEvent)
   t.is(response, stubDeleteMessage)
@@ -54,9 +52,7 @@ test('onEvent - alljung', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .persist()
     .post('/sendMessage')
-    .reply(200, {
-      data: stubAllJungMessageResponse
-    })
+    .reply(200, stubAllJungMessageResponse)
   const sqs = new SQS()
   const response = await sqs.onEvent(stubAllJungSQSEvent)
   t.is(response, stubDeleteMessage)
@@ -66,9 +62,7 @@ test('onEvent - topten', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .persist()
     .post('/sendMessage')
-    .reply(200, {
-      data: stubAllJungMessageResponse
-    })
+    .reply(200, stubAllJungMessageResponse)
   const sqs = new SQS()
   const response = await sqs.onEvent(stubTopTenSQSEvent)
   t.is(response, stubDeleteMessage)
@@ -78,9 +72,7 @@ test('onEvent - topdiver', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .persist()
     .post('/sendMessage')
-    .reply(200, {
-      data: stubAllJungMessageResponse
-    })
+    .reply(200, stubAllJungMessageResponse)
   const sqs = new SQS()
   const response = await sqs.onEvent(stubTopDiverSQSEvent)
   t.is(response, stubDeleteMessage)
@@ -90,10 +82,18 @@ test('onEvent - offFromWork', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .persist()
     .post('/sendMessage')
-    .reply(200, {
-      data: stubAllJungMessageResponse
-    })
+    .reply(200, stubAllJungMessageResponse)
   const sqs = new SQS()
   const response = await sqs.onEvent(stubOffFromWorkSQSEvent)
+  t.is(response, stubDeleteMessage)
+})
+
+test.serial('onEvent - junghelp with error', async t => {
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .post('/sendMessage')
+    .reply(400)
+  const sqs = new SQS()
+  const response = await sqs.onEvent(stubJungHelpSQSEvent)
   t.is(response, stubDeleteMessage)
 })
