@@ -71,12 +71,12 @@ functions:
     # max: 183.1055 mb
     # peak duration: 88.4s
     timeout: 600
-    memorySize: 192
+    memorySize: 256
     tracing: Active
     deadLetter:
       sns: ${self:service}-${self:provider.stage}-offFromWork-dead-letter-topic
     events:
-      - schedule: cron(0 10 ? * MON-FRI *) # 10 am UTC = 6 pm HKT
+      - schedule: cron(59 9 ? * MON-FRI *) # 9:59 am UTC = 5:59 pm HKT
   queryEvent:
     handler: src/handler.onEvent
     # 2019-05-18 onEvent:
@@ -114,7 +114,7 @@ functions:
     deadLetter:
       sns: ${self:service}-${self:provider.stage}-scaleUpBeforeOffFromWork-dead-letter-topic
     events:
-      - schedule: cron(58-59 9 ? * MON-FRI *) # 9:58-59 am UTC = 5:58-59 pm HKT
+      - schedule: cron(57-59 9 ? * MON-FRI *) # 9:57-59 am UTC = 5:57-59 pm HKT
 
 plugins:
   - serverless-domain-manager
