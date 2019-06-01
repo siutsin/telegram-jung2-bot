@@ -8,13 +8,18 @@ import stubTopTen from './stub/telegramMessageTopTen'
 import stubTopDiver from './stub/telegramMessageTopDiver'
 import stubAllJung from './stub/telegramMessageAllJung'
 import stubAllJungDBResponse from './stub/allJungDatabaseResponse'
+import stubDynamoDBQueryStatsByChatIdResponse from './stub/dynamoDBQueryStatsByChatIdResponse'
 import stubAllJungMessageResponse from './stub/allJungMessageResponse'
 
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
 test.beforeEach(() => {
   AWS.mock('DynamoDB.DocumentClient', 'query', (params, callback) => {
-    callback(null, stubAllJungDBResponse)
+    if (params.TableName === process.env.MESSAGE_TABLE) {
+      callback(null, stubAllJungDBResponse)
+    } else {
+      callback(null, stubDynamoDBQueryStatsByChatIdResponse)
+    }
   })
   AWS.mock('DynamoDB.DocumentClient', 'update', (params, callback) => {
     callback(null, { Items: 'successfully update items to the database' })
@@ -152,6 +157,48 @@ test('/alljung', async t => {
   t.regex(response, /11\. [a-zA-Z0-9 .]+% \(.*\)/)
   t.regex(response, /Total messages: [1-9]+[0-9]*/)
   t.regex(response, /Last Update/)
+})
+
+test.serial('/alljung - not enabled', async t => {
+  const clone = JSON.parse(JSON.stringify(stubDynamoDBQueryStatsByChatIdResponse))
+  clone.Items[0].enableAllJung = false
+  AWS.remock('DynamoDB.DocumentClient', 'query', (params, callback) => {
+    if (params.TableName === process.env.MESSAGE_TABLE) {
+      callback(null, stubAllJungDBResponse)
+    } else {
+      callback(null, clone)
+    }
+  })
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .post('/sendMessage')
+    .reply(200, {
+      data: stubAllJungMessageResponse
+    })
+  const statistics = new Statistics()
+  const response = await statistics.allJung({ chatId: stubAllJung.message.chat.id })
+  t.falsy(response)
+})
+
+test.serial('/alljung - not set', async t => {
+  const clone = JSON.parse(JSON.stringify(stubDynamoDBQueryStatsByChatIdResponse))
+  delete clone.Items[0].enableAllJung
+  AWS.remock('DynamoDB.DocumentClient', 'query', (params, callback) => {
+    if (params.TableName === process.env.MESSAGE_TABLE) {
+      callback(null, stubAllJungDBResponse)
+    } else {
+      callback(null, clone)
+    }
+  })
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .post('/sendMessage')
+    .reply(200, {
+      data: stubAllJungMessageResponse
+    })
+  const statistics = new Statistics()
+  const response = await statistics.allJung({ chatId: stubAllJung.message.chat.id })
+  t.falsy(response)
 })
 
 test.serial('/topten with 4xx error', async t => {

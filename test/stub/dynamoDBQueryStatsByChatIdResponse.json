@@ -1,0 +1,18 @@
+{
+  "Items": [
+    {
+      "countTimestamp": "2019-05-31T17:59:12+08:00",
+      "messagePerUser": 1,
+      "dateCreated": "2019-06-01T21:05:24+08:00",
+      "chatTitle": "chatTitle",
+      "enableAllJung": true,
+      "messageCount": 1,
+      "chatId": -123,
+      "ttl": 1559999124,
+      "userCount": 1
+    }
+  ],
+  "Count": 1,
+  "ScannedCount": 1,
+  "ConsumedCapacity": null
+}
