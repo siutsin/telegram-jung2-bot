@@ -7,7 +7,6 @@ export default class Telegram {
   }
 
   async sendMessage (chatId, message) {
-    // TODO: TELEGRAM_BOT_TOKEN should be loaded from SSM Parameter Store
     const url = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`
     const data = {
       chat_id: chatId,
@@ -31,6 +30,8 @@ export default class Telegram {
     this.logger.debug('response.data', response.data)
     const data = response.data
     const adminIds = data.result.map(o => o.user.id)
-    return adminIds.includes(userId)
+    const isAdmin = adminIds.includes(userId)
+    this.logger.info('isAdmin', isAdmin)
+    return isAdmin
   }
 }

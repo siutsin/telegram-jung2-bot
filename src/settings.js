@@ -10,13 +10,9 @@ export default class Settings {
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
   }
 
-  async isAdmin ({ chatId, userId, allAdmin }) {
+  async isAdmin ({ chatId, userId }) {
     this.logger.info(`isAdmin start at ${moment().utcOffset(8).format()}`)
-    let isAdmin = allAdmin
-    if (!isAdmin) {
-      isAdmin = await this.telegram.isAdmin({ chatId, userId })
-    }
-    return isAdmin
+    return this.telegram.isAdmin({ chatId, userId })
   }
 
   async isAllJungEnabled ({ chatId }) {
@@ -27,19 +23,25 @@ export default class Settings {
     return !!isAllJungEnabled
   }
 
-  async enableAllJung ({ chatId, chatTitle, userId, allAdmin }) {
+  async enableAllJung ({ chatId, chatTitle, userId }) {
     this.logger.info(`enableAllJung start at ${moment().utcOffset(8).format()}`)
-    if (await this.isAdmin({ chatId, userId, allAdmin })) {
+    if (await this.isAdmin({ chatId, userId })) {
       await this.dynamodb.enableAllJung({ chatId })
-      await this.telegram.sendMessage(chatId, `圍爐區: ${chatTitle} - Enabled AllJung command`)
+      await this.telegram.sendMessage(chatId, `
+圍爐區: ${chatTitle}
+
+Enabled AllJung command`)
     }
   }
 
-  async disableAllJung ({ chatId, chatTitle, userId, allAdmin }) {
+  async disableAllJung ({ chatId, chatTitle, userId }) {
     this.logger.info(`disableAllJung start at ${moment().utcOffset(8).format()}`)
-    if (await this.isAdmin({ chatId, userId, allAdmin })) {
+    if (await this.isAdmin({ chatId, userId })) {
       await this.dynamodb.disableAllJung({ chatId })
-      await this.telegram.sendMessage(chatId, `圍爐區: ${chatTitle} - Disabled AllJung command`)
+      await this.telegram.sendMessage(chatId, `
+圍爐區: ${chatTitle}
+
+Disabled AllJung command`)
     }
   }
 }

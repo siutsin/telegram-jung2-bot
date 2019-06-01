@@ -60,8 +60,7 @@ export default class SQS {
           await this.settings.enableAllJung({
             chatId,
             chatTitle,
-            userId: Number(message.userId.stringValue),
-            allAdmin: Number(message.allAdmin.stringValue) === 1
+            userId: Number(message.userId.stringValue)
           })
           break
         case ACTION_KEY_DISABLE_ALLJUNG:
@@ -70,8 +69,7 @@ export default class SQS {
           await this.settings.disableAllJung({
             chatId,
             chatTitle,
-            userId: Number(message.userId.stringValue),
-            allAdmin: Number(message.allAdmin.stringValue) === 1
+            userId: Number(message.userId.stringValue)
           })
           break
       }
@@ -199,10 +197,6 @@ export default class SQS {
           DataType: 'Number',
           StringValue: message.from.id.toString()
         },
-        allAdmin: {
-          DataType: 'Number',
-          StringValue: message.chat.all_members_are_administrators ? '1' : '0'
-        },
         action: {
           DataType: 'String',
           StringValue: ACTION_KEY_ENABLE_ALLJUNG
@@ -228,10 +222,6 @@ export default class SQS {
         userId: {
           DataType: 'Number',
           StringValue: message.from.id.toString()
-        },
-        allAdmin: {
-          DataType: 'Number',
-          StringValue: message.chat.all_members_are_administrators ? '1' : '0'
         },
         action: {
           DataType: 'String',
