@@ -7,7 +7,7 @@ import dotenv from 'dotenv'
 
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
-test.afterEach.always(t => {
+test.afterEach.always(() => {
   nock.cleanAll()
 })
 

@@ -2,3 +2,5 @@ topten - show top ten 冗員s
 topdiver - show top ten 潛水員s (between 潛得太深會搵唔到)
 alljung - show all 冗員s
 junghelp - show help message
+enablealljung - [Admin Only] enable alljung
+disablealljung - [Admin Only] disable alljung

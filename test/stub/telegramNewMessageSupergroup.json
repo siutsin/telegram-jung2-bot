@@ -12,8 +12,7 @@
     "chat": {
       "id": -4,
       "title": "title",
-      "type": "group",
-      "all_members_are_administrators": true
+      "type": "supergroup"
     },
     "date": 1554092292,
     "text": "hi"

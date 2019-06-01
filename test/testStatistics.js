@@ -8,20 +8,25 @@ import stubTopTen from './stub/telegramMessageTopTen'
 import stubTopDiver from './stub/telegramMessageTopDiver'
 import stubAllJung from './stub/telegramMessageAllJung'
 import stubAllJungDBResponse from './stub/allJungDatabaseResponse'
+import stubDynamoDBQueryStatsByChatIdResponse from './stub/dynamoDBQueryStatsByChatIdResponse'
 import stubAllJungMessageResponse from './stub/allJungMessageResponse'
 
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
-test.beforeEach(t => {
+test.beforeEach(() => {
   AWS.mock('DynamoDB.DocumentClient', 'query', (params, callback) => {
-    callback(null, stubAllJungDBResponse)
+    if (params.TableName === process.env.MESSAGE_TABLE) {
+      callback(null, stubAllJungDBResponse)
+    } else {
+      callback(null, stubDynamoDBQueryStatsByChatIdResponse)
+    }
   })
   AWS.mock('DynamoDB.DocumentClient', 'update', (params, callback) => {
     callback(null, { Items: 'successfully update items to the database' })
   })
 })
 
-test.afterEach.always(t => {
+test.afterEach.always(() => {
   nock.cleanAll()
   AWS.restore()
 })
@@ -34,7 +39,7 @@ test('/topten', async t => {
       data: stubAllJungMessageResponse
     })
   const statistics = new Statistics()
-  const response = await statistics.topTen(stubTopTen.message.chat.id)
+  const response = await statistics.topTen({ chatId: stubTopTen.message.chat.id })
   t.regex(response, /Top [0-9]+ 冗員s in the last 7 days \(last 上水 time\):/)
   t.regex(response, /1\. [a-zA-Z0-9 .]+% \(.*\)/)
   t.regex(response, /2\. [a-zA-Z0-9 .]+% \(.*\)/)
@@ -59,7 +64,7 @@ test('/topdiver', async t => {
       data: stubAllJungMessageResponse
     })
   const statistics = new Statistics()
-  const response = await statistics.topDiver(stubTopDiver.message.chat.id)
+  const response = await statistics.topDiver({ chatId: stubTopDiver.message.chat.id })
   t.regex(response, /Top [0-9]+ 潛水員s in the last 7 days/)
   t.regex(response, /By 冗power:/)
   t.regex(response, /1\. [a-zA-Z0-9 .]+% \(.*\)/)
@@ -116,7 +121,7 @@ test.serial('/topdiver - less than 10 users in a group', async t => {
       data: stubAllJungMessageResponse
     })
   const statistics = new Statistics()
-  const response = await statistics.topDiver(stubTopDiver.message.chat.id)
+  const response = await statistics.topDiver({ chatId: stubTopDiver.message.chat.id })
   t.regex(response, /Top [0-9]+ 潛水員s in the last 7 days/)
   t.regex(response, /By 冗power:/)
   t.regex(response, /1\. [a-zA-Z0-9 .]+% \(.*\)/)
@@ -137,7 +142,7 @@ test('/alljung', async t => {
       data: stubAllJungMessageResponse
     })
   const statistics = new Statistics()
-  const response = await statistics.allJung(stubAllJung.message.chat.id)
+  const response = await statistics.allJung({ chatId: stubAllJung.message.chat.id })
   t.regex(response, /All 冗員s in the last 7 days \(last 上水 time\):/)
   t.regex(response, /1\. [a-zA-Z0-9 .]+% \(.*\)/)
   t.regex(response, /2\. [a-zA-Z0-9 .]+% \(.*\)/)
@@ -154,13 +159,55 @@ test('/alljung', async t => {
   t.regex(response, /Last Update/)
 })
 
+test.serial('/alljung - not enabled', async t => {
+  const clone = JSON.parse(JSON.stringify(stubDynamoDBQueryStatsByChatIdResponse))
+  clone.Items[0].enableAllJung = false
+  AWS.remock('DynamoDB.DocumentClient', 'query', (params, callback) => {
+    if (params.TableName === process.env.MESSAGE_TABLE) {
+      callback(null, stubAllJungDBResponse)
+    } else {
+      callback(null, clone)
+    }
+  })
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .post('/sendMessage')
+    .reply(200, {
+      data: stubAllJungMessageResponse
+    })
+  const statistics = new Statistics()
+  const response = await statistics.allJung({ chatId: stubAllJung.message.chat.id })
+  t.falsy(response)
+})
+
+test.serial('/alljung - not set', async t => {
+  const clone = JSON.parse(JSON.stringify(stubDynamoDBQueryStatsByChatIdResponse))
+  delete clone.Items[0].enableAllJung
+  AWS.remock('DynamoDB.DocumentClient', 'query', (params, callback) => {
+    if (params.TableName === process.env.MESSAGE_TABLE) {
+      callback(null, stubAllJungDBResponse)
+    } else {
+      callback(null, clone)
+    }
+  })
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .post('/sendMessage')
+    .reply(200, {
+      data: stubAllJungMessageResponse
+    })
+  const statistics = new Statistics()
+  const response = await statistics.allJung({ chatId: stubAllJung.message.chat.id })
+  t.falsy(response)
+})
+
 test.serial('/topten with 4xx error', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .persist()
     .post('/sendMessage')
     .reply(497, 'Request failed with status code 497')
   const statistics = new Statistics()
-  const result = await statistics.topTen(stubTopTen.message.chat.id)
+  const result = await statistics.topTen({ chatId: stubTopTen.message.chat.id })
   t.truthy(result)
 })
 
@@ -171,7 +218,7 @@ test.serial('/topten with 9xx error', async t => {
     .reply(996, 'Request failed with status code 996')
   const statistics = new Statistics()
   try {
-    await statistics.topTen(stubTopTen.message.chat.id)
+    await statistics.topTen({ chatId: stubTopTen.message.chat.id })
     t.fail('This case should throw an error')
   } catch (e) {
     t.is(e.message, 'Request failed with status code 996')
