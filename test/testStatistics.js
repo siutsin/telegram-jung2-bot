@@ -34,7 +34,7 @@ test('/topten', async t => {
       data: stubAllJungMessageResponse
     })
   const statistics = new Statistics()
-  const response = await statistics.topTen(stubTopTen.message.chat.id)
+  const response = await statistics.topTen({ chatId: stubTopTen.message.chat.id })
   t.regex(response, /Top [0-9]+ 冗員s in the last 7 days \(last 上水 time\):/)
   t.regex(response, /1\. [a-zA-Z0-9 .]+% \(.*\)/)
   t.regex(response, /2\. [a-zA-Z0-9 .]+% \(.*\)/)
@@ -59,7 +59,7 @@ test('/topdiver', async t => {
       data: stubAllJungMessageResponse
     })
   const statistics = new Statistics()
-  const response = await statistics.topDiver(stubTopDiver.message.chat.id)
+  const response = await statistics.topDiver({ chatId: stubTopDiver.message.chat.id })
   t.regex(response, /Top [0-9]+ 潛水員s in the last 7 days/)
   t.regex(response, /By 冗power:/)
   t.regex(response, /1\. [a-zA-Z0-9 .]+% \(.*\)/)
@@ -116,7 +116,7 @@ test.serial('/topdiver - less than 10 users in a group', async t => {
       data: stubAllJungMessageResponse
     })
   const statistics = new Statistics()
-  const response = await statistics.topDiver(stubTopDiver.message.chat.id)
+  const response = await statistics.topDiver({ chatId: stubTopDiver.message.chat.id })
   t.regex(response, /Top [0-9]+ 潛水員s in the last 7 days/)
   t.regex(response, /By 冗power:/)
   t.regex(response, /1\. [a-zA-Z0-9 .]+% \(.*\)/)
@@ -137,7 +137,7 @@ test('/alljung', async t => {
       data: stubAllJungMessageResponse
     })
   const statistics = new Statistics()
-  const response = await statistics.allJung(stubAllJung.message.chat.id)
+  const response = await statistics.allJung({ chatId: stubAllJung.message.chat.id })
   t.regex(response, /All 冗員s in the last 7 days \(last 上水 time\):/)
   t.regex(response, /1\. [a-zA-Z0-9 .]+% \(.*\)/)
   t.regex(response, /2\. [a-zA-Z0-9 .]+% \(.*\)/)
@@ -160,7 +160,7 @@ test.serial('/topten with 4xx error', async t => {
     .post('/sendMessage')
     .reply(497, 'Request failed with status code 497')
   const statistics = new Statistics()
-  const result = await statistics.topTen(stubTopTen.message.chat.id)
+  const result = await statistics.topTen({ chatId: stubTopTen.message.chat.id })
   t.truthy(result)
 })
 
@@ -171,7 +171,7 @@ test.serial('/topten with 9xx error', async t => {
     .reply(996, 'Request failed with status code 996')
   const statistics = new Statistics()
   try {
-    await statistics.topTen(stubTopTen.message.chat.id)
+    await statistics.topTen({ chatId: stubTopTen.message.chat.id })
     t.fail('This case should throw an error')
   } catch (e) {
     t.is(e.message, 'Request failed with status code 996')
