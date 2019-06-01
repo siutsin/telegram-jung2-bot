@@ -43,7 +43,7 @@ export default class SQS {
           break
         case ACTION_KEY_OFF_FROM_WORK:
           this.logger.info(`SQS onEvent offFromWork start at ${moment().utcOffset(8).format()}`)
-          await this.statistics.offFromWork(chatId)
+          await this.statistics.offFromWork({ chatId })
           break
         case ACTION_KEY_TOPDIVER:
           this.logger.info(`SQS onEvent topdiver start at ${moment().utcOffset(8).format()}`)
