@@ -25,7 +25,7 @@ export default class SQS {
 
   async onEvent (event) {
     this.logger.info(`SQS onEvent start at ${moment().utcOffset(8).format()}`)
-    this.logger.info('event', event)
+    this.logger.debug('event', event)
     try {
       const record = event.Records[0]
       const message = record.messageAttributes
@@ -38,7 +38,8 @@ export default class SQS {
           break
         case ACTION_KEY_JUNGHELP:
           this.logger.info(`SQS onEvent junghelp start at ${moment().utcOffset(8).format()}`)
-          await this.help.sendHelpMessage(chatId)
+          const chatTitle = message.chatTitle.stringValue
+          await this.help.sendHelpMessage({ chatId, chatTitle })
           break
         case ACTION_KEY_OFF_FROM_WORK:
           this.logger.info(`SQS onEvent offFromWork start at ${moment().utcOffset(8).format()}`)
@@ -75,8 +76,8 @@ export default class SQS {
       this.logger.info(`SQS onEvent end at ${moment().utcOffset(8).format()}`)
       return p
     } catch (e) {
-      this.logger.error(e.message)
-      this.logger.info(`SQS onEvent end with error at ${moment().utcOffset(8).format()}`)
+      this.logger.error('onEvent error', e)
+      this.logger.error('onEvent error sqs event.Records', event.Records)
       return e.message
     }
   }
@@ -88,6 +89,10 @@ export default class SQS {
         chatId: {
           DataType: 'Number',
           StringValue: message.chat.id.toString()
+        },
+        chatTitle: {
+          DataType: 'String',
+          StringValue: message.chat.title
         },
         action: {
           DataType: 'String',
