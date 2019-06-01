@@ -26,8 +26,9 @@ export default class SQS {
   async onEvent (event) {
     this.logger.info(`SQS onEvent start at ${moment().utcOffset(8).format()}`)
     this.logger.debug('event', event)
+    let record
     try {
-      const record = event.Records[0]
+      record = event.Records[0]
       const message = record['messageAttributes']
       const chatId = Number(message.chatId.stringValue)
       const action = message.action.stringValue
@@ -73,18 +74,18 @@ export default class SQS {
           })
           break
       }
-      const deleteParams = {
-        QueueUrl: process.env.EVENT_QUEUE_URL,
-        ReceiptHandle: record['receiptHandle']
-      }
-      const p = this.sqs.deleteMessage(deleteParams).promise()
-      this.logger.info(`SQS onEvent end at ${moment().utcOffset(8).format()}`)
-      return p
     } catch (e) {
       this.logger.error('onEvent error', e)
       this.logger.error('onEvent error sqs event.Records', event.Records)
       return e.message
     }
+    const deleteParams = {
+      QueueUrl: process.env.EVENT_QUEUE_URL,
+      ReceiptHandle: record['receiptHandle']
+    }
+    const p = this.sqs.deleteMessage(deleteParams).promise()
+    this.logger.info(`SQS onEvent end at ${moment().utcOffset(8).format()}`)
+    return p
   }
 
   async sendJungHelpMessage (message) {
