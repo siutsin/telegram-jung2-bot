@@ -1,9 +1,9 @@
-import Jung2botUtil from './jung2botUtil'
+import Telegram from './telegram'
 import Pino from 'pino'
 
 export default class Help {
   constructor () {
-    this.jung2botUtil = new Jung2botUtil()
+    this.telegram = new Telegram()
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
   }
 
@@ -21,12 +21,16 @@ Commands:
 /alljung  show all 冗員s
 /junghelp  show help message
 
+Admin Only:
+/enablealljung  enable /alljung command
+/disablealljung  disable /alljung command
+
 Issue/Suggestion: https://github.com/siutsin/telegram-jung2-bot/issues
 
 May your 冗 power powerful -- Simon
 `
     this.logger.debug('helpMessage', helpMessage)
-    await this.jung2botUtil.sendMessage(chatId, helpMessage)
+    await this.telegram.sendMessage(chatId, helpMessage)
     return helpMessage
   }
 }

@@ -1,17 +1,20 @@
 import DynamoDB from './dynamodb'
-import Jung2botUtil from './jung2botUtil'
+import Settings from './settings'
+import Telegram from './telegram'
 import moment from 'moment'
 import Pino from 'pino'
 
 export default class Statistics {
   constructor () {
-    this.jung2botUtil = new Jung2botUtil()
+    this.telegram = new Telegram()
     this.dynamodb = new DynamoDB()
+    this.settings = new Settings()
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
   }
 
-  async normaliseRows (rows, options) {
+  async normaliseRows (options) {
     this.logger.info(`normaliseRows start at ${moment().utcOffset(8).format()}`)
+    const rows = options.rows
     const reverse = options.reverse || undefined
     const tally = rows.reduce((soFar, row) => {
       soFar[row.userId] = soFar[row.userId] ? soFar[row.userId] + 1 : 1
@@ -125,9 +128,9 @@ export default class Statistics {
     return footer
   }
 
-  async generateReport (rows, options) {
+  async generateReport (options) {
     this.logger.info(`generateReport start at ${moment().utcOffset(8).format()}`)
-    const normalisedRows = await this.normaliseRows(rows, options)
+    const normalisedRows = await this.normaliseRows(options)
     this.logger.debug('normalisedRows.rankings', normalisedRows.rankings)
     options.normalisedRows = normalisedRows
     options.chatTitle = normalisedRows.rankings[0].chatTitle
@@ -140,26 +143,28 @@ export default class Statistics {
     return { fullMessage, userCount: normalisedRows.rankings.length, messageCount: normalisedRows.totalMessage }
   }
 
-  async generateReportByChatId (chatId, options) {
+  async generateReportByChatId (options) {
     this.logger.info(`generateReportByChatId start at ${moment().utcOffset(8).format()}`)
-    const rows = await this.dynamodb.getRowsByChatId({ chatId })
-    const { fullMessage, userCount, messageCount } = await this.generateReport(rows, options)
+    const chatId = options.chatId
+    options.rows = await this.dynamodb.getRowsByChatId({ chatId })
+    const { fullMessage, userCount, messageCount } = await this.generateReport(options)
     await this.dynamodb.updateChatIdMessagesCount({ chatId, userCount, messageCount })
     this.logger.info(`generateReportByChatId finish at ${moment().utcOffset(8).format()}`)
     return fullMessage
   }
 
-  async getStats (chatId, options) {
+  async getStats (options) {
+    const chatId = options.chatId
     this.logger.info(`getStats start at ${moment().utcOffset(8).format()}`)
     let returnMessage = ''
     if (options.offFromWork) {
       returnMessage = '夠鐘收工~~\n\n'
     }
     try {
-      const statsMessage = await this.generateReportByChatId(chatId, options)
+      const statsMessage = await this.generateReportByChatId(options)
       returnMessage += statsMessage
       this.logger.info(`got stats report, sending to telegram at ${moment().utcOffset(8).format()}`)
-      await this.jung2botUtil.sendMessage(chatId, returnMessage)
+      await this.telegram.sendMessage(chatId, returnMessage)
     } catch (e) {
       this.logger.error(e.message)
       if (!e.message.match(/[45][0-9]{2}/)) { throw e }
@@ -169,19 +174,23 @@ export default class Statistics {
     return returnMessage
   }
 
-  async allJung (chatId) {
-    return this.getStats(chatId, {})
+  async allJung ({ chatId }) {
+    const isAllJungEnable = await this.settings.isAllJungEnabled({ chatId })
+    if (isAllJungEnable) {
+      return this.getStats({ chatId })
+    }
+    return false
   }
 
-  async topTen (chatId) {
-    return this.getStats(chatId, { limit: 10 })
+  async topTen ({ chatId }) {
+    return this.getStats({ chatId, limit: 10 })
   }
 
-  async topDiver (chatId) {
-    return this.getStats(chatId, { limit: 10, reverse: true })
+  async topDiver ({ chatId }) {
+    return this.getStats({ chatId, limit: 10, reverse: true })
   }
 
-  async offFromWork (chatId) {
-    return this.getStats(chatId, { limit: 10, offFromWork: true })
+  async offFromWork ({ chatId }) {
+    return this.getStats({ chatId, limit: 10, offFromWork: true })
   }
 }

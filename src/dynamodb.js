@@ -1,5 +1,5 @@
 import moment from 'moment'
-import AWS from 'aws-sdk'
+import * as AWS from 'aws-sdk'
 import Pino from 'pino'
 
 export default class DynamoDB {
@@ -94,6 +94,42 @@ export default class DynamoDB {
     return response
   }
 
+  async enableAllJung ({ chatId }) {
+    const params = {
+      TableName: process.env.CHATID_TABLE,
+      Key: { chatId },
+      UpdateExpression: 'SET #eaj = :eaj',
+      ExpressionAttributeNames: {
+        '#eaj': 'enableAllJung'
+      },
+      ExpressionAttributeValues: {
+        ':eaj': true
+      }
+    }
+    this.logger.debug('params', params)
+    const response = await this.documentClient.update(params).promise()
+    this.logger.trace('response', response)
+    return response
+  }
+
+  async disableAllJung ({ chatId }) {
+    const params = {
+      TableName: process.env.CHATID_TABLE,
+      Key: { chatId },
+      UpdateExpression: 'SET #eaj = :eaj',
+      ExpressionAttributeNames: {
+        '#eaj': 'enableAllJung'
+      },
+      ExpressionAttributeValues: {
+        ':eaj': false
+      }
+    }
+    this.logger.debug('params', params)
+    const response = await this.documentClient.update(params).promise()
+    this.logger.trace('response', response)
+    return response
+  }
+
   async updateChatIdMessagesCount ({ chatId, userCount, messageCount }) {
     const params = {
       TableName: process.env.CHATID_TABLE,
@@ -126,6 +162,19 @@ export default class DynamoDB {
     return { updateChatIdResponse, saveStatMessageResponse }
   }
 
+  async getStatsByChatId ({ chatId }) {
+    const params = {
+      TableName: process.env.CHATID_TABLE,
+      KeyConditionExpression: 'chatId = :chat_id',
+      ExpressionAttributeValues: {
+        ':chat_id': chatId
+      }
+    }
+    const result = await this.documentClient.query(params).promise()
+    this.logger.trace(result)
+    return result
+  }
+
   async getRowsByChatId ({ chatId, days = 7 }) {
     const _getRowsByChatId = async (startKey) => {
       const params = {
@@ -145,7 +194,7 @@ export default class DynamoDB {
       this.logger.trace(result)
       return result
     }
-    let lastEvaluatedKey
+    let lastEvaluatedKey = false
     let i = 0
     let rows = []
     do {
@@ -171,7 +220,7 @@ export default class DynamoDB {
       this.logger.trace(result)
       return result
     }
-    let lastEvaluatedKey
+    let lastEvaluatedKey = false
     let i = 0
     let rows = []
     do {
