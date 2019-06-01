@@ -31,6 +31,7 @@ export default class SQS {
       const message = record['messageAttributes']
       const chatId = Number(message.chatId.stringValue)
       const action = message.action.stringValue
+      let chatTitle
       switch (action) {
         case ACTION_KEY_ALLJUNG:
           this.logger.info(`SQS onEvent alljung start at ${moment().utcOffset(8).format()}`)
@@ -38,7 +39,7 @@ export default class SQS {
           break
         case ACTION_KEY_JUNGHELP:
           this.logger.info(`SQS onEvent junghelp start at ${moment().utcOffset(8).format()}`)
-          const chatTitle = message.chatTitle.stringValue
+          chatTitle = message.chatTitle.stringValue
           await this.help.sendHelpMessage({ chatId, chatTitle })
           break
         case ACTION_KEY_OFF_FROM_WORK:
@@ -54,15 +55,21 @@ export default class SQS {
           await this.statistics.topTen({ chatId })
           break
         case ACTION_KEY_ENABLE_ALLJUNG:
+          this.logger.info(`SQS onEvent enableAllJung start at ${moment().utcOffset(8).format()}`)
+          chatTitle = message.chatTitle.stringValue
           await this.settings.enableAllJung({
             chatId,
+            chatTitle,
             userId: Number(message.userId.stringValue),
             allAdmin: Number(message.allAdmin.stringValue) === 1
           })
           break
         case ACTION_KEY_DISABLE_ALLJUNG:
+          this.logger.info(`SQS onEvent disableAllJung start at ${moment().utcOffset(8).format()}`)
+          chatTitle = message.chatTitle.stringValue
           await this.settings.disableAllJung({
             chatId,
+            chatTitle,
             userId: Number(message.userId.stringValue),
             allAdmin: Number(message.allAdmin.stringValue) === 1
           })
@@ -184,6 +191,10 @@ export default class SQS {
           DataType: 'Number',
           StringValue: message.chat.id.toString()
         },
+        chatTitle: {
+          DataType: 'String',
+          StringValue: message.chat.title
+        },
         userId: {
           DataType: 'Number',
           StringValue: message.from.id.toString()
@@ -209,6 +220,10 @@ export default class SQS {
         chatId: {
           DataType: 'Number',
           StringValue: message.chat.id.toString()
+        },
+        chatTitle: {
+          DataType: 'String',
+          StringValue: message.chat.title
         },
         userId: {
           DataType: 'Number',

@@ -17,6 +17,12 @@
           "binaryListValues": [],
           "dataType": "Number"
         },
+        "chatTitle": {
+          "stringValue": "chatTitle",
+          "stringListValues": [],
+          "binaryListValues": [],
+          "dataType": "String"
+        },
         "userId": {
           "stringValue": "123",
           "stringListValues": [],

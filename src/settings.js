@@ -15,17 +15,17 @@ export default class Settings {
     return isAdmin
   }
 
-  async enableAllJung ({ chatId, userId, allAdmin }) {
+  async enableAllJung ({ chatId, chatTitle, userId, allAdmin }) {
     if (await this.isAdmin({ chatId, userId, allAdmin })) {
       await this.dynamodb.enableAllJung({ chatId })
-      await this.telegram.sendMessage(chatId, 'Enabled AllJung command')
+      await this.telegram.sendMessage(chatId, `圍爐區: ${chatTitle} - Enabled AllJung command`)
     }
   }
 
-  async disableAllJung ({ chatId, userId, allAdmin }) {
+  async disableAllJung ({ chatId, chatTitle, userId, allAdmin }) {
     if (await this.isAdmin({ chatId, userId, allAdmin })) {
       await this.dynamodb.disableAllJung({ chatId })
-      await this.telegram.sendMessage(chatId, 'Disabled AllJung command')
+      await this.telegram.sendMessage(chatId, `圍爐區: ${chatTitle} - Disabled AllJung command`)
     }
   }
 }
