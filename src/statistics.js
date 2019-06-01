@@ -1,4 +1,5 @@
 import DynamoDB from './dynamodb'
+import Settings from './settings'
 import Telegram from './telegram'
 import moment from 'moment'
 import Pino from 'pino'
@@ -7,6 +8,7 @@ export default class Statistics {
   constructor () {
     this.telegram = new Telegram()
     this.dynamodb = new DynamoDB()
+    this.settings = new Settings()
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
   }
 
@@ -173,7 +175,11 @@ export default class Statistics {
   }
 
   async allJung ({ chatId }) {
-    return this.getStats({ chatId })
+    const isAllJungEnable = await this.settings.isAllJungEnabled({ chatId })
+    if (isAllJungEnable) {
+      return this.getStats({ chatId })
+    }
+    return false
   }
 
   async topTen ({ chatId }) {

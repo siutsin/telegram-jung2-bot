@@ -162,6 +162,19 @@ export default class DynamoDB {
     return { updateChatIdResponse, saveStatMessageResponse }
   }
 
+  async getStatsByChatId ({ chatId }) {
+    const params = {
+      TableName: process.env.CHATID_TABLE,
+      KeyConditionExpression: 'chatId = :chat_id',
+      ExpressionAttributeValues: {
+        ':chat_id': chatId
+      }
+    }
+    const result = await this.documentClient.query(params).promise()
+    this.logger.trace(result)
+    return result
+  }
+
   async getRowsByChatId ({ chatId, days = 7 }) {
     const _getRowsByChatId = async (startKey) => {
       const params = {

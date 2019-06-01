@@ -16,6 +16,7 @@ import stubDisableAllJungSQSEvent from './stub/onDisableAllJungSQSEvent'
 import stubAllJungMessageResponse from './stub/allJungMessageResponse'
 import stubAllJungDBResponse from './stub/allJungDatabaseResponse'
 import stubGetChatAdministratorsResponse from './stub/getChatAdministratorsResponse'
+import stubDynamoDBQueryStatsByChatIdResponse from './stub/dynamoDBQueryStatsByChatIdResponse'
 
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
@@ -29,7 +30,11 @@ test.beforeEach(() => {
     callback(null, stubDeleteMessage)
   })
   AWS.mock('DynamoDB.DocumentClient', 'query', (params, callback) => {
-    callback(null, stubAllJungDBResponse)
+    if (params.TableName === process.env.MESSAGE_TABLE) {
+      callback(null, stubAllJungDBResponse)
+    } else {
+      callback(null, stubDynamoDBQueryStatsByChatIdResponse)
+    }
   })
   AWS.mock('DynamoDB.DocumentClient', 'update', (params, callback) => {
     callback(null, { Items: 'successfully update items to the database' })
