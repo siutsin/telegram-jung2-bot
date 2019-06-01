@@ -1,0 +1,52 @@
+{
+  "Records": [
+    {
+      "messageId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      "receiptHandle": "long_random_string",
+      "body": "sendEnableAllJungMessage",
+      "attributes": {
+        "ApproximateReceiveCount": "1",
+        "SentTimestamp": "1557568296293",
+        "SenderId": "SenderId",
+        "ApproximateFirstReceiveTimestamp": "1557568296300"
+      },
+      "messageAttributes": {
+        "chatId": {
+          "stringValue": "-123",
+          "stringListValues": [],
+          "binaryListValues": [],
+          "dataType": "Number"
+        },
+        "chatTitle": {
+          "stringValue": "chatTitle",
+          "stringListValues": [],
+          "binaryListValues": [],
+          "dataType": "String"
+        },
+        "userId": {
+          "stringValue": "123",
+          "stringListValues": [],
+          "binaryListValues": [],
+          "dataType": "Number"
+        },
+        "allAdmin": {
+          "stringValue": "0",
+          "stringListValues": [],
+          "binaryListValues": [],
+          "dataType": "Number"
+        },
+        "action": {
+          "stringValue": "enableAllJung",
+          "stringListValues": [],
+          "binaryListValues": [],
+          "dataType": "String"
+        }
+      },
+      "md5OfBody": "md5OfBody",
+      "md5OfMessageAttributes": "md5OfMessageAttributes",
+      "eventSource": "aws:sqs",
+      "eventSourceARN": "arn:aws:sqs:some-where-1:123:sqs-name",
+      "awsRegion": "some-where-1"
+    }
+  ]
+}

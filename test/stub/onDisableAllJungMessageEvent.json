@@ -1,0 +1,3 @@
+{
+  "body": "{\"message\":{\"message_id\":2,\"from\":{\"id\":234,\"is_bot\":false,\"first_name\":\"first_name\",\"username\":\"username\"},\"chat\":{\"id\":2,\"title\":\"title\",\"type\":\"group\",\"all_members_are_administrators\":true},\"date\":1554092292,\"text\":\"/disableAllJung\",\"entities\":[{\"offset\":0,\"length\":9,\"type\":\"bot_command\"}]}}"
+}

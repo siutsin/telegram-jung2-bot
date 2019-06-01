@@ -11,7 +11,7 @@ dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 const stubPutMessage = 'successfully put item into the database'
 const stubQueryMessage = { Items: 'successfully query items from the database' }
 
-test.beforeEach(t => {
+test.beforeEach(() => {
   AWS.mock('DynamoDB.DocumentClient', 'update', (params, callback) => {
     callback(null, stubPutMessage)
   })
@@ -23,7 +23,7 @@ test.beforeEach(t => {
   })
 })
 
-test.afterEach.always(t => {
+test.afterEach.always(() => {
   AWS.restore()
 })
 
@@ -86,7 +86,7 @@ test.serial('getRowsByChatId with LastEvaluatedKey', async t => {
   const stubObject = () => {
     const obj = {
       Items: ['dummy'],
-      LastEvaluatedKey: { d: 'ummy' }
+      LastEvaluatedKey: { d: 'dummy' }
     }
     if (i <= 0) { delete obj.LastEvaluatedKey }
     i--
@@ -107,7 +107,7 @@ test.serial('getAllGroupIds with LastEvaluatedKey', async t => {
   const stubObject = () => {
     const obj = {
       Items: ['dummy'],
-      LastEvaluatedKey: { d: 'ummy' }
+      LastEvaluatedKey: { d: 'dummy' }
     }
     if (i <= 0) { delete obj.LastEvaluatedKey }
     i--

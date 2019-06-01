@@ -6,7 +6,7 @@ import DynamoDB from '../src/dynamodb'
 
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
-test.beforeEach(t => {
+test.beforeEach(() => {
   AWS.mock('DynamoDB', 'describeTable', (params, callback) => {
     callback(null, {
       Table: {
@@ -19,7 +19,7 @@ test.beforeEach(t => {
   })
 })
 
-test.afterEach.always(t => {
+test.afterEach.always(() => {
   AWS.restore()
 })
 

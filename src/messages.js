@@ -3,15 +3,15 @@ import moment from 'moment'
 import DynamoDB from './dynamodb'
 import SQS from './sqs'
 
+function _isBotCommand (message) {
+  return message.entities && message.entities[0] && message.entities[0].type === 'bot_command'
+}
+
 export default class Messages {
   constructor () {
     this.dynamodb = new DynamoDB()
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
     this.sqs = new SQS()
-  }
-
-  isBotCommand (message) {
-    return message.entities && message.entities[0] && message.entities[0].type === 'bot_command'
   }
 
   async newMessage (event) {
@@ -26,7 +26,7 @@ export default class Messages {
         return { statusCode: 204 }
       }
       await this.dynamodb.saveMessage({ message })
-      if (this.isBotCommand(message)) {
+      if (_isBotCommand(message)) {
         const text = message.text
         this.logger.info(text)
         if (text.match(/\/jung[hH]elp/)) {
@@ -48,6 +48,16 @@ export default class Messages {
           this.logger.info(`newMessage alljung start at ${moment().utcOffset(8).format()}`)
           await this.sqs.sendAllJungMessage(message)
           this.logger.info(`newMessage alljung finish at ${moment().utcOffset(8).format()}`)
+        }
+        if (text.match(/\/enable[aA]ll[jJ]ung/)) {
+          this.logger.info(`newMessage enableAllJung start at ${moment().utcOffset(8).format()}`)
+          await this.sqs.sendEnableAllJungMessage(message)
+          this.logger.info(`newMessage enableAllJung finish at ${moment().utcOffset(8).format()}`)
+        }
+        if (text.match(/\/disable[aA]ll[jJ]ung/)) {
+          this.logger.info(`newMessage disableAllJung start at ${moment().utcOffset(8).format()}`)
+          await this.sqs.sendDisableAllJungMessage(message)
+          this.logger.info(`newMessage disableAllJung finish at ${moment().utcOffset(8).format()}`)
         }
       }
       this.logger.info(`newMessage finish at ${moment().utcOffset(8).format()}`)
