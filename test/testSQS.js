@@ -133,6 +133,11 @@ test.serial('onEvent - enableAllJung - all admin', async t => {
     .persist()
     .post('/sendMessage')
     .reply(200, stubAllJungMessageResponse)
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .get('/getChatAdministrators')
+    .query({ chat_id: -123 })
+    .reply(200, stubGetChatAdministratorsResponse)
   const clone = JSON.parse(JSON.stringify(stubEnableAllJungSQSEvent))
   clone.Records[0]['messageAttributes'].allAdmin.stringValue = '1'
   const sqs = new SQS()
@@ -177,6 +182,11 @@ test.serial('onEvent - disableAllJung - all admin', async t => {
     .persist()
     .post('/sendMessage')
     .reply(200, stubAllJungMessageResponse)
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .get('/getChatAdministrators')
+    .query({ chat_id: -123 })
+    .reply(200, stubGetChatAdministratorsResponse)
   const clone = JSON.parse(JSON.stringify(stubDisableAllJungSQSEvent))
   clone.Records[0]['messageAttributes'].allAdmin.stringValue = '1'
   const sqs = new SQS()
