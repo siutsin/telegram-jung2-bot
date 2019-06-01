@@ -2,7 +2,7 @@
   "ResponseMetadata": {
     "RequestId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
   },
-  "MD5OfMessageBody": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-  "MD5OfMessageAttributes": "cccccccccccccccccccccccccccccccc",
+  "MD5OfMessageBody": "MD5OfMessageBody",
+  "MD5OfMessageAttributes": "MD5OfMessageAttributes",
   "MessageId": "dddddddd-dddd-dddd-dddd-dddddddddddd"
 }

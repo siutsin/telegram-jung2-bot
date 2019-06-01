@@ -3,15 +3,15 @@ import moment from 'moment'
 import DynamoDB from './dynamodb'
 import SQS from './sqs'
 
+function _isBotCommand (message) {
+  return message.entities && message.entities[0] && message.entities[0].type === 'bot_command'
+}
+
 export default class Messages {
   constructor () {
     this.dynamodb = new DynamoDB()
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
     this.sqs = new SQS()
-  }
-
-  isBotCommand (message) {
-    return message.entities && message.entities[0] && message.entities[0].type === 'bot_command'
   }
 
   async newMessage (event) {
@@ -26,7 +26,7 @@ export default class Messages {
         return { statusCode: 204 }
       }
       await this.dynamodb.saveMessage({ message })
-      if (this.isBotCommand(message)) {
+      if (_isBotCommand(message)) {
         const text = message.text
         this.logger.info(text)
         if (text.match(/\/jung[hH]elp/)) {

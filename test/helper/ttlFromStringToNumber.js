@@ -89,7 +89,7 @@ async function scanAll (startKey) {
 }
 
 async function main () {
-  let lastEvaluatedKey
+  let lastEvaluatedKey = false
   let i = 0
   do {
     console.log(`i: ${i} lastEvaluatedKey: ${JSON.stringify(lastEvaluatedKey)}`)
