@@ -12,7 +12,7 @@ import stubAllJungMessageResponse from './stub/allJungMessageResponse'
 
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
-test.beforeEach(t => {
+test.beforeEach(() => {
   AWS.mock('DynamoDB.DocumentClient', 'query', (params, callback) => {
     callback(null, stubAllJungDBResponse)
   })
@@ -21,7 +21,7 @@ test.beforeEach(t => {
   })
 })
 
-test.afterEach.always(t => {
+test.afterEach.always(() => {
   nock.cleanAll()
   AWS.restore()
 })

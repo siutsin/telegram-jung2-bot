@@ -21,7 +21,7 @@ dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
 const stubDeleteMessage = { Dummy: 'deleteMessage' }
 
-test.beforeEach(t => {
+test.beforeEach(() => {
   AWS.mock('SQS', 'sendMessage', (params, callback) => {
     callback(null, stubSQSResponse)
   })
@@ -36,7 +36,7 @@ test.beforeEach(t => {
   })
 })
 
-test.afterEach.always(t => {
+test.afterEach.always(() => {
   nock.cleanAll()
   AWS.restore()
 })
@@ -135,7 +135,7 @@ test.serial('onEvent - enableAllJung - all admin', async t => {
       data: stubAllJungMessageResponse
     })
   const clone = JSON.parse(JSON.stringify(stubEnableAllJungSQSEvent))
-  clone.Records[0].messageAttributes.allAdmin.stringValue = '1'
+  clone.Records[0]['messageAttributes'].allAdmin.stringValue = '1'
   const sqs = new SQS()
   const response = await sqs.onEvent(clone)
   t.is(response, stubDeleteMessage)
@@ -181,7 +181,7 @@ test.serial('onEvent - disableAllJung - all admin', async t => {
     .post('/sendMessage')
     .reply(200, stubAllJungMessageResponse)
   const clone = JSON.parse(JSON.stringify(stubDisableAllJungSQSEvent))
-  clone.Records[0].messageAttributes.allAdmin.stringValue = '1'
+  clone.Records[0]['messageAttributes'].allAdmin.stringValue = '1'
   const sqs = new SQS()
   const response = await sqs.onEvent(clone)
   t.is(response, stubDeleteMessage)

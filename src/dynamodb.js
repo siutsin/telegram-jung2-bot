@@ -1,5 +1,5 @@
 import moment from 'moment'
-import AWS from 'aws-sdk'
+import * as AWS from 'aws-sdk'
 import Pino from 'pino'
 
 export default class DynamoDB {
@@ -181,7 +181,7 @@ export default class DynamoDB {
       this.logger.trace(result)
       return result
     }
-    let lastEvaluatedKey
+    let lastEvaluatedKey = false
     let i = 0
     let rows = []
     do {
@@ -207,7 +207,7 @@ export default class DynamoDB {
       this.logger.trace(result)
       return result
     }
-    let lastEvaluatedKey
+    let lastEvaluatedKey = false
     let i = 0
     let rows = []
     do {

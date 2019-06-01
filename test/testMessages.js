@@ -17,7 +17,7 @@ import stubSQSResponse from './stub/sqsResponse'
 
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
-test.beforeEach(async t => {
+test.beforeEach(async () => {
   AWS.mock('DynamoDB.DocumentClient', 'update', (params, callback) => {
     callback(null, { Items: 'successfully update items to the database' })
   })

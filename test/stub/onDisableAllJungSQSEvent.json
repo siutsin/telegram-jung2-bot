@@ -3,7 +3,7 @@
     {
       "messageId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
       "receiptHandle": "long_random_string",
-      "body": "senddisableAllJungMessage",
+      "body": "sendDisableAllJungMessage",
       "attributes": {
         "ApproximateReceiveCount": "1",
         "SentTimestamp": "1557568296293",

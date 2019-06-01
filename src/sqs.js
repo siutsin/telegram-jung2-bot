@@ -1,4 +1,4 @@
-import AWS from 'aws-sdk'
+import * as AWS from 'aws-sdk'
 import Pino from 'pino'
 import moment from 'moment'
 import Statistics from './statistics'
@@ -28,13 +28,13 @@ export default class SQS {
     this.logger.debug('event', event)
     try {
       const record = event.Records[0]
-      const message = record.messageAttributes
+      const message = record['messageAttributes']
       const chatId = Number(message.chatId.stringValue)
       const action = message.action.stringValue
       switch (action) {
         case ACTION_KEY_ALLJUNG:
           this.logger.info(`SQS onEvent alljung start at ${moment().utcOffset(8).format()}`)
-          await this.statistics.allJung(chatId)
+          await this.statistics.allJung({ chatId })
           break
         case ACTION_KEY_JUNGHELP:
           this.logger.info(`SQS onEvent junghelp start at ${moment().utcOffset(8).format()}`)
@@ -47,11 +47,11 @@ export default class SQS {
           break
         case ACTION_KEY_TOPDIVER:
           this.logger.info(`SQS onEvent topdiver start at ${moment().utcOffset(8).format()}`)
-          await this.statistics.topDiver(chatId)
+          await this.statistics.topDiver({ chatId })
           break
         case ACTION_KEY_TOPTEN:
           this.logger.info(`SQS onEvent topten start at ${moment().utcOffset(8).format()}`)
-          await this.statistics.topTen(chatId)
+          await this.statistics.topTen({ chatId })
           break
         case ACTION_KEY_ENABLE_ALLJUNG:
           await this.settings.enableAllJung({
@@ -70,7 +70,7 @@ export default class SQS {
       }
       const deleteParams = {
         QueueUrl: process.env.EVENT_QUEUE_URL,
-        ReceiptHandle: record.receiptHandle
+        ReceiptHandle: record['receiptHandle']
       }
       const p = this.sqs.deleteMessage(deleteParams).promise()
       this.logger.info(`SQS onEvent end at ${moment().utcOffset(8).format()}`)
