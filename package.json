@@ -1,6 +1,6 @@
 {
   "name": "telegram-jung2-bot",
-  "version": "3.3.0",
+  "version": "3.3.1",
   "private": true,
   "repository": {
     "type": "git",
@@ -25,7 +25,7 @@
   },
   "scripts": {
     "test": "npm run lint && nyc ava",
-    "test_local": "npm run lint --fix && nyc ava --verbose",
+    "test-local": "npm run lint --fix && nyc ava --verbose",
     "coveralls": "nyc report --reporter=text-lcov | coveralls",
     "codecov": "nyc report --reporter=text-lcov > coverage.lcov | codecov",
     "lint": "standard",
@@ -38,9 +38,9 @@
   "dependencies": {
     "@babel/polyfill": "^7.4.4",
     "@babel/runtime": "^7.4.5",
-    "aws-sdk": "^2.466.0",
+    "aws-sdk": "^2.467.0",
     "axios": "^0.19.0",
-    "bottleneck": "^2.18.1",
+    "bottleneck": "^2.19.0",
     "moment": "^2.24.0",
     "pino": "^5.12.6",
     "pino-pretty": "^3.1.0",
@@ -51,7 +51,7 @@
     "@babel/core": "^7.4.5",
     "@babel/plugin-transform-runtime": "^7.4.4",
     "@babel/preset-env": "^7.4.5",
-    "ava": "^1.4.1",
+    "ava": "^2.0.0",
     "aws-sdk-mock": "^4.4.0",
     "babel-loader": "^8.0.6",
     "babel-plugin-source-map-support": "^2.0.1",
@@ -68,7 +68,7 @@
     "serverless-domain-manager": "^3.2.2",
     "serverless-dotenv-plugin": "^2.1.1",
     "serverless-dynamodb-local": "^0.2.38",
-    "serverless-offline": "^4.10.6",
+    "serverless-offline": "^5.0.1",
     "serverless-plugin-dynamodb-autoscaling": "^3.1.0",
     "serverless-plugin-lambda-dead-letter": "^1.2.1",
     "serverless-webpack": "^5.3.0",

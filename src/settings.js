@@ -18,9 +18,13 @@ export default class Settings {
   async isAllJungEnabled ({ chatId }) {
     this.logger.info(`isAllJungEnabled start at ${moment().utcOffset(8).format()}`)
     const response = await this.dynamodb.getStatsByChatId({ chatId })
-    const isAllJungEnabled = response.Items[0].enableAllJung
+    let isAllJungEnabled = response.Items[0].enableAllJung
+    if (isAllJungEnabled === undefined) {
+      this.logger.info('isAllJungEnabled no record in settings, set to true')
+      isAllJungEnabled = true
+    }
     this.logger.info('isAllJungEnabled', isAllJungEnabled)
-    return !!isAllJungEnabled
+    return isAllJungEnabled
   }
 
   async enableAllJung ({ chatId, chatTitle, userId }) {

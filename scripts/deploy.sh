@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 if [[ "${TRAVIS_BRANCH}" == "develop" ]]; then
    echo "STAGE=$STAGE_DEV" >> .env
    echo "REGION=$REGION_DEV" >> .env
