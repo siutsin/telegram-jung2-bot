@@ -35,9 +35,7 @@ test('/topten', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .persist()
     .post('/sendMessage')
-    .reply(200, {
-      data: stubAllJungMessageResponse
-    })
+    .reply(200, stubAllJungMessageResponse)
   const statistics = new Statistics()
   const response = await statistics.topTen({ chatId: stubTopTen.message.chat.id })
   t.regex(response, /Top [0-9]+ 冗員s in the last 7 days \(last 上水 time\):/)
@@ -60,9 +58,7 @@ test('/topdiver', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .persist()
     .post('/sendMessage')
-    .reply(200, {
-      data: stubAllJungMessageResponse
-    })
+    .reply(200, stubAllJungMessageResponse)
   const statistics = new Statistics()
   const response = await statistics.topDiver({ chatId: stubTopDiver.message.chat.id })
   t.regex(response, /Top [0-9]+ 潛水員s in the last 7 days/)
@@ -117,9 +113,7 @@ test.serial('/topdiver - less than 10 users in a group', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .persist()
     .post('/sendMessage')
-    .reply(200, {
-      data: stubAllJungMessageResponse
-    })
+    .reply(200, stubAllJungMessageResponse)
   const statistics = new Statistics()
   const response = await statistics.topDiver({ chatId: stubTopDiver.message.chat.id })
   t.regex(response, /Top [0-9]+ 潛水員s in the last 7 days/)
@@ -138,9 +132,7 @@ test('/alljung', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .persist()
     .post('/sendMessage')
-    .reply(200, {
-      data: stubAllJungMessageResponse
-    })
+    .reply(200, stubAllJungMessageResponse)
   const statistics = new Statistics()
   const response = await statistics.allJung({ chatId: stubAllJung.message.chat.id })
   t.regex(response, /All 冗員s in the last 7 days \(last 上水 time\):/)
@@ -172,9 +164,7 @@ test.serial('/alljung - not enabled', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .persist()
     .post('/sendMessage')
-    .reply(200, {
-      data: stubAllJungMessageResponse
-    })
+    .reply(200, stubAllJungMessageResponse)
   const statistics = new Statistics()
   const response = await statistics.allJung({ chatId: stubAllJung.message.chat.id })
   t.falsy(response)
@@ -193,12 +183,23 @@ test.serial('/alljung - not set', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .persist()
     .post('/sendMessage')
-    .reply(200, {
-      data: stubAllJungMessageResponse
-    })
+    .reply(200, stubAllJungMessageResponse)
   const statistics = new Statistics()
   const response = await statistics.allJung({ chatId: stubAllJung.message.chat.id })
-  t.falsy(response)
+  t.regex(response, /All 冗員s in the last 7 days \(last 上水 time\):/)
+  t.regex(response, /1\. [a-zA-Z0-9 .]+% \(.*\)/)
+  t.regex(response, /2\. [a-zA-Z0-9 .]+% \(.*\)/)
+  t.regex(response, /3\. [a-zA-Z0-9 .]+% \(.*\)/)
+  t.regex(response, /4\. [a-zA-Z0-9 .]+% \(.*\)/)
+  t.regex(response, /5\. [a-zA-Z0-9 .]+% \(.*\)/)
+  t.regex(response, /6\. [a-zA-Z0-9 .]+% \(.*\)/)
+  t.regex(response, /7\. [a-zA-Z0-9 .]+% \(.*\)/)
+  t.regex(response, /8\. [a-zA-Z0-9 .]+% \(.*\)/)
+  t.regex(response, /9\. [a-zA-Z0-9 .]+% \(.*\)/)
+  t.regex(response, /10\. [a-zA-Z0-9 .]+% \(.*\)/)
+  t.regex(response, /11\. [a-zA-Z0-9 .]+% \(.*\)/)
+  t.regex(response, /Total messages: [1-9]+[0-9]*/)
+  t.regex(response, /Last Update/)
 })
 
 test.serial('/topten with 4xx error', async t => {
