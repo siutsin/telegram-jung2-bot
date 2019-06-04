@@ -25,7 +25,7 @@
   },
   "scripts": {
     "test": "npm run lint && nyc ava",
-    "test_local": "npm run lint --fix && nyc ava --verbose",
+    "test-local": "npm run lint --fix && nyc ava --verbose",
     "coveralls": "nyc report --reporter=text-lcov | coveralls",
     "codecov": "nyc report --reporter=text-lcov > coverage.lcov | codecov",
     "lint": "standard",
