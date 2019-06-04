@@ -1,10 +1,8 @@
 import Telegram from './telegram'
-import Pino from 'pino'
 
 export default class Help {
   constructor () {
     this.telegram = new Telegram()
-    this.logger = new Pino({ level: process.env.LOG_LEVEL })
   }
 
   async sendHelpMessage ({ chatId, chatTitle }) {
@@ -29,7 +27,6 @@ Issue/Suggestion: https://github.com/siutsin/telegram-jung2-bot/issues
 
 May your 冗 power powerful -- Simon
 `
-    this.logger.debug('helpMessage', helpMessage)
     await this.telegram.sendMessage(chatId, helpMessage)
     return helpMessage
   }
