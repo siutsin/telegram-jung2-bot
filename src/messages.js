@@ -16,7 +16,6 @@ export default class Messages {
 
   async newMessage (event) {
     this.logger.info(`newMessage start at ${moment().utcOffset(8).format()}`)
-    this.logger.debug(`event`, event)
     try {
       const params = JSON.parse(event.body)
       this.logger.trace('params', params)
@@ -30,34 +29,28 @@ export default class Messages {
         const text = message.text
         this.logger.info(text)
         if (text.match(/\/jung[hH]elp/)) {
-          this.logger.info(`newMessage help start at ${moment().utcOffset(8).format()}`)
+          this.logger.info(`newMessage help`)
           await this.sqs.sendJungHelpMessage(message)
-          this.logger.info(`newMessage help finish at ${moment().utcOffset(8).format()}`)
         }
         if (text.match(/\/top[tT]en/)) {
-          this.logger.info(`newMessage topTen start at ${moment().utcOffset(8).format()}`)
+          this.logger.info(`newMessage topTen`)
           await this.sqs.sendTopTenMessage(message)
-          this.logger.info(`newMessage topTen finish at ${moment().utcOffset(8).format()}`)
         }
         if (text.match(/\/top[dD]iver/)) {
-          this.logger.info(`newMessage topDiver start at ${moment().utcOffset(8).format()}`)
+          this.logger.info(`newMessage topDiver`)
           await this.sqs.sendTopDiverMessage(message)
-          this.logger.info(`newMessage topDiver finish at ${moment().utcOffset(8).format()}`)
         }
         if (text.match(/\/all[jJ]ung/)) {
-          this.logger.info(`newMessage alljung start at ${moment().utcOffset(8).format()}`)
+          this.logger.info(`newMessage alljung`)
           await this.sqs.sendAllJungMessage(message)
-          this.logger.info(`newMessage alljung finish at ${moment().utcOffset(8).format()}`)
         }
         if (text.match(/\/enable[aA]ll[jJ]ung/)) {
-          this.logger.info(`newMessage enableAllJung start at ${moment().utcOffset(8).format()}`)
+          this.logger.info(`newMessage enableAllJung`)
           await this.sqs.sendEnableAllJungMessage(message)
-          this.logger.info(`newMessage enableAllJung finish at ${moment().utcOffset(8).format()}`)
         }
         if (text.match(/\/disable[aA]ll[jJ]ung/)) {
-          this.logger.info(`newMessage disableAllJung start at ${moment().utcOffset(8).format()}`)
+          this.logger.info(`newMessage disableAllJung`)
           await this.sqs.sendDisableAllJungMessage(message)
-          this.logger.info(`newMessage disableAllJung finish at ${moment().utcOffset(8).format()}`)
         }
       }
       this.logger.info(`newMessage finish at ${moment().utcOffset(8).format()}`)
