@@ -1,5 +1,8 @@
 [![serverless](http://public.serverless.com/badges/v3.svg)](https://www.serverless.com)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://img.shields.io/badge/license-MIT-blue.svg)
+[![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com)
+[![mergify](https://img.shields.io/endpoint.svg?url=https://gh.mergify.io/badges/siutsin/telegram-jung2-bot&style=flat)](https://mergify.io)
+<br>
 [![dependency](https://david-dm.org/siutsin/telegram-jung2-bot.svg)](https://david-dm.org/siutsin/telegram-jung2-bot.svg)
 [![devDependency Status](https://david-dm.org/siutsin/telegram-jung2-bot/dev-status.svg)](https://david-dm.org/siutsin/telegram-jung2-bot#info=devDependencies)
 [![Build Status](https://travis-ci.org/siutsin/telegram-jung2-bot.svg?branch=master)](https://travis-ci.org/siutsin/telegram-jung2-bot)
@@ -28,7 +31,6 @@ This bot is created for counting the number of messages per participant in a cha
   - [Test API and DB locally](#test-api-and-db-locally)
 - [Sponsor](#sponsor)
 - [Author](#author)
-- [Code Style](#code-style)
 - [License](#license)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -92,10 +94,6 @@ $ npm run offline
 ## Author
 
 [@Simon__Li](https://bit.ly/github-twitter)
-
-## Code Style
-
-[![JavaScript Style Guide](https://cdn.rawgit.com/standard/standard/master/badge.svg)](https://github.com/standard/standard)
 
 ## License
 
