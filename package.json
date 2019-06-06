@@ -57,7 +57,7 @@
     "babel-plugin-source-map-support": "^2.0.1",
     "codecov": "^3.5.0",
     "copy-dynamodb-table": "^2.0.17",
-    "coveralls": "^3.0.3",
+    "coveralls": "^3.0.4",
     "doctoc": "^1.4.0",
     "dotenv": "^8.0.0",
     "husky": "^2.3.0",
