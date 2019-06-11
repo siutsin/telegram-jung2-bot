@@ -4,8 +4,8 @@ pull_request_rules:
       - author~=^dependabot(-preview)?\[bot\]$
       - status-success=continuous-integration/travis-ci/pr
       - status-success=continuous-integration/travis-ci/push
-      - status-success=codecov/patch
-      - status-success=codecov/project
+#      - status-success=codecov/patch
+#      - status-success=codecov/project
       - status-success=coverage/coveralls
     actions:
       merge:
