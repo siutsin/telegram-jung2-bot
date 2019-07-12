@@ -15,7 +15,7 @@ const data = []
 
 const generate = async () => {
   for (let i = 0; i < 110; i++) {
-    let record = {
+    const record = {
       chatId: i,
       dateCreated: moment().utcOffset(8).subtract(i, 'minutes').format(),
       ttl: moment().add(7, 'days').unix()
