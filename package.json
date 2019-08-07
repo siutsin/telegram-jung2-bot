@@ -42,7 +42,7 @@
     "axios": "^0.19.0",
     "bottleneck": "^2.19.5",
     "moment": "^2.24.0",
-    "pino": "^5.13.1",
+    "pino": "^5.13.2",
     "pino-pretty": "^3.2.0",
     "source-map-support": "^0.5.13"
   },
