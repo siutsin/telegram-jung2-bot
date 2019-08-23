@@ -139,7 +139,7 @@ test.serial('onEvent - enableAllJung - all admin', async t => {
     .query({ chat_id: -123 })
     .reply(200, stubGetChatAdministratorsResponse)
   const clone = JSON.parse(JSON.stringify(stubEnableAllJungSQSEvent))
-  clone.Records[0]['messageAttributes'].allAdmin.stringValue = '1'
+  clone.Records[0].messageAttributes.allAdmin.stringValue = '1'
   const sqs = new SQS()
   const response = await sqs.onEvent(clone)
   t.is(response, stubDeleteMessage)
@@ -188,7 +188,7 @@ test.serial('onEvent - disableAllJung - all admin', async t => {
     .query({ chat_id: -123 })
     .reply(200, stubGetChatAdministratorsResponse)
   const clone = JSON.parse(JSON.stringify(stubDisableAllJungSQSEvent))
-  clone.Records[0]['messageAttributes'].allAdmin.stringValue = '1'
+  clone.Records[0].messageAttributes.allAdmin.stringValue = '1'
   const sqs = new SQS()
   const response = await sqs.onEvent(clone)
   t.is(response, stubDeleteMessage)
