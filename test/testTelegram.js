@@ -21,7 +21,7 @@ test('sendMessage', async t => {
   const telegram = new Telegram()
   const response = await telegram.sendMessage(123, 'hi')
   const data = response.data.data
-  t.is(data.text, stubSaveMessageResponse['text'])
+  t.is(data.text, stubSaveMessageResponse.text)
 })
 
 test('sendMessage - failing - Telegram API returns HTTP 499 Error', async t => {

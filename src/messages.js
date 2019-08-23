@@ -29,27 +29,27 @@ export default class Messages {
         const text = message.text
         this.logger.info(text)
         if (text.match(/\/jung[hH]elp/)) {
-          this.logger.info(`newMessage help`)
+          this.logger.info('newMessage help')
           await this.sqs.sendJungHelpMessage(message)
         }
         if (text.match(/\/top[tT]en/)) {
-          this.logger.info(`newMessage topTen`)
+          this.logger.info('newMessage topTen')
           await this.sqs.sendTopTenMessage(message)
         }
         if (text.match(/\/top[dD]iver/)) {
-          this.logger.info(`newMessage topDiver`)
+          this.logger.info('newMessage topDiver')
           await this.sqs.sendTopDiverMessage(message)
         }
         if (text.match(/\/all[jJ]ung/)) {
-          this.logger.info(`newMessage alljung`)
+          this.logger.info('newMessage alljung')
           await this.sqs.sendAllJungMessage(message)
         }
         if (text.match(/\/enable[aA]ll[jJ]ung/)) {
-          this.logger.info(`newMessage enableAllJung`)
+          this.logger.info('newMessage enableAllJung')
           await this.sqs.sendEnableAllJungMessage(message)
         }
         if (text.match(/\/disable[aA]ll[jJ]ung/)) {
-          this.logger.info(`newMessage disableAllJung`)
+          this.logger.info('newMessage disableAllJung')
           await this.sqs.sendDisableAllJungMessage(message)
         }
       }
