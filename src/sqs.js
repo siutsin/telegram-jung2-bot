@@ -29,7 +29,7 @@ export default class SQS {
     let record
     try {
       record = event.Records[0]
-      const message = record['messageAttributes']
+      const message = record.messageAttributes
       const chatId = Number(message.chatId.stringValue)
       const action = message.action.stringValue
       let chatTitle
@@ -81,7 +81,7 @@ export default class SQS {
     }
     const deleteParams = {
       QueueUrl: process.env.EVENT_QUEUE_URL,
-      ReceiptHandle: record['receiptHandle']
+      ReceiptHandle: record.receiptHandle
     }
     const p = this.sqs.deleteMessage(deleteParams).promise()
     this.logger.info(`SQS onEvent end at ${moment().utcOffset(8).format()}`)
