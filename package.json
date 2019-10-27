@@ -62,7 +62,7 @@
     "dotenv": "^8.2.0",
     "husky": "^3.0.9",
     "lodash.isstring": "^4.0.1",
-    "nock": "^11.5.0",
+    "nock": "^11.6.0",
     "nyc": "^14.1.1",
     "serverless": "^1.55.1",
     "serverless-domain-manager": "^3.3.0",
