@@ -14,6 +14,7 @@ test.afterEach.always(() => {
 
 test('sendMessage', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
     .post('/sendMessage')
     .reply(200, {
       data: stubSaveMessageResponse
@@ -24,8 +25,9 @@ test('sendMessage', async t => {
   t.is(data.text, stubSaveMessageResponse.text)
 })
 
-test('sendMessage - failing - Telegram API returns HTTP 499 Error', async t => {
+test.serial('sendMessage - failing - Telegram API returns HTTP 499 Error', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
     .post('/sendMessage')
     .reply(499)
   const telegram = new Telegram()
@@ -35,6 +37,7 @@ test('sendMessage - failing - Telegram API returns HTTP 499 Error', async t => {
 
 test('isAdmin - true', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
     .get('/getChatAdministrators')
     .query({ chat_id: 123 })
     .reply(200, stubGetChatAdministratorsResponse)
@@ -45,6 +48,7 @@ test('isAdmin - true', async t => {
 
 test('isAdmin - false', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
     .get('/getChatAdministrators')
     .query({ chat_id: 123 })
     .reply(200, stubGetChatAdministratorsResponse)
