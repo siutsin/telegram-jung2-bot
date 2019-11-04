@@ -3,18 +3,24 @@
 set -e
 
 if [[ "${TRAVIS_BRANCH}" == "develop" ]]; then
-   echo "STAGE=$STAGE_DEV" >> .env
-   echo "REGION=$REGION_DEV" >> .env
-   echo "DOMAIN=$DOMAIN_DEV" >> .env
-   echo "LOG_LEVEL=$LOG_LEVEL_DEV" >> .env
+  echo "Deploying for ${TRAVIS_BRANCH}..."
+  {
+    echo "STAGE=$STAGE_DEV"
+    echo "REGION=$REGION_DEV"
+    echo "DOMAIN=$DOMAIN_DEV"
+    echo "LOG_LEVEL=$LOG_LEVEL_DEV"
+  } >>.env
 elif [[ "${TRAVIS_BRANCH}" == "master" ]]; then
-   echo "STAGE=$STAGE_PROD" >> .env
-   echo "REGION=$REGION_PROD" >> .env
-   echo "DOMAIN=$DOMAIN_PROD" >> .env
-   echo "LOG_LEVEL=$LOG_LEVEL_PROD" >> .env
+  echo "Deploying for ${TRAVIS_BRANCH}..."
+  {
+    echo "STAGE=$STAGE_PROD"
+    echo "REGION=$REGION_PROD"
+    echo "DOMAIN=$DOMAIN_PROD"
+    echo "LOG_LEVEL=$LOG_LEVEL_PROD"
+  } >>.env
 else
-   echo "Neither in develop or master branch - ${TRAVIS_BRANCH}"
-   exit 1
+  echo "Neither in develop nor master branch - ${TRAVIS_BRANCH}"
+  exit 1
 fi
 
 sls deploy --conceal --force &>/dev/null
