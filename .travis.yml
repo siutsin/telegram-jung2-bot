@@ -2,6 +2,7 @@ language: node_js
 
 node_js:
   - '10'
+  - '12'
 
 before_install:
   - npm install -g npm@latest
@@ -13,17 +14,15 @@ after_success:
   - npm run codecov
   - npm run coveralls
 
-deploy:
-  - provider: script
-    skip_cleanup: true
-    script: bash scripts/deploy.sh
-    on:
-      branch: develop
-  - provider: script
-    skip_cleanup: true
-    script: bash scripts/deploy.sh
-    on:
-      branch: master
+jobs:
+  include:
+    - stage: deploy
+      node_js: 10
+      script: bash scripts/deploy.sh
+      skip_cleanup: true
+      if: |
+        branch IN (master, develop) AND \
+        type = push
 
 notifications:
   email:
