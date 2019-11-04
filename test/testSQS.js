@@ -46,7 +46,7 @@ test.afterEach.always(() => {
   AWS.restore()
 })
 
-test('onEvent - junghelp', async t => {
+test.serial('onEvent - junghelp', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .persist()
     .post('/sendMessage')
@@ -56,7 +56,7 @@ test('onEvent - junghelp', async t => {
   t.is(response, stubDeleteMessage)
 })
 
-test('onEvent - alljung', async t => {
+test.serial('onEvent - alljung', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .persist()
     .post('/sendMessage')
@@ -66,7 +66,7 @@ test('onEvent - alljung', async t => {
   t.is(response, stubDeleteMessage)
 })
 
-test('onEvent - topten', async t => {
+test.serial('onEvent - topten', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .persist()
     .post('/sendMessage')
@@ -76,7 +76,7 @@ test('onEvent - topten', async t => {
   t.is(response, stubDeleteMessage)
 })
 
-test('onEvent - topdiver', async t => {
+test.serial('onEvent - topdiver', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .persist()
     .post('/sendMessage')
@@ -86,7 +86,7 @@ test('onEvent - topdiver', async t => {
   t.is(response, stubDeleteMessage)
 })
 
-test('onEvent - offFromWork', async t => {
+test.serial('onEvent - offFromWork', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .persist()
     .post('/sendMessage')
