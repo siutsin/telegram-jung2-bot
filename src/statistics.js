@@ -50,12 +50,12 @@ export default class Statistics {
   buildHeader ({ limit, reverse, chatTitle }) {
     this.logger.info(`buildHeader start at ${moment().utcOffset(8).format()}`)
     let header = `圍爐區: ${chatTitle}`
-    header += `\n\n`
+    header += '\n\n'
     header += `${limit ? 'Top ' + limit : 'All'} `
     header += `${reverse ? '潛水員s' : '冗員s'} `
-    header += `in the last 7 days`
+    header += 'in the last 7 days'
     header += `${reverse ? ':' : ' (last 上水 time):'}`
-    header += `\n\n`
+    header += '\n\n'
     this.logger.info(`buildHeader finish at ${moment().utcOffset(8).format()}`)
     return header
   }
@@ -118,10 +118,10 @@ export default class Statistics {
   buildFooter ({ normalisedRows, reverse }) {
     this.logger.info(`buildFooter start at ${moment().utcOffset(8).format()}`)
     let footer = `\nTotal messages: ${normalisedRows.totalMessage}`
-    footer += `\n\n`
+    footer += '\n\n'
     if (reverse) {
-      footer += `between, 深潛會搵唔到 ho chi is`
-      footer += `\n`
+      footer += 'between, 深潛會搵唔到 ho chi is'
+      footer += '\n'
     }
     footer += `Last Update: ${moment().utcOffset(8).format()}`
     this.logger.info(`buildFooter finish at ${moment().utcOffset(8).format()}`)

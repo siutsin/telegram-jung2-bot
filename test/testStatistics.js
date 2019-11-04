@@ -94,20 +94,20 @@ test('/topdiver', async t => {
 test.serial('/topdiver - less than 10 users in a group', async t => {
   AWS.remock('DynamoDB.DocumentClient', 'query', (params, callback) => {
     callback(null, {
-      'Items': [
+      Items: [
         {
-          'chatTitle': 'chatTitle 2',
-          'firstName': 'firstName345',
-          'lastName': 'lastName345',
-          'dateCreated': '2019-03-16T02:26:19+08:00',
-          'chatId': 2,
-          'id': '41bd62f3-3cea-48e7-9762-f3b78e1bcd88',
-          'userId': 92,
-          'username': 'username345'
+          chatTitle: 'chatTitle 2',
+          firstName: 'firstName345',
+          lastName: 'lastName345',
+          dateCreated: '2019-03-16T02:26:19+08:00',
+          chatId: 2,
+          id: '41bd62f3-3cea-48e7-9762-f3b78e1bcd88',
+          userId: 92,
+          username: 'username345'
         }
       ],
-      'Count': 1,
-      'ScannedCount': 1
+      Count: 1,
+      ScannedCount: 1
     })
   })
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)

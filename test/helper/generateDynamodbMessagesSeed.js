@@ -19,7 +19,7 @@ const generate = async () => {
   for (let i = 0; i < 20000; i++) {
     const chatId = chatIds[Math.floor(Math.random() * chatIds.length)]
     const userId = userIds[Math.floor(Math.random() * userIds.length)]
-    let record = {
+    const record = {
       chatId: chatId,
       chatTitle: `t${chatId}`,
       dateCreated: moment().utcOffset(8).subtract(i, 'minutes').format(),

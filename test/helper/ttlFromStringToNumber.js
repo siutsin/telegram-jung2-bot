@@ -69,7 +69,7 @@ async function scanAll (startKey) {
   // console.log(scanParams)
   const data = await docClient.scan(scanParams).promise()
   console.log('Count', data.Count, 'ScannedCount', data.ScannedCount, 'startKey', startKey)
-  let promiseArray = []
+  const promiseArray = []
   for (let i = 0; i < data.Items.length; i++) {
     const obj = data.Items[i]
     if (isString(obj.ttl)) {

@@ -1,9 +1,13 @@
-[![serverless](http://public.serverless.com/badges/v3.svg)](https://www.serverless.com)
-[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://img.shields.io/badge/license-MIT-blue.svg)
-[![dependency](https://david-dm.org/siutsin/telegram-jung2-bot.svg)](https://david-dm.org/siutsin/telegram-jung2-bot.svg)
+[![serverless](assets/badges/serverless-v3.svg)](https://www.serverless.com)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://siutsin.mit-license.org/)
+[![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com)
+[![mergify](https://img.shields.io/endpoint.svg?url=https://gh.mergify.io/badges/siutsin/telegram-jung2-bot&style=flat)](https://mergify.io)
+<br>
+[![dependency](https://david-dm.org/siutsin/telegram-jung2-bot.svg)](https://david-dm.org/siutsin/telegram-jung2-bot)
 [![devDependency Status](https://david-dm.org/siutsin/telegram-jung2-bot/dev-status.svg)](https://david-dm.org/siutsin/telegram-jung2-bot#info=devDependencies)
 [![Build Status](https://travis-ci.org/siutsin/telegram-jung2-bot.svg?branch=master)](https://travis-ci.org/siutsin/telegram-jung2-bot)
 [![Coverage Status](https://coveralls.io/repos/github/siutsin/telegram-jung2-bot/badge.svg)](https://coveralls.io/github/siutsin/telegram-jung2-bot)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fsiutsin%2Ftelegram-jung2-bot.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fsiutsin%2Ftelegram-jung2-bot?ref=badge_shield)
 
 # telegram-jung2-bot
 
@@ -25,10 +29,9 @@ This bot is created for counting the number of messages per participant in a cha
 - [Usage](#usage)
   - [Admin Only](#admin-only)
 - [Development](#development)
-  - [Test API and DB locally](#test-api-and-db-locally)
+  - [Test API and Database locally](#test-api-and-database-locally)
 - [Sponsor](#sponsor)
 - [Author](#author)
-- [Code Style](#code-style)
 - [License](#license)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -74,12 +77,12 @@ $ sls deploy
 ### Admin Only
 |command|info|
 |---|---|
-|`/enablealljung`|Enable /alljung command|
-|`/disablealljung`|Disable /alljung command|
+|`/enablealljung`|Enable `/alljung` command|
+|`/disablealljung`|Disable `/alljung` command|
 
 ## Development
 
-### Test API and DB locally
+### Test API and Database locally
 
 ```bash
 $ npm run offline
@@ -93,10 +96,9 @@ $ npm run offline
 
 [@Simon__Li](https://bit.ly/github-twitter)
 
-## Code Style
-
-[![JavaScript Style Guide](https://cdn.rawgit.com/standard/standard/master/badge.svg)](https://github.com/standard/standard)
-
 ## License
 
 `telegram-jung2-bot` is available under the [MIT license](https://siutsin.mit-license.org). See the LICENSE file for more info.
+
+
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fsiutsin%2Ftelegram-jung2-bot.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fsiutsin%2Ftelegram-jung2-bot?ref=badge_large)

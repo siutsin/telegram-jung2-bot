@@ -39,27 +39,27 @@ async function saveStats ({ message, days = TTL_DAYS, i }) {
 
 async function main () {
   const userIds = new Array(NUMBER_OF_USERS).fill(1).map((_, i) => i + 1)
-  let promiseArray = []
+  const promiseArray = []
   let batchCount = 0
   for (let i = 0; i < NUMBER_OF_MESSAGES; i++) {
     const userId = userIds[Math.floor(Math.random() * userIds.length)]
     const message = {
-      'message_id': 2,
-      'from': {
-        'id': userId,
-        'is_bot': false,
-        'first_name': `f${userId}`,
-        'last_name': `l${userId}`,
-        'username': `u${userId}`
+      message_id: 2,
+      from: {
+        id: userId,
+        is_bot: false,
+        first_name: `f${userId}`,
+        last_name: `l${userId}`,
+        username: `u${userId}`
       },
-      'chat': {
-        'id': -287173723, // test group id
-        'title': 'Test2 jung2bot',
-        'type': 'group',
-        'all_members_are_administrators': true
+      chat: {
+        id: -287173723, // test group id
+        title: 'Test2 jung2bot',
+        type: 'group',
+        all_members_are_administrators: true
       },
-      'date': moment().unix(),
-      'text': 'hi'
+      date: moment().unix(),
+      text: 'hi'
     }
     if (promiseArray.length < BATCH_SIZE) {
       promiseArray.push(saveStats({ message, i }))
