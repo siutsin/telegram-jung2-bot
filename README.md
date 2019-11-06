@@ -5,7 +5,7 @@
 <br>
 [![dependency](https://david-dm.org/siutsin/telegram-jung2-bot.svg)](https://david-dm.org/siutsin/telegram-jung2-bot)
 [![devDependency Status](https://david-dm.org/siutsin/telegram-jung2-bot/dev-status.svg)](https://david-dm.org/siutsin/telegram-jung2-bot#info=devDependencies)
-[![Build Status](https://travis-ci.org/siutsin/telegram-jung2-bot.svg?branch=master)](https://travis-ci.org/siutsin/telegram-jung2-bot)
+[![Build Status](https://travis-ci.com/siutsin/telegram-jung2-bot.svg?branch=master)](https://travis-ci.com/siutsin/telegram-jung2-bot)
 [![Coverage Status](https://coveralls.io/repos/github/siutsin/telegram-jung2-bot/badge.svg)](https://coveralls.io/github/siutsin/telegram-jung2-bot)
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fsiutsin%2Ftelegram-jung2-bot.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fsiutsin%2Ftelegram-jung2-bot?ref=badge_shield)
 

@@ -1,6 +1,6 @@
 {
   "name": "telegram-jung2-bot",
-  "version": "3.3.4",
+  "version": "3.3.5",
   "private": true,
   "repository": {
     "type": "git",
@@ -36,21 +36,21 @@
     "offline": "kill $(lsof -t -i :8000); npm run generateSeed && sls offline start"
   },
   "dependencies": {
-    "@babel/polyfill": "^7.6.0",
-    "@babel/runtime": "^7.6.3",
-    "aws-sdk": "^2.562.0",
+    "@babel/polyfill": "^7.7.0",
+    "@babel/runtime": "^7.7.1",
+    "aws-sdk": "^2.564.0",
     "axios": "^0.19.0",
     "bottleneck": "^2.19.5",
     "moment": "^2.24.0",
     "pino": "^5.13.5",
-    "pino-pretty": "^3.2.2",
+    "pino-pretty": "^3.3.0",
     "source-map-support": "^0.5.16"
   },
   "devDependencies": {
-    "@babel/cli": "^7.6.4",
-    "@babel/core": "^7.6.4",
+    "@babel/cli": "^7.7.0",
+    "@babel/core": "^7.7.0",
     "@babel/plugin-transform-runtime": "^7.6.2",
-    "@babel/preset-env": "^7.6.3",
+    "@babel/preset-env": "^7.7.1",
     "ava": "^2.4.0",
     "aws-sdk-mock": "^4.5.0",
     "babel-loader": "^8.0.6",
