@@ -1,3 +1,4 @@
+os: linux
 language: node_js
 node_js:
 - '10'
@@ -11,7 +12,6 @@ jobs:
   - stage: deploy
     node_js: 10
     script: bash scripts/deploy.sh
-    skip_cleanup: true
     if: |
       branch IN (master, develop) AND \
       type = push
