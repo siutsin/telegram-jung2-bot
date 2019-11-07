@@ -1,7 +1,11 @@
+os: linux
 language: node_js
 node_js:
 - '10'
 - '12'
+git:
+  quiet: true
+  depth: 3
 cache: npm
 after_success:
 - npm run codecov
@@ -11,7 +15,6 @@ jobs:
   - stage: deploy
     node_js: 10
     script: bash scripts/deploy.sh
-    skip_cleanup: true
     if: |
       branch IN (master, develop) AND \
       type = push
