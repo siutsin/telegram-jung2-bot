@@ -64,7 +64,7 @@
     "lodash.isstring": "^4.0.1",
     "nock": "^11.7.0",
     "nyc": "^14.1.1",
-    "serverless": "^1.57.0",
+    "serverless": "^1.58.0",
     "serverless-domain-manager": "^3.3.0",
     "serverless-dotenv-plugin": "^2.1.1",
     "serverless-dynamodb-local": "^0.2.38",
