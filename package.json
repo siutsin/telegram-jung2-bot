@@ -1,6 +1,6 @@
 {
   "name": "telegram-jung2-bot",
-  "version": "3.3.5",
+  "version": "4.0.0",
   "private": true,
   "repository": {
     "type": "git",
@@ -21,7 +21,7 @@
   "author": "Simon Li <li@siutsin.com>",
   "license": "MIT",
   "engines": {
-    "node": "10"
+    "node": "12"
   },
   "scripts": {
     "test": "npm run lint && nyc ava",
