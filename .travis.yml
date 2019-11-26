@@ -1,8 +1,8 @@
 os: linux
 language: node_js
 node_js:
-- '10'
 - '12'
+- 'node'
 git:
   quiet: true
   depth: 3
@@ -13,7 +13,7 @@ after_success:
 jobs:
   include:
   - stage: deploy
-    node_js: 10
+    node_js: 12
     script: bash scripts/deploy.sh
     if: |
       branch IN (master, develop) AND \
