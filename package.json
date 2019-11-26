@@ -1,6 +1,6 @@
 {
   "name": "telegram-jung2-bot",
-  "version": "3.3.5",
+  "version": "4.0.0",
   "private": true,
   "repository": {
     "type": "git",
@@ -21,7 +21,7 @@
   "author": "Simon Li <li@siutsin.com>",
   "license": "MIT",
   "engines": {
-    "node": "10"
+    "node": "12"
   },
   "scripts": {
     "test": "npm run lint && nyc ava",
@@ -37,34 +37,34 @@
   },
   "dependencies": {
     "@babel/polyfill": "^7.7.0",
-    "@babel/runtime": "^7.7.1",
-    "aws-sdk": "^2.564.0",
+    "@babel/runtime": "^7.7.4",
+    "aws-sdk": "^2.579.0",
     "axios": "^0.19.0",
     "bottleneck": "^2.19.5",
     "moment": "^2.24.0",
-    "pino": "^5.13.5",
-    "pino-pretty": "^3.3.0",
+    "pino": "^5.14.0",
+    "pino-pretty": "^3.4.0",
     "source-map-support": "^0.5.16"
   },
   "devDependencies": {
-    "@babel/cli": "^7.7.0",
-    "@babel/core": "^7.7.0",
-    "@babel/plugin-transform-runtime": "^7.6.2",
-    "@babel/preset-env": "^7.7.1",
+    "@babel/cli": "^7.7.4",
+    "@babel/core": "^7.7.4",
+    "@babel/plugin-transform-runtime": "^7.7.4",
+    "@babel/preset-env": "^7.7.4",
     "ava": "^2.4.0",
     "aws-sdk-mock": "^4.5.0",
     "babel-loader": "^8.0.6",
     "babel-plugin-source-map-support": "^2.1.1",
     "codecov": "^3.6.1",
     "copy-dynamodb-table": "^2.0.17",
-    "coveralls": "^3.0.7",
+    "coveralls": "^3.0.8",
     "doctoc": "^1.4.0",
     "dotenv": "^8.2.0",
-    "husky": "^3.0.9",
+    "husky": "^3.1.0",
     "lodash.isstring": "^4.0.1",
     "nock": "^11.7.0",
     "nyc": "^14.1.1",
-    "serverless": "^1.56.1",
+    "serverless": "^1.58.0",
     "serverless-domain-manager": "^3.3.0",
     "serverless-dotenv-plugin": "^2.1.1",
     "serverless-dynamodb-local": "^0.2.38",

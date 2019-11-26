@@ -8,6 +8,7 @@
 [![Build Status](https://travis-ci.com/siutsin/telegram-jung2-bot.svg?branch=master)](https://travis-ci.com/siutsin/telegram-jung2-bot)
 [![Coverage Status](https://coveralls.io/repos/github/siutsin/telegram-jung2-bot/badge.svg)](https://coveralls.io/github/siutsin/telegram-jung2-bot)
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fsiutsin%2Ftelegram-jung2-bot.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fsiutsin%2Ftelegram-jung2-bot?ref=badge_shield)
+[![Known Vulnerabilities](https://snyk.io/test/github/siutsin/telegram-jung2-bot/badge.svg?targetFile=package.json)](https://snyk.io/test/github/siutsin/telegram-jung2-bot?targetFile=package.json)
 
 # telegram-jung2-bot
 
