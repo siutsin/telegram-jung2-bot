@@ -1,6 +1,8 @@
 service: jung2bot
 
 frameworkVersion: '>=1.42.0 <2.0.0'
+org: siutsin
+app: telegram-jung2-bot
 
 provider:
   name: aws
