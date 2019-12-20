@@ -1,7 +1,7 @@
 [![serverless](assets/badges/serverless-v3.svg)](https://www.serverless.com)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://siutsin.mit-license.org/)
 [![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com)
-[![mergify](https://img.shields.io/endpoint.svg?url=https://gh.mergify.io/badges/siutsin/telegram-jung2-bot&style=flat)](https://mergify.io)
+[![mergify](https://img.shields.io/endpoint.svg?url=https://dashboard.mergify.io/badges/siutsin/telegram-jung2-bot&style=flat)](https://mergify.io)
 <br>
 [![dependency](https://david-dm.org/siutsin/telegram-jung2-bot.svg)](https://david-dm.org/siutsin/telegram-jung2-bot)
 [![devDependency Status](https://david-dm.org/siutsin/telegram-jung2-bot/dev-status.svg)](https://david-dm.org/siutsin/telegram-jung2-bot#info=devDependencies)

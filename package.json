@@ -1,6 +1,6 @@
 {
   "name": "telegram-jung2-bot",
-  "version": "4.1.0",
+  "version": "4.1.1",
   "private": true,
   "repository": {
     "type": "git",
@@ -38,11 +38,11 @@
   "dependencies": {
     "@babel/polyfill": "^7.7.0",
     "@babel/runtime": "^7.7.6",
-    "aws-sdk": "^2.586.0",
+    "aws-sdk": "^2.592.0",
     "axios": "^0.19.0",
     "bottleneck": "^2.19.5",
     "moment": "^2.24.0",
-    "pino": "^5.14.0",
+    "pino": "^5.15.0",
     "pino-pretty": "^3.5.0",
     "source-map-support": "^0.5.16"
   },
@@ -73,6 +73,6 @@
     "serverless-plugin-lambda-dead-letter": "^1.2.1",
     "serverless-webpack": "^5.3.1",
     "standard": "^14.3.1",
-    "webpack": "^4.41.2"
+    "webpack": "^4.41.3"
   }
 }
