@@ -50,7 +50,7 @@
     "@babel/cli": "^7.7.5",
     "@babel/core": "^7.7.5",
     "@babel/plugin-transform-runtime": "^7.7.6",
-    "@babel/preset-env": "^7.7.6",
+    "@babel/preset-env": "^7.7.7",
     "ava": "^2.4.0",
     "aws-sdk-mock": "^4.5.0",
     "babel-loader": "^8.0.6",
