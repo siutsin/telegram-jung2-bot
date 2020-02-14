@@ -10,11 +10,6 @@ provider:
   region: ${env:REGION, 'us-east-1'}
   profile: ${env:PROFILE, ''}
   logRetentionInDays: 1
-#  logs:
-#    restApi: true
-#  tracing:
-#    apiGateway: true
-#    lambda: true
   deploymentBucket:
     serverSideEncryption: AES256
   environment:
@@ -117,7 +112,6 @@ functions:
       - schedule: cron(53-59 9 ? * MON-FRI *) # 9:53-59 am UTC = 5:53-59 pm HKT
 
 plugins:
-  - serverless-domain-manager
   - serverless-dotenv-plugin
   - serverless-plugin-lambda-dead-letter
   - serverless-plugin-dynamodb-autoscaling
@@ -140,12 +134,6 @@ custom:
         local: 1
         dev: 5
         prod: 100
-  # serverless-domain-manager
-  customDomain:
-    domainName: ${env:DOMAIN}
-    stage: ${self:provider.stage}
-    createRoute53Record: true
-    endpointType: edge
   # serverless-dynamodb-local
   dynamodb:
     start:
