@@ -5,7 +5,11 @@
       "Sid": "VisualEditor0",
       "Effect": "Allow",
       "Action": [
-        "cloudfront:UpdateDistribution"
+        "cloudfront:CreateDistribution",
+        "cloudfront:GetDistribution",
+        "cloudfront:UpdateDistribution",
+        "cloudfront:DeleteDistribution",
+        "cloudfront:TagResource"
       ],
       "Resource": "*"
     }
