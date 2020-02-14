@@ -1,6 +1,6 @@
 service: jung2bot
 
-frameworkVersion: '>=1.48.0 <2.0.0'
+frameworkVersion: '>=1.63.0 <2.0.0'
 
 provider:
   name: aws
@@ -10,11 +10,6 @@ provider:
   region: ${env:REGION, 'us-east-1'}
   profile: ${env:PROFILE, ''}
   logRetentionInDays: 1
-#  logs:
-#    restApi: true
-#  tracing:
-#    apiGateway: true
-#    lambda: true
   deploymentBucket:
     serverSideEncryption: AES256
   environment:
@@ -60,7 +55,7 @@ functions:
     deadLetter:
       sns: ${self:service}-${self:provider.stage}-messages-dead-letter-topic
     events:
-      - http:
+      - httpApi:
           path: /
           method: post
   offFromWork:
@@ -117,7 +112,6 @@ functions:
       - schedule: cron(53-59 9 ? * MON-FRI *) # 9:53-59 am UTC = 5:53-59 pm HKT
 
 plugins:
-  - serverless-domain-manager
   - serverless-dotenv-plugin
   - serverless-plugin-lambda-dead-letter
   - serverless-plugin-dynamodb-autoscaling
@@ -140,12 +134,6 @@ custom:
         local: 1
         dev: 5
         prod: 100
-  # serverless-domain-manager
-  customDomain:
-    domainName: ${env:DOMAIN}
-    stage: ${self:provider.stage}
-    createRoute53Record: true
-    endpointType: edge
   # serverless-dynamodb-local
   dynamodb:
     start:
@@ -223,3 +211,40 @@ resources:
         VisibilityTimeout: 100
         KmsDataKeyReusePeriodSeconds: 86400
         KmsMasterKeyId: alias/aws/sqs
+    # CloudFront for SSL
+    CloudFrontDistribution:
+      Type: AWS::CloudFront::Distribution
+      Properties:
+        DistributionConfig:
+          Enabled: true
+          HttpVersion: http2
+          PriceClass: PriceClass_100
+          Aliases:
+            - ${env:DOMAIN}
+          Origins:
+            - DomainName: !Join ['', [!Ref HttpApi, '.execute-api.${env:REGION}.amazonaws.com']]
+              OriginPath: /${env:STAGE}
+              Id: HttpApiGateway
+              CustomOriginConfig:
+                OriginProtocolPolicy: https-only
+          ViewerCertificate:
+            AcmCertificateArn: ${env:SSL_CERT_ARN}
+            MinimumProtocolVersion: TLSv1.2_2018
+            SslSupportMethod: sni-only
+          DefaultCacheBehavior:
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              - PUT
+              - PATCH
+              - POST
+              - DELETE
+            CachedMethods:
+              - GET
+              - HEAD
+            ForwardedValues:
+              QueryString: false
+            Compress: true
+            TargetOriginId: HttpApiGateway
+            ViewerProtocolPolicy: redirect-to-https
