@@ -1,6 +1,6 @@
 service: jung2bot
 
-frameworkVersion: '>=1.48.0 <2.0.0'
+frameworkVersion: '>=1.63.0 <2.0.0'
 
 provider:
   name: aws
