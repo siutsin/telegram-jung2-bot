@@ -60,7 +60,7 @@ functions:
     deadLetter:
       sns: ${self:service}-${self:provider.stage}-messages-dead-letter-topic
     events:
-      - http:
+      - httpApi:
           path: /
           method: post
   offFromWork:
