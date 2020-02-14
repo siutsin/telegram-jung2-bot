@@ -219,7 +219,6 @@ resources:
           Enabled: true
           HttpVersion: http2
           PriceClass: PriceClass_100
-          WebACLId: !Ref 'AWS::NoValue'
           Aliases:
             - ${env:DOMAIN}
           Origins:
