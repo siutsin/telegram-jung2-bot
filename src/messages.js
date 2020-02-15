@@ -1,5 +1,6 @@
 import Pino from 'pino'
 import moment from 'moment'
+import ip from 'ip'
 import DynamoDB from './dynamodb'
 import SQS from './sqs'
 
@@ -17,6 +18,11 @@ export default class Messages {
   async newMessage (event) {
     this.logger.info(`newMessage start at ${moment().utcOffset(8).format()}`)
     try {
+      const requestIP = event.headers['X-Forwarded-For'].split(', ')[0]
+      if (!ip.cidrSubnet('91.108.4.0/22').contains(requestIP) && !ip.cidrSubnet('149.154.160.0/20').contains(requestIP)) {
+        this.logger.info(`Not Telegram Bot IP: ${requestIP}`)
+        return { statusCode: 403 }
+      }
       const params = JSON.parse(event.body)
       this.logger.trace('params', params)
       const message = params.message

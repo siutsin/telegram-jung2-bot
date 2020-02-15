@@ -37,6 +37,25 @@ test('newMessage', async t => {
   t.is(response.statusCode, 200)
 })
 
+test('newMessage from Telegram IP range', async t => {
+  const messages = new Messages()
+  const clone = JSON.parse(JSON.stringify(stubEvent))
+  clone.headers['X-Forwarded-For'] = '149.154.160.1, 1.2.3.4'
+  let response = await messages.newMessage(clone)
+  t.is(response.statusCode, 200)
+  clone.headers['X-Forwarded-For'] = '91.108.4.1, 1.2.3.4'
+  response = await messages.newMessage(clone)
+  t.is(response.statusCode, 200)
+})
+
+test('newMessage not from Telegram IP range', async t => {
+  const messages = new Messages()
+  const clone = JSON.parse(JSON.stringify(stubEvent))
+  clone.headers['X-Forwarded-For'] = '1.2.3.4, 1.2.3.4'
+  const response = await messages.newMessage(clone)
+  t.is(response.statusCode, 403)
+})
+
 test('newMessage - /junghelp', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .persist()
