@@ -54,7 +54,7 @@
     "@babel/preset-env": "^7.8.7",
     "ava": "^2.4.0",
     "aws-sdk-mock": "^5.1.0",
-    "babel-loader": "^8.0.6",
+    "babel-loader": "^8.1.0",
     "babel-plugin-source-map-support": "^2.1.1",
     "codecov": "^3.6.5",
     "copy-dynamodb-table": "^2.0.18",
