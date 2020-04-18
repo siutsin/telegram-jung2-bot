@@ -66,7 +66,7 @@
     "nock": "^12.0.3",
     "nyc": "^15.0.1",
     "serverless": "^1.67.3",
-    "serverless-dotenv-plugin": "^2.3.2",
+    "serverless-dotenv-plugin": "^2.4.2",
     "serverless-dynamodb-local": "^0.2.39",
     "serverless-offline": "^6.1.4",
     "serverless-plugin-dynamodb-autoscaling": "^3.1.0",
