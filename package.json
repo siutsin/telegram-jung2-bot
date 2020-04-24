@@ -45,7 +45,7 @@
     "moment": "^2.24.0",
     "pino": "^6.2.1",
     "pino-pretty": "^4.0.0",
-    "source-map-support": "^0.5.18"
+    "source-map-support": "^0.5.19"
   },
   "devDependencies": {
     "@babel/cli": "^7.8.4",
