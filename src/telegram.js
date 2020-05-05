@@ -7,6 +7,7 @@ export default class Telegram {
   }
 
   async sendMessage (chatId, message) {
+    this.logger.debug('chatId', chatId)
     const url = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`
     const data = {
       chat_id: chatId,

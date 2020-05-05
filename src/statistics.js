@@ -155,7 +155,7 @@ export default class Statistics {
 
   async getStats (options) {
     const chatId = options.chatId
-    this.logger.info(`getStats start at ${moment().utcOffset(8).format()}`)
+    this.logger.info(`getStats start at ${moment().utcOffset(8).format()} for chatId: ${chatId}`)
     let returnMessage = ''
     if (options.offFromWork) {
       returnMessage = '夠鐘收工~~\n\n'
