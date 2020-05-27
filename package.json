@@ -38,7 +38,7 @@
   "dependencies": {
     "@babel/polyfill": "^7.8.7",
     "@babel/runtime": "^7.10.0",
-    "aws-sdk": "^2.684.0",
+    "aws-sdk": "^2.685.0",
     "axios": "^0.19.2",
     "bottleneck": "^2.19.5",
     "ip": "^1.1.5",
