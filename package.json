@@ -55,7 +55,7 @@
     "ava": "^2.4.0",
     "aws-sdk-mock": "^5.1.0",
     "babel-loader": "^8.1.0",
-    "babel-plugin-source-map-support": "^2.1.1",
+    "babel-plugin-source-map-support": "^2.1.2",
     "codecov": "^3.7.0",
     "copy-dynamodb-table": "^2.0.20",
     "coveralls": "^3.1.0",
