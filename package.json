@@ -36,7 +36,7 @@
     "offline": "kill $(lsof -t -i :8000); npm run generateSeed && sls offline start"
   },
   "dependencies": {
-    "@babel/polyfill": "^7.10.1",
+    "@babel/polyfill": "^7.10.4",
     "@babel/runtime": "^7.10.3",
     "aws-sdk": "^2.707.0",
     "axios": "^0.19.2",
