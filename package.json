@@ -71,7 +71,7 @@
     "serverless-offline": "^6.5.0",
     "serverless-plugin-dynamodb-autoscaling": "^3.1.0",
     "serverless-plugin-lambda-dead-letter": "^1.2.1",
-    "serverless-webpack": "^5.3.2",
+    "serverless-webpack": "^5.3.3",
     "standard": "^14.3.4",
     "webpack": "^4.44.0"
   }
