@@ -43,7 +43,7 @@
     "bottleneck": "^2.19.5",
     "ip": "^1.1.5",
     "moment": "^2.28.0",
-    "pino": "^6.6.0",
+    "pino": "^6.6.1",
     "pino-pretty": "^4.2.1",
     "source-map-support": "^0.5.19"
   },
