@@ -44,7 +44,7 @@
     "ip": "^1.1.5",
     "moment": "^2.29.1",
     "pino": "^6.7.0",
-    "pino-pretty": "^4.2.1",
+    "pino-pretty": "^4.3.0",
     "source-map-support": "^0.5.19"
   },
   "devDependencies": {
