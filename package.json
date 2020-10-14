@@ -73,6 +73,6 @@
     "serverless-plugin-lambda-dead-letter": "^1.2.1",
     "serverless-webpack": "^5.3.5",
     "standard": "^14.3.4",
-    "webpack": "^5.0.0"
+    "webpack": "^5.1.0"
   }
 }
