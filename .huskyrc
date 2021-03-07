@@ -1,6 +1,4 @@
-{
-  "hooks": {
-    "pre-commit": "npm run housekeeping",
-    "pre-push": "npm test"
-  }
-}
+# `cp` this file to ~ to fix sourcetree issue
+
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"

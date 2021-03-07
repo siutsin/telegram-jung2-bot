@@ -31,8 +31,6 @@ This bot is created for counting the number of messages per participant in a cha
   - [Admin Only](#admin-only)
 - [Development](#development)
   - [Test API and Database locally](#test-api-and-database-locally)
-- [Sponsor](#sponsor)
-- [Author](#author)
 - [License](#license)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -88,14 +86,6 @@ $ sls deploy
 ```bash
 $ npm run offline
 ```
-
-## Sponsor
-
-[RisingStack](https://trace.risingstack.com?utm_source=github&utm_medium=sponsored&utm_content=siutsin/telegram-jung2-bot)
-
-## Author
-
-[@Simon__Li](https://bit.ly/github-twitter)
 
 ## License
 
