@@ -3,6 +3,9 @@ pull_request_rules:
     conditions:
       - author~=^dependabot(-preview)?\[bot\]$
       - status-success=CI
+      - status-success=test (12.x)
+      - status-success=test (14.x)
+      - status-success=test (15.x)
       - status-success=test
       - status-success=coverage/coveralls
     actions:
