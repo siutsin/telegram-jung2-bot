@@ -4,7 +4,7 @@ frameworkVersion: '>=1.63.0 <2.0.0'
 
 provider:
   name: aws
-  runtime: nodejs12.x
+  runtime: nodejs14.x
   versionFunctions: false
   stage: ${env:STAGE, 'dev'}
   region: ${env:REGION, 'us-east-1'}
