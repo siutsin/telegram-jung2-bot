@@ -3,6 +3,7 @@ pull_request_rules:
     conditions:
       - author~=^dependabot(-preview)?\[bot\]$
       - status-success=CI
+      - status-success=test
       - status-success=coverage/coveralls
     actions:
       merge:
