@@ -6,9 +6,9 @@ provider:
   name: aws
   runtime: nodejs14.x
   versionFunctions: false
-  stage: ${env:STAGE, 'dev'}
-  region: ${env:REGION, 'us-east-1'}
-  profile: ${env:PROFILE, ''}
+  stage: ${env:STAGE}
+  region: ${env:REGION}
+  profile: ${env:PROFILE}
   logRetentionInDays: 1
   deploymentBucket:
     serverSideEncryption: AES256
