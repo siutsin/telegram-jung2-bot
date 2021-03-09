@@ -18,7 +18,9 @@ export default class Messages {
   async newMessage (event) {
     this.logger.info(`newMessage start at ${moment().utcOffset(8).format()}`)
     try {
-      const requestIP = event.headers['X-Forwarded-For'].split(', ')[0]
+      const xForwardedFor = event.headers['X-Forwarded-For'] || event.headers['x-forwarded-for']
+      const requestIP = xForwardedFor.split(', ')[0]
+      // TODO: Should use WAF
       if (!ip.cidrSubnet('91.108.4.0/22').contains(requestIP) && !ip.cidrSubnet('149.154.160.0/20').contains(requestIP)) {
         this.logger.info(`Not Telegram Bot IP: ${requestIP}`)
         return { statusCode: 403 }
