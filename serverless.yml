@@ -1,6 +1,6 @@
 service: jung2bot
 
-frameworkVersion: '>=1.63.0 <2.0.0'
+frameworkVersion: '>=2.28.7 <3.0.0'
 
 provider:
   name: aws
@@ -21,26 +21,28 @@ provider:
     SCALE_UP_READ_CAPACITY: ${self:custom.jung2bot.scaleUpBeforeOffFromWork.ReadCapacityUnits.${self:provider.stage}, 1}
   tags:
     Name: jung2bot
-  iamRoleStatements:
-    - Effect: Allow
-      Action:
-        - 'dynamodb:*'
-      Resource:
-        - !GetAtt Jung2BotDynamoDB.Arn
-        - !GetAtt ChatIDsDynamoDB.Arn
-    - Effect: Allow
-      Action:
-        - 'sns:Publish'
-      Resource:
-        - !Ref MessagesDeadLetterTopic
-        - !Ref OffFromWorkDeadLetterTopic
-        - !Ref QueryEventDeadLetterTopic
-        - !Ref ScaleUpBeforeOffFromWorkDeadLetterTopic
-    - Effect: Allow
-      Action:
-        - 'sqs:SendMessage'
-      Resource:
-        - !GetAtt EventQueue.Arn
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - 'dynamodb:*'
+          Resource:
+            - !GetAtt Jung2BotDynamoDB.Arn
+            - !GetAtt ChatIDsDynamoDB.Arn
+        - Effect: Allow
+          Action:
+            - 'sns:Publish'
+          Resource:
+            - !Ref MessagesDeadLetterTopic
+            - !Ref OffFromWorkDeadLetterTopic
+            - !Ref QueryEventDeadLetterTopic
+            - !Ref ScaleUpBeforeOffFromWorkDeadLetterTopic
+        - Effect: Allow
+          Action:
+            - 'sqs:SendMessage'
+          Resource:
+            - !GetAtt EventQueue.Arn
 
 functions:
   messages:
@@ -143,9 +145,9 @@ custom:
       domain:
         sources:
           - table: ${self:service}-${self:provider.stage}-messages
-            sources: [./test/helper/dynamodbMessagesSeed.json]
+            sources: [ ./test/helper/dynamodbMessagesSeed.json ]
           - table: ${self:service}-${self:provider.stage}-chatIds
-            sources: [./test/helper/dynamodbChatIdSeed.json]
+            sources: [ ./test/helper/dynamodbChatIdSeed.json ]
   # serverless-plugin-dynamodb-autoscaling
   dynamodbAutoscaling:
     tablesConfig:
