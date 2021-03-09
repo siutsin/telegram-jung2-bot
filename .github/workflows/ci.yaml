@@ -14,20 +14,16 @@ jobs:
         uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node-version }}
-      - name: Cache Node.js modules
-        uses: actions/cache@v2
+      - uses: actions/cache@v2
         with:
           path: ~/.npm
           key: ${{ runner.OS }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.OS }}-node-
             ${{ runner.OS }}-
-      - name: Install dependencies
-        run: npm ci
-      - name: Run tests
-        run: npm test
-      - name: Report test coverage - Codecov
-        uses: codecov/codecov-action@v1
+      - run: npm ci
+      - run: npm test
+      - uses: codecov/codecov-action@v1
 
   deploy:
     name: deploy
@@ -43,16 +39,14 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
-      - name: Cache Node.js modules
-        uses: actions/cache@v2
+      - uses: actions/cache@v2
         with:
           path: ~/.npm
           key: ${{ runner.OS }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.OS }}-node-
             ${{ runner.OS }}-
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
       - name: setup dev .env
         if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/feature/fix_deploy'
         run: npm run setup_dotenv
@@ -67,11 +61,9 @@ jobs:
           LOG_LEVEL: silent
           REGION: us-east-1
           STAGE: prod
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1
+      - uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
-      - name: deploy
-        run: npm run deploy
+      - run: npm run deploy
