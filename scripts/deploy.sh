@@ -4,6 +4,8 @@ set -e
 
 echo "Deploying for ${GITHUB_REF}..."
 
-sls deploy --conceal --force &>/dev/null
+# Hide sls deploy output from CI
+#sls deploy --conceal --force &>/dev/null
+sls deploy
 
 echo "Successful deployment for ${GITHUB_REF}"
