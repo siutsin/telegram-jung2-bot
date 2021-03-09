@@ -7,5 +7,5 @@ pull_request_rules:
       - status-success=test (15.x)
     actions:
       merge:
-        method: merge
+        method: squash
       delete_head_branch: {}
