@@ -1,14 +1,11 @@
-[![serverless](assets/badges/serverless-v3.svg)](https://www.serverless.com)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://siutsin.mit-license.org/)
-[![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com)
-[![mergify](https://img.shields.io/endpoint.svg?url=https://dashboard.mergify.io/badges/siutsin/telegram-jung2-bot&style=flat)](https://mergify.io)
+[![CI](https://github.com/siutsin/telegram-jung2-bot/actions/workflows/ci.yaml/badge.svg)](https://github.com/siutsin/telegram-jung2-bot/actions/workflows/ci.yaml)
+[![codecov](https://codecov.io/gh/siutsin/telegram-jung2-bot/branch/develop/graph/badge.svg?token=0bIxFvEufG)](https://codecov.io/gh/siutsin/telegram-jung2-bot)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fsiutsin%2Ftelegram-jung2-bot.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fsiutsin%2Ftelegram-jung2-bot?ref=badge_shield)
+[![Known Vulnerabilities](https://snyk.io/test/github/siutsin/telegram-jung2-bot/badge.svg?targetFile=package.json)](https://snyk.io/test/github/siutsin/telegram-jung2-bot?targetFile=package.json)
 <br>
 [![dependency](https://david-dm.org/siutsin/telegram-jung2-bot.svg)](https://david-dm.org/siutsin/telegram-jung2-bot)
 [![devDependency Status](https://david-dm.org/siutsin/telegram-jung2-bot/dev-status.svg)](https://david-dm.org/siutsin/telegram-jung2-bot#info=devDependencies)
-[![Build Status](https://travis-ci.com/siutsin/telegram-jung2-bot.svg?branch=master)](https://travis-ci.com/siutsin/telegram-jung2-bot)
-[![Coverage Status](https://coveralls.io/repos/github/siutsin/telegram-jung2-bot/badge.svg)](https://coveralls.io/github/siutsin/telegram-jung2-bot)
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fsiutsin%2Ftelegram-jung2-bot.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fsiutsin%2Ftelegram-jung2-bot?ref=badge_shield)
-[![Known Vulnerabilities](https://snyk.io/test/github/siutsin/telegram-jung2-bot/badge.svg?targetFile=package.json)](https://snyk.io/test/github/siutsin/telegram-jung2-bot?targetFile=package.json)
 
 # telegram-jung2-bot
 
@@ -31,8 +28,6 @@ This bot is created for counting the number of messages per participant in a cha
   - [Admin Only](#admin-only)
 - [Development](#development)
   - [Test API and Database locally](#test-api-and-database-locally)
-- [Sponsor](#sponsor)
-- [Author](#author)
 - [License](#license)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -88,14 +83,6 @@ $ sls deploy
 ```bash
 $ npm run offline
 ```
-
-## Sponsor
-
-[RisingStack](https://trace.risingstack.com?utm_source=github&utm_medium=sponsored&utm_content=siutsin/telegram-jung2-bot)
-
-## Author
-
-[@Simon__Li](https://bit.ly/github-twitter)
 
 ## License
 
