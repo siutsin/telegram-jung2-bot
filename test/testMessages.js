@@ -43,7 +43,7 @@ test('newMessage from Telegram IP range', async t => {
   clone.headers['X-Forwarded-For'] = '149.154.160.1, 1.2.3.4'
   let response = await messages.newMessage(clone)
   t.is(response.statusCode, 200)
-  clone.headers['X-Forwarded-For'] = '91.108.4.1, 1.2.3.4'
+  clone.headers = { 'x-forwarded-for': '91.108.4.1, 1.2.3.4' }
   response = await messages.newMessage(clone)
   t.is(response.statusCode, 200)
 })
