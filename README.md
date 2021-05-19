@@ -1,7 +1,6 @@
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://siutsin.mit-license.org/)
 [![CI](https://github.com/siutsin/telegram-jung2-bot/actions/workflows/ci.yaml/badge.svg)](https://github.com/siutsin/telegram-jung2-bot/actions/workflows/ci.yaml)
 [![codecov](https://codecov.io/gh/siutsin/telegram-jung2-bot/branch/develop/graph/badge.svg?token=0bIxFvEufG)](https://codecov.io/gh/siutsin/telegram-jung2-bot)
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fsiutsin%2Ftelegram-jung2-bot.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fsiutsin%2Ftelegram-jung2-bot?ref=badge_shield)
 [![Known Vulnerabilities](https://snyk.io/test/github/siutsin/telegram-jung2-bot/badge.svg?targetFile=package.json)](https://snyk.io/test/github/siutsin/telegram-jung2-bot?targetFile=package.json)
 <br>
 [![dependency](https://david-dm.org/siutsin/telegram-jung2-bot.svg)](https://david-dm.org/siutsin/telegram-jung2-bot)
@@ -87,6 +86,3 @@ $ npm run offline
 ## License
 
 `telegram-jung2-bot` is available under the [MIT license](https://siutsin.mit-license.org). See the LICENSE file for more info.
-
-
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fsiutsin%2Ftelegram-jung2-bot.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fsiutsin%2Ftelegram-jung2-bot?ref=badge_large)
