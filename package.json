@@ -65,7 +65,7 @@
     "nyc": "^15.1.0",
     "serverless": "^2.42.0",
     "serverless-dotenv-plugin": "^3.9.0",
-    "serverless-dynamodb-local": "^0.2.39",
+    "serverless-dynamodb-local": "^0.2.40",
     "serverless-offline": "^7.0.0",
     "serverless-plugin-dynamodb-autoscaling": "^3.1.0",
     "serverless-plugin-lambda-dead-letter": "^1.2.1",
