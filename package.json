@@ -59,7 +59,7 @@
     "copy-dynamodb-table": "^2.2.1",
     "doctoc": "^2.0.1",
     "dotenv": "^10.0.0",
-    "husky": "^7.0.1",
+    "husky": "^7.0.2",
     "lodash.isstring": "^4.0.1",
     "nock": "^13.1.2",
     "nyc": "^15.1.0",
