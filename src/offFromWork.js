@@ -1,10 +1,10 @@
-import Pino from 'pino'
-import moment from 'moment'
-import Bottleneck from 'bottleneck'
-import DynamoDB from './dynamodb'
-import SQS from './sqs'
+const moment = require('moment')
+const Pino = require('pino')
+const Bottleneck = require('bottleneck')
+const DynamoDB = require('./dynamodb')
+const SQS = require('./sqs')
 
-export default class OffFromWork {
+class OffFromWork {
   constructor () {
     this.dynamodb = new DynamoDB()
     this.sqs = new SQS()
@@ -34,3 +34,5 @@ export default class OffFromWork {
     return true
   }
 }
+
+module.exports = OffFromWork

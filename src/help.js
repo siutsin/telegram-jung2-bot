@@ -1,6 +1,6 @@
-import Telegram from './telegram'
+const Telegram = require('./telegram')
 
-export default class Help {
+class Help {
   constructor () {
     this.telegram = new Telegram()
   }
@@ -31,3 +31,5 @@ May your 冗 power powerful -- Simon
     return helpMessage
   }
 }
+
+module.exports = Help

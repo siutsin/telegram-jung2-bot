@@ -1,7 +1,7 @@
-import axios from 'axios'
-import Pino from 'pino'
+const axios = require('axios')
+const Pino = require('pino')
 
-export default class Telegram {
+class Telegram {
   constructor () {
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
   }
@@ -35,3 +35,5 @@ export default class Telegram {
     return isAdmin
   }
 }
+
+module.exports = Telegram

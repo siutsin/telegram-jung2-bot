@@ -1,10 +1,10 @@
-import test from 'ava'
-import path from 'path'
-import dotenv from 'dotenv'
-import AWS from 'aws-sdk-mock'
-import DynamoDB from '../src/dynamodb'
-import stubTelegramNewMessage from './stub/telegramNewMessage'
-import stubTelegramNewMessageOptional from './stub/telegramNewMessageOptional'
+const test = require('ava')
+const AWS = require('aws-sdk-mock')
+const path = require('path')
+const dotenv = require('dotenv')
+const DynamoDB = require('../src/dynamodb')
+const stubTelegramNewMessage = require('./stub/telegramNewMessage')
+const stubTelegramNewMessageOptional = require('./stub/telegramNewMessageOptional')
 
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 

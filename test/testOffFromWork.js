@@ -1,11 +1,11 @@
-import test from 'ava'
-import path from 'path'
-import AWS from 'aws-sdk-mock'
-import dotenv from 'dotenv'
-import OffFromWork from '../src/offFromWork'
+const test = require('ava')
+const AWS = require('aws-sdk-mock')
+const path = require('path')
+const dotenv = require('dotenv')
+const OffFromWork = require('../src/offFromWork')
 
-import stubChatIdScanResponse from './stub/chatIdScanResponse'
-import stubSQSResponse from './stub/sqsResponse'
+const stubChatIdScanResponse = require('./stub/chatIdScanResponse')
+const stubSQSResponse = require('./stub/sqsResponse')
 
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 

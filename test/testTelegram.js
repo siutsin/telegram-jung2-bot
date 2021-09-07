@@ -1,10 +1,10 @@
-import test from 'ava'
-import nock from 'nock'
-import path from 'path'
-import dotenv from 'dotenv'
-import stubSaveMessageResponse from './stub/saveMessageResponse'
-import stubGetChatAdministratorsResponse from './stub/getChatAdministratorsResponse'
-import Telegram from '../src/telegram'
+const test = require('ava')
+const path = require('path')
+const dotenv = require('dotenv')
+const nock = require('nock')
+const stubSaveMessageResponse = require('./stub/saveMessageResponse')
+const stubGetChatAdministratorsResponse = require('./stub/getChatAdministratorsResponse')
+const Telegram = require('../src/telegram')
 
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 

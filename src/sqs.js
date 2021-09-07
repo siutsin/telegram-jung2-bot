@@ -1,9 +1,9 @@
-import * as AWS from 'aws-sdk'
-import Pino from 'pino'
-import moment from 'moment'
-import Statistics from './statistics'
-import Settings from './settings'
-import Help from './help'
+const moment = require('moment')
+const AWS = require('aws-sdk')
+const Pino = require('pino')
+const Statistics = require('./statistics')
+const Settings = require('./settings')
+const Help = require('./help')
 
 const ACTION_KEY_ALLJUNG = 'alljung'
 const ACTION_KEY_JUNGHELP = 'junghelp'
@@ -14,7 +14,7 @@ const ACTION_KEY_TOPTEN = 'topten'
 const ACTION_KEY_ENABLE_ALLJUNG = 'enableAllJung'
 const ACTION_KEY_DISABLE_ALLJUNG = 'disableAllJung'
 
-export default class SQS {
+class SQS {
   constructor () {
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
     this.sqs = new AWS.SQS()
@@ -234,3 +234,5 @@ export default class SQS {
     }).promise()
   }
 }
+
+module.exports = SQS

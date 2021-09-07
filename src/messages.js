@@ -1,14 +1,14 @@
-import Pino from 'pino'
-import moment from 'moment'
-import ip from 'ip'
-import DynamoDB from './dynamodb'
-import SQS from './sqs'
+const Pino = require('pino')
+const moment = require('moment')
+const ip = require('ip')
+const DynamoDB = require('./dynamodb.js')
+const SQS = require('./sqs.js')
 
 function _isBotCommand (message) {
   return message.entities && message.entities[0] && message.entities[0].type === 'bot_command'
 }
 
-export default class Messages {
+class Messages {
   constructor () {
     this.dynamodb = new DynamoDB()
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
@@ -23,14 +23,14 @@ export default class Messages {
       // TODO: Should use WAF
       if (!ip.cidrSubnet('91.108.4.0/22').contains(requestIP) && !ip.cidrSubnet('149.154.160.0/20').contains(requestIP)) {
         this.logger.info(`Not Telegram Bot IP: ${requestIP}`)
-        return { statusCode: 403 }
+        return { statusCode: 403, message: 'Not Telegram Bot IP' }
       }
       const params = JSON.parse(event.body)
-      this.logger.trace('params', params)
+      this.logger.trace(`messages.js::newMessage params: ${JSON.stringify(params)}`)
       const message = params.message
       if (!message || !message.chat.type.includes('group')) {
         // handle edited_message and non group
-        return { statusCode: 204 }
+        return { statusCode: 204, message: 'edited_message or non-group' }
       }
       await this.dynamodb.saveMessage({ message })
       if (_isBotCommand(message)) {
@@ -70,3 +70,5 @@ export default class Messages {
     }
   }
 }
+
+module.exports = Messages
