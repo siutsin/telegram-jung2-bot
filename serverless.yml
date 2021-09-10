@@ -32,14 +32,6 @@ provider:
             - !GetAtt ChatIDsDynamoDB.Arn
         - Effect: Allow
           Action:
-            - 'sns:Publish'
-          Resource:
-            - !Ref MessagesDeadLetterTopic
-            - !Ref OffFromWorkDeadLetterTopic
-            - !Ref QueryEventDeadLetterTopic
-            - !Ref ScaleUpBeforeOffFromWorkDeadLetterTopic
-        - Effect: Allow
-          Action:
             - 'sqs:SendMessage'
           Resource:
             - !GetAtt EventQueue.Arn
@@ -54,8 +46,6 @@ functions:
     # peak duration: 9.1s
     timeout: 10
     memorySize: 192
-    deadLetter:
-      sns: ${self:service}-${self:provider.stage}-messages-dead-letter-topic
     events:
       - httpApi:
           path: /
@@ -70,8 +60,6 @@ functions:
     timeout: 600
     memorySize: 256
     tracing: Active
-    deadLetter:
-      sns: ${self:service}-${self:provider.stage}-offFromWork-dead-letter-topic
     events:
       - schedule: cron(59 9 ? * MON-FRI *) # 9:59 am UTC = 5:59 pm HKT
   queryEvent:
@@ -93,8 +81,6 @@ functions:
     # Reference: https://github.com/serverless/serverless/issues/4964#issuecomment-406570150
     reservedConcurrency: ${self:custom.jung2bot.queryEvent.reservedConcurrency.${self:provider.stage}, 1}
     tracing: Active
-    deadLetter:
-      sns: ${self:service}-${self:provider.stage}-queryEvent-dead-letter-topic
     events:
       - sqs:
           arn: !GetAtt EventQueue.Arn
@@ -108,14 +94,11 @@ functions:
     timeout: 10
     memorySize: 192
     tracing: Active
-    deadLetter:
-      sns: ${self:service}-${self:provider.stage}-scaleUpBeforeOffFromWork-dead-letter-topic
     events:
       - schedule: cron(53-59 9 ? * MON-FRI *) # 9:53-59 am UTC = 5:53-59 pm HKT
 
 plugins:
   - serverless-dotenv-plugin
-  - serverless-plugin-lambda-dead-letter
   - serverless-plugin-dynamodb-autoscaling
   - serverless-webpack
   - serverless-dynamodb-local
