@@ -70,6 +70,6 @@
     "serverless-plugin-dynamodb-autoscaling": "^3.1.0",
     "serverless-webpack": "^5.5.4",
     "standard": "^16.0.4",
-    "webpack": "^5.56.0"
+    "webpack": "^5.56.1"
   }
 }
