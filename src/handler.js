@@ -12,5 +12,5 @@ module.exports = {
   onOffFromWork: async () => offFromWork.off(),
   onMessage: async (event) => messages.newMessage(event),
   onEvent: async (event) => sqs.onEvent(event),
-  onScaleUp: async (event) => dynamoDB.scaleUp(event)
+  onScaleUp: async () => dynamoDB.scaleUp()
 }

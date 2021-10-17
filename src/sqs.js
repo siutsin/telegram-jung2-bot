@@ -25,7 +25,8 @@ class SQS {
 
   async onEvent (event) {
     this.logger.info(`SQS onEvent start at ${moment().utcOffset(8).format()}`)
-    this.logger.debug('event', event)
+    this.logger.debug('event')
+    this.logger.debug(event)
     let record
     try {
       record = event.Records[0]
@@ -75,8 +76,10 @@ class SQS {
           break
       }
     } catch (e) {
-      this.logger.error('onEvent error', e)
-      this.logger.error('onEvent error sqs event.Records', event.Records)
+      this.logger.error('onEvent error')
+      this.logger.error(e)
+      this.logger.error('onEvent error sqs event.Records')
+      this.logger.error(event.Records)
       return e.message
     }
     const deleteParams = {
