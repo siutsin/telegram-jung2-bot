@@ -35,11 +35,11 @@
     "prepare": "husky install"
   },
   "dependencies": {
-    "aws-sdk": "^2.983.0",
-    "axios": "^0.21.4",
+    "aws-sdk": "^2.1009.0",
+    "axios": "^0.23.0",
     "bottleneck": "^2.19.5",
     "dotenv": "^10.0.0",
-    "fastify": "^3.20.1",
+    "fastify": "^3.22.0",
     "husky": "^7.0.1",
     "ip": "^1.1.5",
     "moment": "^2.29.1",
@@ -48,14 +48,14 @@
   },
   "devDependencies": {
     "ava": "^3.15.0",
-    "aws-sdk-mock": "^5.2.1",
+    "aws-sdk-mock": "^5.4.0",
     "codecov": "^3.8.3",
     "copy-dynamodb-table": "^2.2.1",
-    "doctoc": "^2.0.1",
+    "doctoc": "^2.1.0",
     "lodash.isstring": "^4.0.1",
     "nock": "^13.1.1",
-    "nodemon": "^2.0.12",
+    "nodemon": "^2.0.13",
     "nyc": "^15.1.0",
-    "standard": "^16.0.3"
+    "standard": "^16.0.4"
   }
 }
