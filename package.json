@@ -24,14 +24,8 @@
     "start": "node src/fastify.js",
     "nodemon": "nodemon src/fastify.js",
     "test": "npm run lint && nyc ava",
-    "test_local": "npm run lint --fix && nyc ava --verbose",
     "codecov": "nyc report --reporter=text-lcov > coverage.lcov | codecov",
     "lint": "standard",
-    "lint_fix": "standard --fix",
-    "housekeeping": "./scripts/housekeeping.sh",
-    "setup_dotenv": "./scripts/setup_dotenv.sh",
-    "generate_seed": "node test/helper/generateDynamodbMessagesSeed.js && node test/helper/generateDynamodbChatIdSeed.js",
-    "generate_stub_dynamodb": "node ./test/helper/generateStubDynamoDB.js",
     "prepare": "husky install"
   },
   "dependencies": {
@@ -50,8 +44,6 @@
     "ava": "^3.15.0",
     "aws-sdk-mock": "^5.4.0",
     "codecov": "^3.8.3",
-    "copy-dynamodb-table": "^2.2.1",
-    "doctoc": "^2.1.0",
     "lodash.isstring": "^4.0.1",
     "nock": "^13.1.4",
     "nodemon": "^2.0.14",
