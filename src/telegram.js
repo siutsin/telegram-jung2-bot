@@ -6,9 +6,10 @@ class Telegram {
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
   }
 
-  async sendMessage (chatId, message) {
+  async sendMessage (chatId, message, options = {}) {
     const url = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`
     const data = {
+      ...options,
       chat_id: chatId,
       text: message
     }
