@@ -2,7 +2,7 @@ name: Delete old container images
 
 on:
   schedule:
-    - cron: '0/5 * * * *'
+    - cron: '* * * * *'
 
 jobs:
   clean-ghcr:
@@ -16,4 +16,4 @@ jobs:
           untagged-only: true
           cut-off: One minute ago UTC
           account-type: personal
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.CONTAINER_RETENTION_POLICY_TOKEN }}
