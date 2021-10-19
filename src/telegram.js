@@ -26,12 +26,12 @@ class Telegram {
       }
     }
     const response = await axios.get(url, config)
-    this.logger.debug('response.status', response.status)
-    this.logger.debug('response.data', response.data)
+    this.logger.debug(`response.status: ${response.status}`)
+    this.logger.debug(`response.data: ${response.data}`)
     const data = response.data
     const adminIds = data.result.map(o => o.user.id)
     const isAdmin = adminIds.includes(userId)
-    this.logger.info('isAdmin', isAdmin)
+    this.logger.info(`isAdmin: ${isAdmin}`)
     return isAdmin
   }
 }

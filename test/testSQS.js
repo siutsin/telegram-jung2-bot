@@ -204,3 +204,21 @@ test.serial('onEvent - junghelp with error', async t => {
   const response = await sqs.onEvent(stubJungHelpSQSEvent)
   t.is(response, 'Request failed with status code 987')
 })
+
+// In ECS SQS polling, the key is `StringValue` instead of `stringValue`.
+test.serial('onEvent - alljung - ecs mode', async t => {
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .post('/sendMessage')
+    .reply(200, stubAllJungMessageResponse)
+  const sqs = new SQS()
+
+  const copy = JSON.parse(JSON.stringify(stubAllJungSQSEvent))
+  copy.Records[0].messageAttributes.chatId.StringValue = copy.Records[0].messageAttributes.chatId.stringValue
+  copy.Records[0].messageAttributes.action.StringValue = copy.Records[0].messageAttributes.action.stringValue
+  delete copy.Records[0].messageAttributes.chatId.stringValue
+  delete copy.Records[0].messageAttributes.action.stringValue
+
+  const response = await sqs.onEvent(copy)
+  t.is(response, stubDeleteMessage)
+})

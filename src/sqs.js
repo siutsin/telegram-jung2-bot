@@ -14,6 +14,12 @@ const ACTION_KEY_TOPTEN = 'topten'
 const ACTION_KEY_ENABLE_ALLJUNG = 'enableAllJung'
 const ACTION_KEY_DISABLE_ALLJUNG = 'disableAllJung'
 
+// In ECS SQS polling, the key is `StringValue` instead of `stringValue`.
+// This function will extract either the Lambda event key or SQS polling key.
+const getStringValue = (obj) => {
+  return obj.stringValue || obj.StringValue
+}
+
 class SQS {
   constructor () {
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
@@ -31,8 +37,8 @@ class SQS {
     try {
       record = event.Records[0]
       const message = record.messageAttributes
-      const chatId = Number(message.chatId.stringValue)
-      const action = message.action.stringValue
+      const chatId = Number(getStringValue(message.chatId))
+      const action = getStringValue(message.action)
       let chatTitle
       switch (action) {
         case ACTION_KEY_ALLJUNG:
@@ -41,7 +47,7 @@ class SQS {
           break
         case ACTION_KEY_JUNGHELP:
           this.logger.info(`SQS onEvent junghelp start at ${moment().utcOffset(8).format()}`)
-          chatTitle = message.chatTitle.stringValue
+          chatTitle = getStringValue(message.chatTitle)
           await this.help.sendHelpMessage({ chatId, chatTitle })
           break
         case ACTION_KEY_OFF_FROM_WORK:
@@ -58,20 +64,20 @@ class SQS {
           break
         case ACTION_KEY_ENABLE_ALLJUNG:
           this.logger.info(`SQS onEvent enableAllJung start at ${moment().utcOffset(8).format()}`)
-          chatTitle = message.chatTitle.stringValue
+          chatTitle = getStringValue(message.chatTitle)
           await this.settings.enableAllJung({
             chatId,
             chatTitle,
-            userId: Number(message.userId.stringValue)
+            userId: Number(getStringValue(message.userId))
           })
           break
         case ACTION_KEY_DISABLE_ALLJUNG:
           this.logger.info(`SQS onEvent disableAllJung start at ${moment().utcOffset(8).format()}`)
-          chatTitle = message.chatTitle.stringValue
+          chatTitle = getStringValue(message.chatTitle)
           await this.settings.disableAllJung({
             chatId,
             chatTitle,
-            userId: Number(message.userId.stringValue)
+            userId: Number(getStringValue(message.userId))
           })
           break
       }

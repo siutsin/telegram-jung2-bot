@@ -8,7 +8,7 @@ require('dotenv').config({ path: '.env.ecs' })
 
 const AWS = require('aws-sdk')
 const Pino = require('pino')
-const fastify = require('fastify')({ logger: true, trustProxy: true })
+const fastify = require('fastify')({ logger: { level: process.env.LOG_LEVEL }, trustProxy: true })
 const https = require('https')
 const ip = require('ip')
 const { Consumer } = require('sqs-consumer')
