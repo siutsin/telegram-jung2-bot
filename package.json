@@ -19,7 +19,7 @@
     "stats"
   ],
   "author": "siutsin",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "scripts": {
     "start": "node src/fastify.js",
     "nodemon": "nodemon src/fastify.js",
