@@ -25,8 +25,7 @@
     "nodemon": "nodemon src/fastify.js",
     "test": "npm run lint && nyc ava",
     "codecov": "nyc report --reporter=text-lcov > coverage.lcov | codecov",
-    "lint": "standard",
-    "prepare": "husky install"
+    "lint": "standard"
   },
   "dependencies": {
     "aws-sdk": "^2.1011.0",
@@ -34,7 +33,6 @@
     "bottleneck": "^2.19.5",
     "dotenv": "^10.0.0",
     "fastify": "^3.22.1",
-    "husky": "^7.0.1",
     "ip": "^1.1.5",
     "moment": "^2.29.1",
     "pino": "^7.0.3",
