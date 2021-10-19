@@ -1,6 +1,6 @@
 {
   "name": "telegram-jung2-bot",
-  "version": "5.0.0-alpha.1",
+  "version": "5.0.0",
   "private": true,
   "repository": {
     "type": "git",
