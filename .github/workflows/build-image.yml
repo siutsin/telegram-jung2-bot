@@ -5,10 +5,11 @@
 
 name: Create and publish a Docker image
 
-#on:
-#  push:
-#    branches: ['release']
-on: [ push ]
+on:
+  push:
+    tags:
+      - '*'
+#on: [ push ]
 
 env:
   REGISTRY: ghcr.io
