@@ -1,10 +1,10 @@
-import DynamoDB from './dynamodb'
-import Settings from './settings'
-import Telegram from './telegram'
-import moment from 'moment'
-import Pino from 'pino'
+const moment = require('moment')
+const Pino = require('pino')
+const DynamoDB = require('./dynamodb')
+const Settings = require('./settings')
+const Telegram = require('./telegram')
 
-export default class Statistics {
+class Statistics {
   constructor () {
     this.telegram = new Telegram()
     this.dynamodb = new DynamoDB()
@@ -194,3 +194,5 @@ export default class Statistics {
     return this.getStats({ chatId, limit: 10, offFromWork: true })
   }
 }
+
+module.exports = Statistics

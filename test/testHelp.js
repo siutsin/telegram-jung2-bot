@@ -1,9 +1,9 @@
-import test from 'ava'
-import nock from 'nock'
-import path from 'path'
-import stubHelpMessageResponse from './stub/helpMessageResponse'
-import Help from '../src/help'
-import dotenv from 'dotenv'
+const test = require('ava')
+const nock = require('nock')
+const path = require('path')
+const dotenv = require('dotenv')
+const stubHelpMessageResponse = require('./stub/helpMessageResponse')
+const Help = require('../src/help')
 
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 

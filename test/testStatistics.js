@@ -1,15 +1,15 @@
-import test from 'ava'
-import path from 'path'
-import dotenv from 'dotenv'
-import AWS from 'aws-sdk-mock'
-import nock from 'nock'
-import Statistics from '../src/statistics'
-import stubTopTen from './stub/telegramMessageTopTen'
-import stubTopDiver from './stub/telegramMessageTopDiver'
-import stubAllJung from './stub/telegramMessageAllJung'
-import stubAllJungDBResponse from './stub/allJungDatabaseResponse'
-import stubDynamoDBQueryStatsByChatIdResponse from './stub/dynamoDBQueryStatsByChatIdResponse'
-import stubAllJungMessageResponse from './stub/allJungMessageResponse'
+const test = require('ava')
+const AWS = require('aws-sdk-mock')
+const path = require('path')
+const dotenv = require('dotenv')
+const nock = require('nock')
+const Statistics = require('../src/statistics')
+const stubTopTen = require('./stub/telegramMessageTopTen')
+const stubTopDiver = require('./stub/telegramMessageTopDiver')
+const stubAllJung = require('./stub/telegramMessageAllJung')
+const stubAllJungDBResponse = require('./stub/allJungDatabaseResponse')
+const stubDynamoDBQueryStatsByChatIdResponse = require('./stub/dynamoDBQueryStatsByChatIdResponse')
+const stubAllJungMessageResponse = require('./stub/allJungMessageResponse')
 
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
