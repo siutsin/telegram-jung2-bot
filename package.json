@@ -28,7 +28,7 @@
     "lint": "standard"
   },
   "dependencies": {
-    "aws-sdk": "^2.1012.0",
+    "aws-sdk": "^2.1013.0",
     "axios": "^0.23.0",
     "bottleneck": "^2.19.5",
     "dotenv": "^10.0.0",
