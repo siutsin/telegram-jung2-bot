@@ -12,6 +12,7 @@ const fastify = require('fastify')({ logger: { level: process.env.LOG_LEVEL }, t
 const https = require('https')
 const ip = require('ip')
 const { Consumer } = require('sqs-consumer')
+const { performance } = require('perf_hooks')
 
 const SQS = require('./sqs.js')
 const handler = require('./handler')
@@ -34,12 +35,17 @@ const toSQSLambdaEvent = (message) => {
 
 const consumer = Consumer.create({
   queueUrl: process.env.EVENT_QUEUE_URL,
-  batchSize: 10,
+  batchSize: 10, // aws max 10
   messageAttributeNames: ['chatId', 'chatTitle', 'userId', 'action'],
   handleMessageBatch: async (messages) => {
+    const startTime = performance.now()
+    const requests = []
     for (const message of messages) {
-      await sqs.onEvent(toSQSLambdaEvent(message))
+      requests.push(sqs.onEvent(toSQSLambdaEvent(message)))
     }
+    await Promise.all(requests)
+    const endTime = performance.now()
+    logger.warn(`handleMessageBatch time: ${endTime - startTime} ms`)
   },
   sqs: new AWS.SQS({
     httpOptions: {
