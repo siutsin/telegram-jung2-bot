@@ -35,7 +35,7 @@
     "fastify": "^3.24.0",
     "ip": "^1.1.5",
     "moment": "^2.29.1",
-    "pino": "^7.3.0",
+    "pino": "^7.4.0",
     "sqs-consumer": "^5.6.0"
   },
   "devDependencies": {
