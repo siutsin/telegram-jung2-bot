@@ -21,10 +21,9 @@
   "author": "siutsin",
   "license": "AGPL-3.0-only",
   "scripts": {
-    "build": "webpack",
-    "lint": "standard",
-    "nodemon": "nodemon src/fastify.js",
-    "start": "node src/fastify.js",
+    "build": "webpack --mode=production",
+    "lint": "standard --fix",
+    "nodemon": "nodemon src/index.js",
     "test": "npm run lint && c8 ava"
   },
   "dependencies": {
