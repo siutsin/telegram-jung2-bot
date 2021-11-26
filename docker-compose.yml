@@ -1,0 +1,17 @@
+services:
+  app:
+    build: .
+    volumes:
+      - /var/run:/var/run
+      - $HOME/.aws/:/root/.aws/:ro
+    environment:
+      # docker-compose --env-file ./.env.development up --build
+      AWS_PROFILE: "${AWS_PROFILE:-default}"
+      STAGE: "${STAGE}"
+      AWS_REGION: "${AWS_REGION}"
+      LOG_LEVEL: "${LOG_LEVEL}"
+      TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN}"
+      MESSAGE_TABLE: "${MESSAGE_TABLE}"
+      CHATID_TABLE: "${CHATID_TABLE}"
+    ports:
+      - "3000:3000"

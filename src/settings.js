@@ -1,9 +1,9 @@
-import Pino from 'pino'
-import moment from 'moment'
-import Telegram from './telegram'
-import DynamoDB from './dynamodb'
+const moment = require('moment')
+const Pino = require('pino')
+const Telegram = require('./telegram')
+const DynamoDB = require('./dynamodb')
 
-export default class Settings {
+class Settings {
   constructor () {
     this.telegram = new Telegram()
     this.dynamodb = new DynamoDB()
@@ -49,3 +49,5 @@ Disabled AllJung command`)
     }
   }
 }
+
+module.exports = Settings

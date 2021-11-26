@@ -1,22 +1,23 @@
-import test from 'ava'
-import path from 'path'
-import dotenv from 'dotenv'
-import nock from 'nock'
-import AWS from 'aws-sdk-mock'
-import SQS from '../src/sqs'
+const test = require('ava')
+const AWS = require('aws-sdk-mock')
+const path = require('path')
+const dotenv = require('dotenv')
+const nock = require('nock')
 
-import stubSQSResponse from './stub/sqsResponse'
-import stubJungHelpSQSEvent from './stub/onJungHelpSQSEvent'
-import stubAllJungSQSEvent from './stub/onAllJungSQSEvent'
-import stubTopTenSQSEvent from './stub/onTopTenSQSEvent'
-import stubTopDiverSQSEvent from './stub/onTopDiverSQSEvent'
-import stubOffFromWorkSQSEvent from './stub/onOffFromWorkSQSEvent'
-import stubEnableAllJungSQSEvent from './stub/onEnableAllJungSQSEvent'
-import stubDisableAllJungSQSEvent from './stub/onDisableAllJungSQSEvent'
-import stubAllJungMessageResponse from './stub/allJungMessageResponse'
-import stubAllJungDBResponse from './stub/allJungDatabaseResponse'
-import stubGetChatAdministratorsResponse from './stub/getChatAdministratorsResponse'
-import stubDynamoDBQueryStatsByChatIdResponse from './stub/dynamoDBQueryStatsByChatIdResponse'
+const SQS = require('../src/sqs')
+
+const stubSQSResponse = require('./stub/sqsResponse')
+const stubJungHelpSQSEvent = require('./stub/onJungHelpSQSEvent')
+const stubAllJungSQSEvent = require('./stub/onAllJungSQSEvent')
+const stubTopTenSQSEvent = require('./stub/onTopTenSQSEvent')
+const stubTopDiverSQSEvent = require('./stub/onTopDiverSQSEvent')
+const stubOffFromWorkSQSEvent = require('./stub/onOffFromWorkSQSEvent')
+const stubEnableAllJungSQSEvent = require('./stub/onEnableAllJungSQSEvent')
+const stubDisableAllJungSQSEvent = require('./stub/onDisableAllJungSQSEvent')
+const stubAllJungMessageResponse = require('./stub/allJungMessageResponse')
+const stubAllJungDBResponse = require('./stub/allJungDatabaseResponse')
+const stubGetChatAdministratorsResponse = require('./stub/getChatAdministratorsResponse')
+const stubDynamoDBQueryStatsByChatIdResponse = require('./stub/dynamoDBQueryStatsByChatIdResponse')
 
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
@@ -202,4 +203,22 @@ test.serial('onEvent - junghelp with error', async t => {
   const sqs = new SQS()
   const response = await sqs.onEvent(stubJungHelpSQSEvent)
   t.is(response, 'Request failed with status code 987')
+})
+
+// In ECS SQS polling, the key is `StringValue` instead of `stringValue`.
+test.serial('onEvent - alljung - ecs mode', async t => {
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .post('/sendMessage')
+    .reply(200, stubAllJungMessageResponse)
+  const sqs = new SQS()
+
+  const copy = JSON.parse(JSON.stringify(stubAllJungSQSEvent))
+  copy.Records[0].messageAttributes.chatId.StringValue = copy.Records[0].messageAttributes.chatId.stringValue
+  copy.Records[0].messageAttributes.action.StringValue = copy.Records[0].messageAttributes.action.stringValue
+  delete copy.Records[0].messageAttributes.chatId.stringValue
+  delete copy.Records[0].messageAttributes.action.stringValue
+
+  const response = await sqs.onEvent(copy)
+  t.is(response, stubDeleteMessage)
 })

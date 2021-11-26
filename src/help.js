@@ -1,6 +1,6 @@
-import Telegram from './telegram'
+const Telegram = require('./telegram')
 
-export default class Help {
+class Help {
   constructor () {
     this.telegram = new Telegram()
   }
@@ -25,9 +25,11 @@ Admin Only:
 
 Issue/Suggestion: https://github.com/siutsin/telegram-jung2-bot/issues
 
-May your 冗 power powerful -- Simon
+May your 冗 power powerful
 `
-    await this.telegram.sendMessage(chatId, helpMessage)
+    await this.telegram.sendMessage(chatId, helpMessage, { disable_web_page_preview: true })
     return helpMessage
   }
 }
+
+module.exports = Help

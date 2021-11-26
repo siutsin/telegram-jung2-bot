@@ -1,19 +1,19 @@
-import test from 'ava'
-import path from 'path'
-import dotenv from 'dotenv'
-import AWS from 'aws-sdk-mock'
-import nock from 'nock'
-import Messages from '../src/messages'
-import stubEvent from './stub/onMessageEvent'
-import stubTopTenEvent from './stub/onTopTenMessageEvent'
-import stubTopDiverEvent from './stub/onTopDiverMessageEvent'
-import stubAllJungEvent from './stub/onAllJungMessageEvent'
-import stubHelpEvent from './stub/onHelpMessageEvent'
-import stubEditMessageEvent from './stub/onEditMessageEvent'
-import stubEnableAllJungEvent from './stub/onEnableAllJungMessageEvent'
-import stubDisableAllJungEvent from './stub/onDisableAllJungMessageEvent'
-import stubAllJungMessageResponse from './stub/allJungMessageResponse'
-import stubSQSResponse from './stub/sqsResponse'
+const test = require('ava')
+const AWS = require('aws-sdk-mock')
+const path = require('path')
+const dotenv = require('dotenv')
+const nock = require('nock')
+const Messages = require('../src/messages')
+const stubEvent = require('./stub/onMessageEvent')
+const stubTopTenEvent = require('./stub/onTopTenMessageEvent')
+const stubTopDiverEvent = require('./stub/onTopDiverMessageEvent')
+const stubAllJungEvent = require('./stub/onAllJungMessageEvent')
+const stubHelpEvent = require('./stub/onHelpMessageEvent')
+const stubEditMessageEvent = require('./stub/onEditMessageEvent')
+const stubEnableAllJungEvent = require('./stub/onEnableAllJungMessageEvent')
+const stubDisableAllJungEvent = require('./stub/onDisableAllJungMessageEvent')
+const stubAllJungMessageResponse = require('./stub/allJungMessageResponse')
+const stubSQSResponse = require('./stub/sqsResponse')
 
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
@@ -37,18 +37,18 @@ test('newMessage', async t => {
   t.is(response.statusCode, 200)
 })
 
-test('newMessage from Telegram IP range', async t => {
+test('newMessage = require( Telegram IP range', async t => {
   const messages = new Messages()
   const clone = JSON.parse(JSON.stringify(stubEvent))
   clone.headers['X-Forwarded-For'] = '149.154.160.1, 1.2.3.4'
   let response = await messages.newMessage(clone)
   t.is(response.statusCode, 200)
-  clone.headers['X-Forwarded-For'] = '91.108.4.1, 1.2.3.4'
+  clone.headers = { 'x-forwarded-for': '91.108.4.1, 1.2.3.4' }
   response = await messages.newMessage(clone)
   t.is(response.statusCode, 200)
 })
 
-test('newMessage not from Telegram IP range', async t => {
+test('newMessage not = require( Telegram IP range', async t => {
   const messages = new Messages()
   const clone = JSON.parse(JSON.stringify(stubEvent))
   clone.headers['X-Forwarded-For'] = '1.2.3.4, 1.2.3.4'

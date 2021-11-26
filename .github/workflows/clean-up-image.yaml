@@ -1,0 +1,19 @@
+name: Delete old container images
+
+on:
+  schedule:
+    - cron: '0 20 * * *'
+
+jobs:
+  clean-ghcr:
+    name: Delete untagged container images
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete untagged images
+        uses: sondrelg/container-retention-policy@v1
+        with:
+          image-names: telegram-jung2-bot
+          untagged-only: true
+          cut-off: One minute ago UTC
+          account-type: personal
+          token: ${{ secrets.CONTAINER_RETENTION_POLICY_TOKEN }}

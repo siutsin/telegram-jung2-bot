@@ -1,9 +1,9 @@
-import * as AWS from 'aws-sdk'
-import Pino from 'pino'
-import moment from 'moment'
-import Statistics from './statistics'
-import Settings from './settings'
-import Help from './help'
+const moment = require('moment')
+const AWS = require('aws-sdk')
+const Pino = require('pino')
+const Statistics = require('./statistics')
+const Settings = require('./settings')
+const Help = require('./help')
 
 const ACTION_KEY_ALLJUNG = 'alljung'
 const ACTION_KEY_JUNGHELP = 'junghelp'
@@ -14,7 +14,13 @@ const ACTION_KEY_TOPTEN = 'topten'
 const ACTION_KEY_ENABLE_ALLJUNG = 'enableAllJung'
 const ACTION_KEY_DISABLE_ALLJUNG = 'disableAllJung'
 
-export default class SQS {
+// In ECS SQS polling, the key is `StringValue` instead of `stringValue`.
+// This function will extract either the Lambda event key or SQS polling key.
+const getStringValue = (obj) => {
+  return obj.stringValue || obj.StringValue
+}
+
+class SQS {
   constructor () {
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
     this.sqs = new AWS.SQS()
@@ -25,13 +31,14 @@ export default class SQS {
 
   async onEvent (event) {
     this.logger.info(`SQS onEvent start at ${moment().utcOffset(8).format()}`)
-    this.logger.debug('event', event)
+    this.logger.debug('event')
+    this.logger.debug(event)
     let record
     try {
       record = event.Records[0]
       const message = record.messageAttributes
-      const chatId = Number(message.chatId.stringValue)
-      const action = message.action.stringValue
+      const chatId = Number(getStringValue(message.chatId))
+      const action = getStringValue(message.action)
       let chatTitle
       switch (action) {
         case ACTION_KEY_ALLJUNG:
@@ -40,7 +47,7 @@ export default class SQS {
           break
         case ACTION_KEY_JUNGHELP:
           this.logger.info(`SQS onEvent junghelp start at ${moment().utcOffset(8).format()}`)
-          chatTitle = message.chatTitle.stringValue
+          chatTitle = getStringValue(message.chatTitle)
           await this.help.sendHelpMessage({ chatId, chatTitle })
           break
         case ACTION_KEY_OFF_FROM_WORK:
@@ -57,26 +64,28 @@ export default class SQS {
           break
         case ACTION_KEY_ENABLE_ALLJUNG:
           this.logger.info(`SQS onEvent enableAllJung start at ${moment().utcOffset(8).format()}`)
-          chatTitle = message.chatTitle.stringValue
+          chatTitle = getStringValue(message.chatTitle)
           await this.settings.enableAllJung({
             chatId,
             chatTitle,
-            userId: Number(message.userId.stringValue)
+            userId: Number(getStringValue(message.userId))
           })
           break
         case ACTION_KEY_DISABLE_ALLJUNG:
           this.logger.info(`SQS onEvent disableAllJung start at ${moment().utcOffset(8).format()}`)
-          chatTitle = message.chatTitle.stringValue
+          chatTitle = getStringValue(message.chatTitle)
           await this.settings.disableAllJung({
             chatId,
             chatTitle,
-            userId: Number(message.userId.stringValue)
+            userId: Number(getStringValue(message.userId))
           })
           break
       }
     } catch (e) {
-      this.logger.error('onEvent error', e)
-      this.logger.error('onEvent error sqs event.Records', event.Records)
+      this.logger.error('onEvent error')
+      this.logger.error(e)
+      this.logger.error('onEvent error sqs event.Records')
+      this.logger.error(event.Records)
       return e.message
     }
     const deleteParams = {
@@ -234,3 +243,5 @@ export default class SQS {
     }).promise()
   }
 }
+
+module.exports = SQS

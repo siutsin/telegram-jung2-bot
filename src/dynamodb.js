@@ -1,8 +1,8 @@
-import moment from 'moment'
-import * as AWS from 'aws-sdk'
-import Pino from 'pino'
+const moment = require('moment')
+const AWS = require('aws-sdk')
+const Pino = require('pino')
 
-export default class DynamoDB {
+class DynamoDB {
   constructor (options) {
     // TODO: remove local testing code
     if (process.env.IS_OFFLINE) {
@@ -13,9 +13,14 @@ export default class DynamoDB {
         secretAccessKey: 'DEFAULT_SECRET'
       }
     }
-    this.dynamoDB = new AWS.DynamoDB(options)
-    this.documentClient = new AWS.DynamoDB.DocumentClient(options)
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
+    this.logger.trace(`dynamodb.js::constructor options: ${JSON.stringify(options)}`)
+    this.dynamoDB = new AWS.DynamoDB(options)
+    this.logger.trace('dynamodb.js::constructor this.dynamoDB:')
+    this.logger.trace(this.dynamoDB)
+    this.documentClient = new AWS.DynamoDB.DocumentClient(options)
+    this.logger.trace('dynamodb.js::constructor this.documentClient:')
+    this.logger.trace(this.documentClient)
   }
 
   buildExpression ({ message, days }) {
@@ -66,9 +71,9 @@ export default class DynamoDB {
       ExpressionAttributeNames,
       ExpressionAttributeValues
     }
-    this.logger.debug('params', params)
+    this.logger.debug(`dynamodb.js::saveStats params: ${JSON.stringify(params)}`)
     const response = await this.documentClient.update(params).promise()
-    this.logger.trace('response', response)
+    this.logger.trace(`dynamodb.js::saveStats response: ${JSON.stringify(response)}`)
     return response
   }
 
@@ -88,9 +93,9 @@ export default class DynamoDB {
         ':ttl': moment().utcOffset(8).add(days, 'days').unix()
       }
     }
-    this.logger.debug('params', params)
+    this.logger.debug(`dynamodb.js::updateChatId params: ${JSON.stringify(params)}`)
     const response = await this.documentClient.update(params).promise()
-    this.logger.trace('response', response)
+    this.logger.trace(`dynamodb.js::updateChatId response: ${JSON.stringify(response)}`)
     return response
   }
 
@@ -106,9 +111,9 @@ export default class DynamoDB {
         ':eaj': true
       }
     }
-    this.logger.debug('params', params)
+    this.logger.debug(`dynamodb.js::enableAllJung params: ${JSON.stringify(params)}`)
     const response = await this.documentClient.update(params).promise()
-    this.logger.trace('response', response)
+    this.logger.trace(`dynamodb.js::enableAllJung response: ${JSON.stringify(response)}`)
     return response
   }
 
@@ -124,9 +129,9 @@ export default class DynamoDB {
         ':eaj': false
       }
     }
-    this.logger.debug('params', params)
+    this.logger.debug(`dynamodb.js::disableAllJung params: ${JSON.stringify(params)}`)
     const response = await this.documentClient.update(params).promise()
-    this.logger.trace('response', response)
+    this.logger.trace(`dynamodb.js::disableAllJung response: ${JSON.stringify(response)}`)
     return response
   }
 
@@ -148,9 +153,9 @@ export default class DynamoDB {
         ':ct': moment().utcOffset(8).format()
       }
     }
-    this.logger.debug('params', params)
+    this.logger.debug(`dynamodb.js::updateChatIdMessagesCount params: ${JSON.stringify(params)}`)
     const response = await this.documentClient.update(params).promise()
-    this.logger.trace('response', response)
+    this.logger.trace(`dynamodb.js::updateChatIdMessagesCount response: ${JSON.stringify(response)}`)
     return response
   }
 
@@ -264,3 +269,5 @@ export default class DynamoDB {
     }
   }
 }
+
+module.exports = DynamoDB
