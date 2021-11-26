@@ -23,8 +23,7 @@
   "scripts": {
     "start": "node src/fastify.js",
     "nodemon": "nodemon src/fastify.js",
-    "test": "npm run lint && nyc ava",
-    "codecov": "nyc report --reporter=text-lcov > coverage.lcov | codecov",
+    "test": "npm run lint && c8 ava",
     "lint": "standard"
   },
   "dependencies": {
@@ -41,11 +40,11 @@
   "devDependencies": {
     "ava": "^3.15.0",
     "aws-sdk-mock": "^5.4.0",
+    "c8": "^7.10.0",
     "codecov": "^3.8.3",
     "lodash.isstring": "^4.0.1",
     "nock": "^13.2.1",
     "nodemon": "^2.0.15",
-    "nyc": "^15.1.0",
     "standard": "^16.0.4"
   }
 }
