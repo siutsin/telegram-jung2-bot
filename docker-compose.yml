@@ -7,11 +7,13 @@ services:
     environment:
       # docker-compose --env-file ./.env.development up --build
       AWS_PROFILE: "${AWS_PROFILE:-default}"
-      STAGE: "${STAGE}"
-      AWS_REGION: "${AWS_REGION}"
-      LOG_LEVEL: "${LOG_LEVEL}"
+      STAGE: "${STAGE:-dev}"
+      AWS_REGION: "${AWS_REGION:-eu-west-1}"
+      LOG_LEVEL: "${LOG_LEVEL:-debug}"
       TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN}"
       MESSAGE_TABLE: "${MESSAGE_TABLE}"
       CHATID_TABLE: "${CHATID_TABLE}"
+      EVENT_QUEUE_URL: "${EVENT_QUEUE_URL}"
+      SCALE_UP_READ_CAPACITY: ${SCALE_UP_READ_CAPACITY:-1}
     ports:
       - "3000:3000"
