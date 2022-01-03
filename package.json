@@ -44,7 +44,6 @@
     "aws-sdk-mock": "^5.5.1",
     "c8": "^7.11.0",
     "codecov": "^3.8.3",
-    "lodash.isstring": "^4.0.1",
     "nock": "^13.2.1",
     "nodemon": "^2.0.15",
     "standard": "^16.0.4",
