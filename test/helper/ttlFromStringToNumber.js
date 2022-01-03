@@ -3,12 +3,13 @@
 // This is to convert the TTL from timestamp string to epoch time due to a mistake at the beginning
 
 const AWS = require('aws-sdk')
-const isString = require('lodash.isstring')
 const moment = require('moment')
 
 require('dotenv').config({ path: '.env.production' })
 
 const credentials = new AWS.SharedIniFileCredentials({ profile: process.env.PROFILE })
+
+const isString = a => typeof a === 'string'
 
 AWS.config.credentials = credentials
 
@@ -70,8 +71,7 @@ async function scanAll (startKey) {
   const data = await docClient.scan(scanParams).promise()
   console.log('Count', data.Count, 'ScannedCount', data.ScannedCount, 'startKey', startKey)
   const promiseArray = []
-  for (let i = 0; i < data.Items.length; i++) {
-    const obj = data.Items[i]
+  for (const obj of data.Items) {
     if (isString(obj.ttl)) {
       if (promiseArray.length < 15) {
         promiseArray.push(update(obj))
