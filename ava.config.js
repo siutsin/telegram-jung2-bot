@@ -1,4 +1,4 @@
-export default function factory () {
+module.exports = () => {
   return {
     files: [
       'test/*.js'
