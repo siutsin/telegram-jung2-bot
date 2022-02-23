@@ -27,7 +27,7 @@
     "test": "npm run lint && c8 ava"
   },
   "dependencies": {
-    "aws-sdk": "^2.1079.0",
+    "aws-sdk": "^2.1080.0",
     "axios": "^0.26.0",
     "bottleneck": "^2.19.5",
     "dotenv": "^16.0.0",
