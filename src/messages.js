@@ -26,27 +26,27 @@ class Messages {
   async handleBotCommand (message) {
     const text = message.text
     this.logger.info(text)
-    if (text.match(/\/jung[hH]elp/)) {
-      this.logger.info('newMessage help')
+    if (text.match(/\/jungHelp/i)) {
+      this.logger.info('newMessage jungHelp')
       await this.sqs.sendJungHelpMessage(message)
     }
-    if (text.match(/\/top[tT]en/)) {
+    if (text.match(/\/topTen/i)) {
       this.logger.info('newMessage topTen')
       await this.sqs.sendTopTenMessage(message)
     }
-    if (text.match(/\/top[dD]iver/)) {
+    if (text.match(/\/topDiver/i)) {
       this.logger.info('newMessage topDiver')
       await this.sqs.sendTopDiverMessage(message)
     }
-    if (text.match(/\/all[jJ]ung/)) {
-      this.logger.info('newMessage alljung')
+    if (text.match(/\/allJung/i)) {
+      this.logger.info('newMessage allJung')
       await this.sqs.sendAllJungMessage(message)
     }
-    if (text.match(/\/enable[aA]ll[jJ]ung/)) {
+    if (text.match(/\/enableAllJung/i)) {
       this.logger.info('newMessage enableAllJung')
       await this.sqs.sendEnableAllJungMessage(message)
     }
-    if (text.match(/\/disable[aA]ll[jJ]ung/)) {
+    if (text.match(/\/disableAllJung/i)) {
       this.logger.info('newMessage disableAllJung')
       await this.sqs.sendDisableAllJungMessage(message)
     }
@@ -59,7 +59,7 @@ class Messages {
       chatId: message.chat.id,
       chatTitle: message.chat.title
     })
-    if (text.match(/\/set[oO]ff[fF]rom[wW]ork[tT]imeUTC/)) {
+    if (text.match(/\/setOffFromWorkTimeUTC/i)) {
       this.logger.info('newMessage setOffFromWorkTimeUTC')
       const params = text.split(' ')
       if (params.length === 3) {
