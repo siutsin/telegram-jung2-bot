@@ -36,7 +36,7 @@ const toSQSLambdaEvent = (message) => {
 const consumer = Consumer.create({
   queueUrl: process.env.EVENT_QUEUE_URL,
   batchSize: 10, // aws max 10
-  messageAttributeNames: ['chatId', 'chatTitle', 'userId', 'action', 'time', 'workday'],
+  messageAttributeNames: ['chatId', 'chatTitle', 'userId', 'action', 'offTime', 'workday'],
   handleMessageBatch: async (messages) => {
     const startTime = performance.now()
     const requests = []

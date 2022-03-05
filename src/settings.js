@@ -63,14 +63,14 @@ E.g.:
 `)
   }
 
-  async setOffFromWorkTimeUTC ({ chatId, chatTitle, userId, time, workday }) {
+  async setOffFromWorkTimeUTC ({ chatId, chatTitle, userId, offTime, workday }) {
     this.logger.info(`setOffFromWorkTimeUTC start at ${moment().utcOffset(8).format()}`)
     if (await this.isAdmin({ chatId, userId })) {
-      await this.dynamodb.setOffFromWorkTimeUTC({ chatId, chatTitle, userId, time, workday })
+      await this.dynamodb.setOffFromWorkTimeUTC({ chatId, chatTitle, userId, offTime, workday })
       await this.telegram.sendMessage(chatId, `
 圍爐區: ${chatTitle}
 
-Updated setOffFromWorkTime in UTC: ${time} ${workday}`)
+Updated setOffFromWorkTime in UTC: ${offTime} ${workday}`)
     }
   }
 }

@@ -83,7 +83,7 @@ class SQS {
             chatId,
             chatTitle: getStringValue(message.chatTitle),
             userId: Number(getStringValue(message.userId)),
-            time: getStringValue(message.time),
+            offTime: getStringValue(message.offTime),
             workday: getStringValue(message.workday)
           })
           break
@@ -250,7 +250,7 @@ class SQS {
     }).promise()
   }
 
-  async sendSetOffFromWorkTimeUTC ({ message, time, workday }) {
+  async sendSetOffFromWorkTimeUTC ({ message, offTime, workday }) {
     this.logger.info(`SQS sendSetOffFromWorkTimeUTC start at ${moment().utcOffset(8).format()}`)
     return this.sqs.sendMessage({
       MessageAttributes: {
@@ -266,9 +266,9 @@ class SQS {
           DataType: 'Number',
           StringValue: message.from.id.toString()
         },
-        time: {
+        offTime: {
           DataType: 'String',
-          StringValue: time
+          StringValue: offTime
         },
         workday: {
           DataType: 'String',

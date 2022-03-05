@@ -63,16 +63,16 @@ class Messages {
       this.logger.info('newMessage setOffFromWorkTimeUTC')
       const params = text.split(' ')
       if (params.length === 3) {
-        const time = params[1]
+        const offTime = params[1]
         const rawWorkday = params[2]
-        if (time.match(/^([0-1][0-9]|2[0-3])(00|15|30|45)$/) &&
+        if (offTime.match(/^([0-1][0-9]|2[0-3])(00|15|30|45)$/) &&
           rawWorkday.match(/^((MON|TUE|WED|THU|FRI|SAT|SUN),?){0,6}(MON|TUE|WED|THU|FRI|SAT|SUN)$/)) {
           // E.g. MON,MON will be considered as MON
           const workday = [...new Set(rawWorkday.split(','))].join(',')
-          this.logger.info(`normalised - time: ${time}, workday: ${workday}`)
-          await this.sqs.sendSetOffFromWorkTimeUTC({ message, time, workday })
+          this.logger.info(`normalised - offTime: ${offTime}, workday: ${workday}`)
+          await this.sqs.sendSetOffFromWorkTimeUTC({ message, offTime, workday })
         } else {
-          this.logger.info(`time: ${time}, rawWorkday: ${rawWorkday}`)
+          this.logger.info(`offTime: ${offTime}, rawWorkday: ${rawWorkday}`)
           await _handleIncorrectTimeFormat()
         }
       } else {

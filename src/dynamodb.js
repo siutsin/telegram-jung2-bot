@@ -92,23 +92,23 @@ class DynamoDB {
     return response
   }
 
-  async setOffFromWorkTimeUTC ({ chatId, time, workday }) {
+  async setOffFromWorkTimeUTC ({ chatId, offTime, workday }) {
     const params = {
       TableName: process.env.CHATID_TABLE,
       Key: { chatId: chatId },
-      UpdateExpression: 'SET #t = :t, #wd = :wd',
+      UpdateExpression: 'SET #ot = :ot, #wd = :wd',
       ExpressionAttributeNames: {
-        '#t': 'time',
+        '#ot': 'offTime',
         '#wd': 'workday'
       },
       ExpressionAttributeValues: {
-        ':t': time,
+        ':ot': offTime,
         ':wd': this.workdayHelper.workdayStringToBinary(workday)
       }
     }
-    this.logger.debug(`dynamodb.js::updateChatId params: ${JSON.stringify(params)}`)
+    this.logger.debug(`dynamodb.js::setOffFromWorkTimeUTC params: ${JSON.stringify(params)}`)
     const response = await this.documentClient.update(params).promise()
-    this.logger.trace(`dynamodb.js::updateChatId response: ${JSON.stringify(response)}`)
+    this.logger.trace(`dynamodb.js::setOffFromWorkTimeUTC response: ${JSON.stringify(response)}`)
     return response
   }
 
