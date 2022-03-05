@@ -1,24 +1,17 @@
 const moment = require('moment')
 const AWS = require('aws-sdk')
 const Pino = require('pino')
+const WorkdayHelper = require('./workdayHelper')
 
 class DynamoDB {
   constructor (options) {
-    // TODO: remove local testing code
-    if (process.env.IS_OFFLINE) {
-      options = {
-        region: 'localhost',
-        endpoint: 'http://localhost:8000',
-        accessKeyId: 'DEFAULT_ACCESS_KEY',
-        secretAccessKey: 'DEFAULT_SECRET'
-      }
-    }
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
     this.logger.trace(`dynamodb.js::constructor options: ${JSON.stringify(options)}`)
     this.dynamoDB = new AWS.DynamoDB(options)
     this.logger.trace('dynamodb.js::constructor this.dynamoDB:')
     this.logger.trace(this.dynamoDB)
     this.documentClient = new AWS.DynamoDB.DocumentClient(options)
+    this.workdayHelper = new WorkdayHelper()
     this.logger.trace('dynamodb.js::constructor this.documentClient:')
     this.logger.trace(this.documentClient)
   }
@@ -91,6 +84,26 @@ class DynamoDB {
         ':ct': message.chat.title,
         ':dc': moment().utcOffset(8).format(),
         ':ttl': moment().utcOffset(8).add(days, 'days').unix()
+      }
+    }
+    this.logger.debug(`dynamodb.js::updateChatId params: ${JSON.stringify(params)}`)
+    const response = await this.documentClient.update(params).promise()
+    this.logger.trace(`dynamodb.js::updateChatId response: ${JSON.stringify(response)}`)
+    return response
+  }
+
+  async setOffFromWorkTimeUTC ({ chatId, time, workday }) {
+    const params = {
+      TableName: process.env.CHATID_TABLE,
+      Key: { chatId: chatId },
+      UpdateExpression: 'SET #t = :t, #wd = :wd',
+      ExpressionAttributeNames: {
+        '#t': 'time',
+        '#wd': 'workday'
+      },
+      ExpressionAttributeValues: {
+        ':t': time,
+        ':wd': this.workdayHelper.workdayStringToBinary(workday)
       }
     }
     this.logger.debug(`dynamodb.js::updateChatId params: ${JSON.stringify(params)}`)
