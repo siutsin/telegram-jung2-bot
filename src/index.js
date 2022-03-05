@@ -129,7 +129,10 @@ fastify.route({
   method: 'GET',
   url: `/jung2bot/${process.env.STAGE}/onOffFromWork`,
   handler: async (request, reply) => {
-    return staticFunctionHandler(request, reply, 'onOffFromWork')
+    const timeString = request.query.timeString
+    const response = await handler.onOffFromWork(timeString)
+    reply.code(response.statusCode)
+    return response
   }
 })
 

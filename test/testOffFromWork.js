@@ -24,6 +24,7 @@ test.afterEach.always(() => {
 
 test.serial('off', async t => {
   const offFromWork = new OffFromWork()
-  const response = await offFromWork.off()
+  const timeString = '2022-03-04T10:00:00.000Z'
+  const response = await offFromWork.off(timeString)
   t.truthy(response)
 })

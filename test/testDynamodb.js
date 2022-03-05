@@ -118,7 +118,7 @@ test.serial('getAllGroupIds with LastEvaluatedKey', async t => {
     callback(null, obj)
   })
   const dynamodb = new DynamoDB()
-  const response = await dynamodb.getAllGroupIds()
+  const response = await dynamodb.getAllGroupIds({ offTime: '1000', weekday: 'FRI' })
   t.is(response[0], 'dummy')
 })
 

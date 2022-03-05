@@ -3,6 +3,8 @@ const AWS = require('aws-sdk')
 const Pino = require('pino')
 const WorkdayHelper = require('./workdayHelper')
 
+const LEGACY_OFF_JOB_WEEKDAY = new Set(['MON', 'TUE', 'WED', 'THU', 'FRI'])
+
 class DynamoDB {
   constructor (options) {
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
@@ -226,14 +228,32 @@ class DynamoDB {
     return rows
   }
 
-  async getAllGroupIds () {
+  async getAllGroupIds ({ offTime, weekday }) {
     const _getAllGroupIds = async (startKey) => {
+      let filterExpression = '#ot = :ot'
+      const expressionAttributeNames = {
+        '#ot': 'offTime'
+      }
+      const expressionAttributeValues = {
+        ':ot': offTime
+      }
+
+      // legacy off time, HKT 1800 (UTC 1000), MON-FRI
+      if (offTime === '1000' && LEGACY_OFF_JOB_WEEKDAY.has(weekday)) {
+        filterExpression += ' Or (attribute_not_exists(#ot) And attribute_not_exists(#wd))'
+        expressionAttributeNames['#wd'] = 'workday'
+      }
+
       const params = {
-        TableName: process.env.CHATID_TABLE
+        TableName: process.env.CHATID_TABLE,
+        FilterExpression: filterExpression,
+        ExpressionAttributeNames: expressionAttributeNames,
+        ExpressionAttributeValues: expressionAttributeValues
       }
       if (startKey) {
         params.ExclusiveStartKey = startKey
       }
+      // scan is expensive, but it is probably good enough for the database size at the moment
       const result = await this.documentClient.scan(params).promise()
       this.logger.trace(result)
       return result
@@ -249,7 +269,8 @@ class DynamoDB {
       i++
     } while (lastEvaluatedKey)
     this.logger.info(`_getAllGroupIds rows count: ${rows.length}`)
-    return rows
+    // both undefined === default legacy off time
+    return rows.filter(r => (r.workday === undefined && r.offTime === undefined) || this.workdayHelper.isWeekdayMatchBinary(weekday, r.workday))
   }
 
   async scaleUp () {
