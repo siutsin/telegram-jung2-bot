@@ -20,11 +20,8 @@ This bot is created for counting the number of messages per participant in a cha
 |`/junghelp`|Show help message|
 
 ### Admin Only
-|command|info|
-|---|---|
-|`/enablealljung`|Enable `/alljung` command|
-|`/disablealljung`|Disable `/alljung` command|
-
-## License
-
-See the LICENSE file for more info.
+|command| info                                                                                                                                                                                                |
+|---|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|`/enablealljung`| Enable `/alljung` command                                                                                                                                                                           |
+|`/disablealljung`| Disable `/alljung` command                                                                                                                                                                          |
+|`/setOffFromWorkTimeUTC`| Set offFromWork time in UTC.<br/>Format: `/setOffFromWorkTimeUTC {{ 0000-2345, 15 minutes interval }} {{ MON,TUE,WED,THU,FRI,SAT,SUN }}`<br/>E.g. `/setOffFromWorkTimeUTC 1800 MON,TUE,WED,THU,FRI` |
