@@ -270,7 +270,8 @@ class DynamoDB {
     } while (lastEvaluatedKey)
     this.logger.info(`_getAllGroupIds rows count: ${rows.length}`)
     // both undefined === default legacy off time
-    return rows.filter(r => (r.workday === undefined && r.offTime === undefined) || this.workdayHelper.isWeekdayMatchBinary(weekday, r.workday))
+    return rows.filter(r => (r.workday === undefined && r.offTime === undefined) ||
+      this.workdayHelper.isWeekdayMatchBinary(weekday, r.workday))
   }
 
   async scaleUp () {

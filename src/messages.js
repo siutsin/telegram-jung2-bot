@@ -1,7 +1,6 @@
 const Pino = require('pino')
 const moment = require('moment')
 const ip = require('ip')
-const { DateTime } = require('luxon')
 
 const DynamoDB = require('./dynamodb.js')
 const SQS = require('./sqs.js')
@@ -17,10 +16,6 @@ class Messages {
 
   isBotCommand (message) {
     return message.entities && message.entities[0] && message.entities[0].type === 'bot_command'
-  }
-
-  isValidTimezone (tzString) {
-    return DateTime.local().setZone(tzString).isValid
   }
 
   async handleBotCommand (message) {
@@ -65,7 +60,7 @@ class Messages {
       if (params.length === 3) {
         const offTime = params[1]
         const rawWorkday = params[2]
-        if (offTime.match(/^([0-1][0-9]|2[0-3])(00|15|30|45)$/) &&
+        if (offTime.match(/^([0-1]\d|2[0-3])(00|15|30|45)$/) &&
           rawWorkday.match(/^((MON|TUE|WED|THU|FRI|SAT|SUN),?){0,6}(MON|TUE|WED|THU|FRI|SAT|SUN)$/)) {
           // E.g. MON,MON will be considered as MON
           const workday = [...new Set(rawWorkday.split(','))].join(',')
