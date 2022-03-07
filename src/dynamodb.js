@@ -1,24 +1,19 @@
 const moment = require('moment')
 const AWS = require('aws-sdk')
 const Pino = require('pino')
+const WorkdayHelper = require('./workdayHelper')
+
+const LEGACY_OFF_JOB_WEEKDAY = new Set(['MON', 'TUE', 'WED', 'THU', 'FRI'])
 
 class DynamoDB {
   constructor (options) {
-    // TODO: remove local testing code
-    if (process.env.IS_OFFLINE) {
-      options = {
-        region: 'localhost',
-        endpoint: 'http://localhost:8000',
-        accessKeyId: 'DEFAULT_ACCESS_KEY',
-        secretAccessKey: 'DEFAULT_SECRET'
-      }
-    }
     this.logger = new Pino({ level: process.env.LOG_LEVEL })
     this.logger.trace(`dynamodb.js::constructor options: ${JSON.stringify(options)}`)
     this.dynamoDB = new AWS.DynamoDB(options)
     this.logger.trace('dynamodb.js::constructor this.dynamoDB:')
     this.logger.trace(this.dynamoDB)
     this.documentClient = new AWS.DynamoDB.DocumentClient(options)
+    this.workdayHelper = new WorkdayHelper()
     this.logger.trace('dynamodb.js::constructor this.documentClient:')
     this.logger.trace(this.documentClient)
   }
@@ -96,6 +91,26 @@ class DynamoDB {
     this.logger.debug(`dynamodb.js::updateChatId params: ${JSON.stringify(params)}`)
     const response = await this.documentClient.update(params).promise()
     this.logger.trace(`dynamodb.js::updateChatId response: ${JSON.stringify(response)}`)
+    return response
+  }
+
+  async setOffFromWorkTimeUTC ({ chatId, offTime, workday }) {
+    const params = {
+      TableName: process.env.CHATID_TABLE,
+      Key: { chatId: chatId },
+      UpdateExpression: 'SET #ot = :ot, #wd = :wd',
+      ExpressionAttributeNames: {
+        '#ot': 'offTime',
+        '#wd': 'workday'
+      },
+      ExpressionAttributeValues: {
+        ':ot': offTime,
+        ':wd': this.workdayHelper.workdayStringToBinary(workday)
+      }
+    }
+    this.logger.debug(`dynamodb.js::setOffFromWorkTimeUTC params: ${JSON.stringify(params)}`)
+    const response = await this.documentClient.update(params).promise()
+    this.logger.trace(`dynamodb.js::setOffFromWorkTimeUTC response: ${JSON.stringify(response)}`)
     return response
   }
 
@@ -213,14 +228,32 @@ class DynamoDB {
     return rows
   }
 
-  async getAllGroupIds () {
+  async getAllGroupIds ({ offTime, weekday }) {
     const _getAllGroupIds = async (startKey) => {
+      let filterExpression = '#ot = :ot'
+      const expressionAttributeNames = {
+        '#ot': 'offTime'
+      }
+      const expressionAttributeValues = {
+        ':ot': offTime
+      }
+
+      // legacy off time, HKT 1800 (UTC 1000), MON-FRI
+      if (offTime === '1000' && LEGACY_OFF_JOB_WEEKDAY.has(weekday)) {
+        filterExpression += ' Or (attribute_not_exists(#ot) And attribute_not_exists(#wd))'
+        expressionAttributeNames['#wd'] = 'workday'
+      }
+
       const params = {
-        TableName: process.env.CHATID_TABLE
+        TableName: process.env.CHATID_TABLE,
+        FilterExpression: filterExpression,
+        ExpressionAttributeNames: expressionAttributeNames,
+        ExpressionAttributeValues: expressionAttributeValues
       }
       if (startKey) {
         params.ExclusiveStartKey = startKey
       }
+      // scan is expensive, but it is probably good enough for the database size at the moment
       const result = await this.documentClient.scan(params).promise()
       this.logger.trace(result)
       return result
@@ -236,7 +269,9 @@ class DynamoDB {
       i++
     } while (lastEvaluatedKey)
     this.logger.info(`_getAllGroupIds rows count: ${rows.length}`)
-    return rows
+    // both undefined === default legacy off time
+    return rows.filter(r => (r.workday === undefined && r.offTime === undefined) ||
+      this.workdayHelper.isWeekdayMatchBinary(weekday, r.workday))
   }
 
   async scaleUp () {

@@ -14,14 +14,15 @@ class Help {
 This bot is created for counting the number of message per participant in the group.
 
 Commands:
-/topten  show top ten 冗員s
-/topdiver  show top ten 潛水員s (潛得太深會搵唔到)
-/alljung  show all 冗員s
-/junghelp  show help message
+/topTen  show top ten 冗員s
+/topDiver  show top ten 潛水員s (潛得太深會搵唔到)
+/allJung  show all 冗員s
+/jungHelp  show help message
 
 Admin Only:
-/enablealljung  enable /alljung command
-/disablealljung  disable /alljung command
+/enableAllJung  enable /alljung command
+/disableAllJung  disable /alljung command
+/setOffFromWorkTimeUTC set offFromWork time in UTC
 
 Issue/Suggestion: https://github.com/siutsin/telegram-jung2-bot/issues
 

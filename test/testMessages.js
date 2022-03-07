@@ -12,6 +12,9 @@ const stubHelpEvent = require('./stub/onHelpMessageEvent')
 const stubEditMessageEvent = require('./stub/onEditMessageEvent')
 const stubEnableAllJungEvent = require('./stub/onEnableAllJungMessageEvent')
 const stubDisableAllJungEvent = require('./stub/onDisableAllJungMessageEvent')
+const stubSetOffFromWorkMessageEvent = require('./stub/onSetOffFromWorkMessageEvent')
+const stubSetOffFromWorkMessageEvent1 = require('./stub/onSetOffFromWorkMessageFailedEvent1')
+const stubSetOffFromWorkMessageEvent2 = require('./stub/onSetOffFromWorkMessageFailedEvent2')
 const stubAllJungMessageResponse = require('./stub/allJungMessageResponse')
 const stubSQSResponse = require('./stub/sqsResponse')
 
@@ -141,6 +144,36 @@ test('newMessage - /disableAllJung - all admin', async t => {
     .reply(200, stubAllJungMessageResponse)
   const messages = new Messages()
   const response = await messages.newMessage(stubDisableAllJungEvent)
+  t.is(response.statusCode, 200)
+})
+
+test('newMessage - /setOffFromWorkTimeUTC', async t => {
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .post('/sendMessage')
+    .reply(200, stubAllJungMessageResponse)
+  const messages = new Messages()
+  const response = await messages.newMessage(stubSetOffFromWorkMessageEvent)
+  t.is(response.statusCode, 200)
+})
+
+test('newMessage - /setOffFromWorkTimeUTC - invalid param', async t => {
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .post('/sendMessage')
+    .reply(200, stubAllJungMessageResponse)
+  const messages = new Messages()
+  const response = await messages.newMessage(stubSetOffFromWorkMessageEvent1)
+  t.is(response.statusCode, 200)
+})
+
+test('newMessage - /setOffFromWorkTimeUTC - not enough param', async t => {
+  nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
+    .persist()
+    .post('/sendMessage')
+    .reply(200, stubAllJungMessageResponse)
+  const messages = new Messages()
+  const response = await messages.newMessage(stubSetOffFromWorkMessageEvent2)
   t.is(response.statusCode, 200)
 })
 

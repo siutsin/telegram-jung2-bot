@@ -1,6 +1,8 @@
 const moment = require('moment')
 const Pino = require('pino')
 const Bottleneck = require('bottleneck')
+const { DateTime } = require('luxon')
+
 const DynamoDB = require('./dynamodb')
 const SQS = require('./sqs')
 
@@ -25,13 +27,16 @@ class OffFromWork {
     this.logger.info(`statsPerGroup finish at ${moment().utcOffset(8).format()}`)
   }
 
-  async off () {
+  async off (timeString) {
     this.logger.info(`off start at ${moment().utcOffset(8).format()}`)
-    const rows = await this.dynamodb.getAllGroupIds()
+    const cronTime = DateTime.fromISO(timeString)
+    const offTime = cronTime.toFormat('HHmm')
+    const weekday = cronTime.weekdayShort.toUpperCase()
+    const rows = await this.dynamodb.getAllGroupIds({ offTime, weekday })
     const chatIds = rows.map(o => o.chatId)
     await this.statsPerGroup(chatIds)
     this.logger.info(`off finish at ${moment().utcOffset(8).format()}`)
-    return true
+    return { statusCode: 200 }
   }
 }
 

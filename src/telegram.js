@@ -13,9 +13,10 @@ class Telegram {
       chat_id: chatId,
       text: message
     }
+    this.logger.debug(`data: ${JSON.stringify(data)}`)
     const response = await axios.post(url, data)
     this.logger.debug('response.status', response.status)
-    this.logger.debug('response.data', response.data)
+    this.logger.debug(`response.data: ${JSON.stringify(response.data)}`)
     return response
   }
 
@@ -28,7 +29,7 @@ class Telegram {
     }
     const response = await axios.get(url, config)
     this.logger.debug(`response.status: ${response.status}`)
-    this.logger.debug(`response.data: ${response.data}`)
+    this.logger.debug(`response.data: ${JSON.stringify(response.data)}`)
     const data = response.data
     const adminIds = data.result.map(o => o.user.id)
     const isAdmin = adminIds.includes(userId)

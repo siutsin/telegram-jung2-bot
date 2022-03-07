@@ -12,19 +12,17 @@ This bot is created for counting the number of messages per participant in a cha
 
 ## Usage
 
-|command|info|
-|---|---|
-|`/topten`|Show the percentage of top ten participants for the past seven days|
-|`/topdiver`|Show the percentage of top ten divers for the past seven days (Requires at least one message from the user to be counted)|
-|`/alljung`|Show the percentage of all participants for the past seven days|
-|`/junghelp`|Show help message|
+| command     | info                                                                                                                      |
+|-------------|---------------------------------------------------------------------------------------------------------------------------|
+| `/topTen`   | Show the percentage of top ten participants for the past seven days                                                       |
+| `/topDiver` | Show the percentage of top ten divers for the past seven days (Requires at least one message from the user to be counted) |
+| `/allJung`  | Show the percentage of all participants for the past seven days                                                           |
+| `/jungHelp` | Show help message                                                                                                         |
 
 ### Admin Only
-|command|info|
-|---|---|
-|`/enablealljung`|Enable `/alljung` command|
-|`/disablealljung`|Disable `/alljung` command|
 
-## License
-
-See the LICENSE file for more info.
+| command                  | info                                                                                                                                                                                                |
+|--------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `/enableAllJung`         | Enable `/allJung` command                                                                                                                                                                           |
+| `/disableAllJung`        | Disable `/allJung` command                                                                                                                                                                          |
+| `/setOffFromWorkTimeUTC` | Set offFromWork time in UTC.<br/>Format: `/setOffFromWorkTimeUTC {{ 0000-2345, 15 minutes interval }} {{ MON,TUE,WED,THU,FRI,SAT,SUN }}`<br/>E.g. `/setOffFromWorkTimeUTC 1800 MON,TUE,WED,THU,FRI` |

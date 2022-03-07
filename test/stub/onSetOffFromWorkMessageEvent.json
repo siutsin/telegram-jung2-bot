@@ -1,0 +1,6 @@
+{
+  "headers": {
+    "X-Forwarded-For": "91.108.6.121, 1.2.3.4"
+  },
+  "body": "{\"message\":{\"message_id\":2,\"from\":{\"id\":234,\"is_bot\":false,\"first_name\":\"first_name\",\"username\":\"username\"},\"chat\":{\"id\":2,\"title\":\"title\",\"type\":\"group\",\"all_members_are_administrators\":true},\"date\":1554092292,\"text\":\"/setOffFromWorkTimeUTC 1830 MON,MON,FRI\",\"entities\":[{\"offset\":0,\"length\":9,\"type\":\"bot_command\"}]}}"
+}

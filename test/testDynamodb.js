@@ -80,6 +80,12 @@ test('getRowsByChatId', async t => {
   t.is(response[0], stubQueryMessage.Items)
 })
 
+test('setOffFromWorkTimeUTC', async t => {
+  const dynamodb = new DynamoDB()
+  const response = await dynamodb.setOffFromWorkTimeUTC({ chatId: 123, offTime: '0000', workday: 'MON' })
+  t.is(response, 'successfully put item into the database')
+})
+
 test.serial('getRowsByChatId with LastEvaluatedKey', async t => {
   AWS.restore()
   let i = 3
@@ -101,12 +107,12 @@ test.serial('getRowsByChatId with LastEvaluatedKey', async t => {
   t.is(response[0], 'dummy')
 })
 
-test.serial('getAllGroupIds with LastEvaluatedKey', async t => {
+test.serial('getAllGroupIds with LastEvaluatedKey - non legacy off time', async t => {
   AWS.restore()
   let i = 3
   const stubObject = () => {
     const obj = {
-      Items: ['dummy'],
+      Items: [{ offTime: '1800', workday: 2 }],
       LastEvaluatedKey: { d: 'dummy' }
     }
     if (i <= 0) { delete obj.LastEvaluatedKey }
@@ -118,8 +124,29 @@ test.serial('getAllGroupIds with LastEvaluatedKey', async t => {
     callback(null, obj)
   })
   const dynamodb = new DynamoDB()
-  const response = await dynamodb.getAllGroupIds()
-  t.is(response[0], 'dummy')
+  const response = await dynamodb.getAllGroupIds({ offTime: '1800', weekday: 'MON' })
+  t.deepEqual(response[0], { offTime: '1800', workday: 2 })
+})
+
+test.serial('getAllGroupIds with LastEvaluatedKey - legacy off time', async t => {
+  AWS.restore()
+  let i = 3
+  const stubObject = () => {
+    const obj = {
+      Items: [{}],
+      LastEvaluatedKey: { d: 'dummy' }
+    }
+    if (i <= 0) { delete obj.LastEvaluatedKey }
+    i--
+    return obj
+  }
+  AWS.mock('DynamoDB.DocumentClient', 'scan', (params, callback) => {
+    const obj = stubObject()
+    callback(null, obj)
+  })
+  const dynamodb = new DynamoDB()
+  const response = await dynamodb.getAllGroupIds({ offTime: '1000', weekday: 'FRI' })
+  t.deepEqual(response[0], {})
 })
 
 test('In serverless-offline environment', async t => {

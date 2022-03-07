@@ -1,10 +1,10 @@
 /*
   This is a hacky fastify server to migrate from Serverless to ECS due to the cost issue.
-  Some of the choices here might not make any sense, but I do not intend to implement significant
+  Some choices here might not make any sense, but I do not intend to implement significant
   enhancements in this version.
  */
 
-require('dotenv').config({ path: '.env.ecs' })
+require('dotenv').config({ path: '.env.development' })
 
 const AWS = require('aws-sdk')
 const Pino = require('pino')
@@ -36,7 +36,7 @@ const toSQSLambdaEvent = (message) => {
 const consumer = Consumer.create({
   queueUrl: process.env.EVENT_QUEUE_URL,
   batchSize: 10, // aws max 10
-  messageAttributeNames: ['chatId', 'chatTitle', 'userId', 'action'],
+  messageAttributeNames: ['chatId', 'chatTitle', 'userId', 'action', 'offTime', 'workday'],
   handleMessageBatch: async (messages) => {
     const startTime = performance.now()
     const requests = []
@@ -129,7 +129,10 @@ fastify.route({
   method: 'GET',
   url: `/jung2bot/${process.env.STAGE}/onOffFromWork`,
   handler: async (request, reply) => {
-    return staticFunctionHandler(request, reply, 'onOffFromWork')
+    const timeString = request.query.timeString
+    const response = await handler.onOffFromWork(timeString)
+    reply.code(response.statusCode)
+    return response
   }
 })
 

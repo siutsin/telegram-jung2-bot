@@ -48,6 +48,31 @@ Enabled AllJung command`)
 Disabled AllJung command`)
     }
   }
+
+  async setOffFromWorkTimeUTCIncorrectFormat ({ chatId, chatTitle }) {
+    this.logger.info(`setOffFromWorkTimeUTCIncorrectFormat start at ${moment().utcOffset(8).format()}`)
+    await this.telegram.sendMessage(chatId, `
+圍爐區: ${chatTitle}
+
+Error: Invalid format for setOffFromWorkTimeUTC
+
+Format:
+/setOffFromWorkTimeUTC {{ 0000-2345, 15 minutes interval }} {{ MON,TUE,WED,THU,FRI,SAT,SUN }}
+E.g.:
+/setOffFromWorkTimeUTC 1800 MON,TUE,WED,THU,FRI
+`)
+  }
+
+  async setOffFromWorkTimeUTC ({ chatId, chatTitle, userId, offTime, workday }) {
+    this.logger.info(`setOffFromWorkTimeUTC start at ${moment().utcOffset(8).format()}`)
+    if (await this.isAdmin({ chatId, userId })) {
+      await this.dynamodb.setOffFromWorkTimeUTC({ chatId, chatTitle, userId, offTime, workday })
+      await this.telegram.sendMessage(chatId, `
+圍爐區: ${chatTitle}
+
+Updated setOffFromWorkTime in UTC: ${offTime} ${workday}`)
+    }
+  }
 }
 
 module.exports = Settings

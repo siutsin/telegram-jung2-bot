@@ -13,6 +13,7 @@ const ACTION_KEY_TOPTEN = 'topten'
 // Admin Only
 const ACTION_KEY_ENABLE_ALLJUNG = 'enableAllJung'
 const ACTION_KEY_DISABLE_ALLJUNG = 'disableAllJung'
+const ACTION_KEY_SET_OFF_FROM_WORK_TIME_UTC = 'setOffFromWorkTimeUTC'
 
 // In ECS SQS polling, the key is `StringValue` instead of `stringValue`.
 // This function will extract either the Lambda event key or SQS polling key.
@@ -39,7 +40,6 @@ class SQS {
       const message = record.messageAttributes
       const chatId = Number(getStringValue(message.chatId))
       const action = getStringValue(message.action)
-      let chatTitle
       switch (action) {
         case ACTION_KEY_ALLJUNG:
           this.logger.info(`SQS onEvent alljung start at ${moment().utcOffset(8).format()}`)
@@ -47,8 +47,7 @@ class SQS {
           break
         case ACTION_KEY_JUNGHELP:
           this.logger.info(`SQS onEvent junghelp start at ${moment().utcOffset(8).format()}`)
-          chatTitle = getStringValue(message.chatTitle)
-          await this.help.sendHelpMessage({ chatId, chatTitle })
+          await this.help.sendHelpMessage({ chatId, chatTitle: getStringValue(message.chatTitle) })
           break
         case ACTION_KEY_OFF_FROM_WORK:
           this.logger.info(`SQS onEvent offFromWork start at ${moment().utcOffset(8).format()}`)
@@ -64,20 +63,28 @@ class SQS {
           break
         case ACTION_KEY_ENABLE_ALLJUNG:
           this.logger.info(`SQS onEvent enableAllJung start at ${moment().utcOffset(8).format()}`)
-          chatTitle = getStringValue(message.chatTitle)
           await this.settings.enableAllJung({
             chatId,
-            chatTitle,
+            chatTitle: getStringValue(message.chatTitle),
             userId: Number(getStringValue(message.userId))
           })
           break
         case ACTION_KEY_DISABLE_ALLJUNG:
           this.logger.info(`SQS onEvent disableAllJung start at ${moment().utcOffset(8).format()}`)
-          chatTitle = getStringValue(message.chatTitle)
           await this.settings.disableAllJung({
             chatId,
-            chatTitle,
+            chatTitle: getStringValue(message.chatTitle),
             userId: Number(getStringValue(message.userId))
+          })
+          break
+        case ACTION_KEY_SET_OFF_FROM_WORK_TIME_UTC:
+          this.logger.info(`SQS onEvent setOffFromWorkTimeUTC start at ${moment().utcOffset(8).format()}`)
+          await this.settings.setOffFromWorkTimeUTC({
+            chatId,
+            chatTitle: getStringValue(message.chatTitle),
+            userId: Number(getStringValue(message.userId)),
+            offTime: getStringValue(message.offTime),
+            workday: getStringValue(message.workday)
           })
           break
       }
@@ -239,6 +246,40 @@ class SQS {
         }
       },
       MessageBody: 'sendDisableAllJungMessage',
+      QueueUrl: process.env.EVENT_QUEUE_URL
+    }).promise()
+  }
+
+  async sendSetOffFromWorkTimeUTC ({ message, offTime, workday }) {
+    this.logger.info(`SQS sendSetOffFromWorkTimeUTC start at ${moment().utcOffset(8).format()}`)
+    return this.sqs.sendMessage({
+      MessageAttributes: {
+        chatId: {
+          DataType: 'Number',
+          StringValue: message.chat.id.toString()
+        },
+        chatTitle: {
+          DataType: 'String',
+          StringValue: message.chat.title
+        },
+        userId: {
+          DataType: 'Number',
+          StringValue: message.from.id.toString()
+        },
+        offTime: {
+          DataType: 'String',
+          StringValue: offTime
+        },
+        workday: {
+          DataType: 'String',
+          StringValue: workday
+        },
+        action: {
+          DataType: 'String',
+          StringValue: ACTION_KEY_SET_OFF_FROM_WORK_TIME_UTC
+        }
+      },
+      MessageBody: 'sendSetOffFromWorkTimeUTC',
       QueueUrl: process.env.EVENT_QUEUE_URL
     }).promise()
   }
