@@ -20,9 +20,9 @@ Commands:
 /jungHelp  show help message
 
 Admin Only:
-/enableAllJung  enable /alljung command
-/disableAllJung  disable /alljung command
-/setOffFromWorkTimeUTC set offFromWork time in UTC
+/enableAllJung  enable \`/alljung\` command
+/disableAllJung  disable \`/alljung\` command
+/setOffFromWorkTimeUTC  set offFromWork time (UTC time)
 
 [Bug Report/Suggestion](https://github.com/siutsin/telegram-jung2-bot/issues)
 [Service Status](https://stats.uptimerobot.com/kglZJSkYZg)
