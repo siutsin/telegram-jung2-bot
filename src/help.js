@@ -24,11 +24,15 @@ Admin Only:
 /disableAllJung  disable /alljung command
 /setOffFromWorkTimeUTC set offFromWork time in UTC
 
-Issue/Suggestion: https://github.com/siutsin/telegram-jung2-bot/issues
+[Bug Report/Suggestion](https://github.com/siutsin/telegram-jung2-bot/issues)
+[Service Status](https://stats.uptimerobot.com/kglZJSkYZg)
 
 May your 冗 power powerful
 `
-    await this.telegram.sendMessage(chatId, helpMessage, { disable_web_page_preview: true })
+    await this.telegram.sendMessage(chatId, helpMessage, {
+      disable_web_page_preview: true,
+      parse_mode: 'markdown'
+    })
     return helpMessage
   }
 }
