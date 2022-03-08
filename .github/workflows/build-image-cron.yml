@@ -1,22 +1,16 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-
 name: Create and publish a Docker image
 
 on:
   push:
     tags:
-      - '*'
-#on: [ push ]
+      - 'cron-*'
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: ${{ github.repository }}-cron
 
 jobs:
-  build-and-push-image:
+  build-and-push-image-cron:
     runs-on: ubuntu-latest
     permissions:
       contents: read
