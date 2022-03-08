@@ -1,22 +1,16 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-
 name: Create and publish a Docker image
 
 on:
   push:
     tags:
-      - '*'
-#on: [ push ]
+      - 'jung2bot-*'
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-and-push-image:
+  build-and-push-image-jung2bot:
     runs-on: ubuntu-latest
     permissions:
       contents: read

@@ -1,0 +1,13 @@
+{
+  "scripts": {
+    "start": "node index.js"
+  },
+  "type": "module",
+  "volta": {
+    "node": "16.14.0",
+    "npm": "8.5.3"
+  },
+  "dependencies": {
+    "got": "^12.0.1"
+  }
+}

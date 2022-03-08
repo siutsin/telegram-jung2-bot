@@ -9,10 +9,18 @@ jobs:
     name: Delete untagged container images
     runs-on: ubuntu-latest
     steps:
-      - name: Delete untagged images
+      - name: Delete untagged images - jung2bot
         uses: sondrelg/container-retention-policy@v1
         with:
           image-names: telegram-jung2-bot
+          untagged-only: true
+          cut-off: One minute ago UTC
+          account-type: personal
+          token: ${{ secrets.CONTAINER_RETENTION_POLICY_TOKEN }}
+      - name: Delete untagged images - cron
+        uses: sondrelg/container-retention-policy@v1
+        with:
+          image-names: telegram-jung2-bot-cron
           untagged-only: true
           cut-off: One minute ago UTC
           account-type: personal
