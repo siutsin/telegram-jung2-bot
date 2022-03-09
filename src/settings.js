@@ -11,12 +11,12 @@ class Settings {
   }
 
   async isAdmin ({ chatId, userId }) {
-    this.logger.info(`isAdmin start at ${moment().utcOffset(8).format()}`)
+    this.logger.info(`isAdmin start at ${moment().format()}`)
     return this.telegram.isAdmin({ chatId, userId })
   }
 
   async isAllJungEnabled ({ chatId }) {
-    this.logger.info(`isAllJungEnabled start at ${moment().utcOffset(8).format()}`)
+    this.logger.info(`isAllJungEnabled start at ${moment().format()}`)
     const response = await this.dynamodb.getStatsByChatId({ chatId })
     let isAllJungEnabled = response.Items[0].enableAllJung
     if (isAllJungEnabled === undefined) {
@@ -28,7 +28,7 @@ class Settings {
   }
 
   async enableAllJung ({ chatId, chatTitle, userId }) {
-    this.logger.info(`enableAllJung start at ${moment().utcOffset(8).format()}`)
+    this.logger.info(`enableAllJung start at ${moment().format()}`)
     if (await this.isAdmin({ chatId, userId })) {
       await this.dynamodb.enableAllJung({ chatId })
       await this.telegram.sendMessage(chatId, `
@@ -39,7 +39,7 @@ Enabled AllJung command`)
   }
 
   async disableAllJung ({ chatId, chatTitle, userId }) {
-    this.logger.info(`disableAllJung start at ${moment().utcOffset(8).format()}`)
+    this.logger.info(`disableAllJung start at ${moment().format()}`)
     if (await this.isAdmin({ chatId, userId })) {
       await this.dynamodb.disableAllJung({ chatId })
       await this.telegram.sendMessage(chatId, `
@@ -50,7 +50,7 @@ Disabled AllJung command`)
   }
 
   async setOffFromWorkTimeUTCIncorrectFormat ({ chatId, chatTitle }) {
-    this.logger.info(`setOffFromWorkTimeUTCIncorrectFormat start at ${moment().utcOffset(8).format()}`)
+    this.logger.info(`setOffFromWorkTimeUTCIncorrectFormat start at ${moment().format()}`)
     await this.telegram.sendMessage(chatId, `
 圍爐區: ${chatTitle}
 
@@ -64,7 +64,7 @@ E.g.:
   }
 
   async setOffFromWorkTimeUTC ({ chatId, chatTitle, userId, offTime, workday }) {
-    this.logger.info(`setOffFromWorkTimeUTC start at ${moment().utcOffset(8).format()}`)
+    this.logger.info(`setOffFromWorkTimeUTC start at ${moment().format()}`)
     if (await this.isAdmin({ chatId, userId })) {
       await this.dynamodb.setOffFromWorkTimeUTC({ chatId, chatTitle, userId, offTime, workday })
       await this.telegram.sendMessage(chatId, `
