@@ -13,7 +13,7 @@ class Statistics {
   }
 
   async normaliseRows (options) {
-    this.logger.info(`normaliseRows start at ${moment().utcOffset(8).format()}`)
+    this.logger.info(`normaliseRows start at ${moment().format()}`)
     const rows = options.rows
     const reverse = options.reverse || undefined
     const tally = rows.reduce((soFar, row) => {
@@ -40,7 +40,7 @@ class Statistics {
       return o
     })
     rankings.sort((a, b) => reverse ? a.count - b.count : b.count - a.count)
-    this.logger.info(`normaliseRows finish at ${moment().utcOffset(8).format()}`)
+    this.logger.info(`normaliseRows finish at ${moment().format()}`)
     return {
       totalMessage: rows.length,
       rankings
@@ -48,7 +48,7 @@ class Statistics {
   }
 
   buildHeader ({ limit, reverse, chatTitle }) {
-    this.logger.info(`buildHeader start at ${moment().utcOffset(8).format()}`)
+    this.logger.info(`buildHeader start at ${moment().format()}`)
     let header = `圍爐區: ${chatTitle}`
     header += '\n\n'
     header += `${limit ? 'Top ' + limit : 'All'} `
@@ -56,12 +56,12 @@ class Statistics {
     header += 'in the last 7 days'
     header += `${reverse ? ':' : ' (last 上水 time):'}`
     header += '\n\n'
-    this.logger.info(`buildHeader finish at ${moment().utcOffset(8).format()}`)
+    this.logger.info(`buildHeader finish at ${moment().format()}`)
     return header
   }
 
   buildBodyForDiver ({ limit, normalisedRows }) {
-    this.logger.info(`buildBodyForDiver start at ${moment().utcOffset(8).format()}`)
+    this.logger.info(`buildBodyForDiver start at ${moment().format()}`)
     const cloneNormalisedRows = JSON.parse(JSON.stringify(normalisedRows))
     cloneNormalisedRows.rankings.sort((a, b) => moment(a.dateCreated).isBefore(moment(b.dateCreated)) ? -1 : 1)
     // TODO: limit is always 10 for now
@@ -75,12 +75,12 @@ class Statistics {
       const item = `${i + 1}. ${o.fullName} - ${timeAgo}\n`
       diverBody += item
     }
-    this.logger.info(`buildBodyForDiver finish at ${moment().utcOffset(8).format()}`)
+    this.logger.info(`buildBodyForDiver finish at ${moment().format()}`)
     return diverBody
   }
 
   buildBody ({ limit, reverse, normalisedRows }) {
-    this.logger.info(`buildBody start at ${moment().utcOffset(8).format()}`)
+    this.logger.info(`buildBody start at ${moment().format()}`)
     // Maximum length for a message is 4096 UTF8 characters
     // https://core.telegram.org/method/messages.sendMessage
     const telegramMessageLimit = 3800
@@ -111,25 +111,25 @@ class Statistics {
       body += '\n'
       body += this.buildBodyForDiver({ limit, normalisedRows })
     }
-    this.logger.info(`buildBody finish at ${moment().utcOffset(8).format()}`)
+    this.logger.info(`buildBody finish at ${moment().format()}`)
     return body
   }
 
   buildFooter ({ normalisedRows, reverse }) {
-    this.logger.info(`buildFooter start at ${moment().utcOffset(8).format()}`)
+    this.logger.info(`buildFooter start at ${moment().format()}`)
     let footer = `\nTotal messages: ${normalisedRows.totalMessage}`
     footer += '\n\n'
     if (reverse) {
       footer += 'between, 深潛會搵唔到 ho chi is'
       footer += '\n'
     }
-    footer += `Last Update: ${moment().utcOffset(8).format()}`
-    this.logger.info(`buildFooter finish at ${moment().utcOffset(8).format()}`)
+    footer += `Last Update: ${moment().format()}`
+    this.logger.info(`buildFooter finish at ${moment().format()}`)
     return footer
   }
 
   async generateReport (options) {
-    this.logger.info(`generateReport start at ${moment().utcOffset(8).format()}`)
+    this.logger.info(`generateReport start at ${moment().format()}`)
     const normalisedRows = await this.normaliseRows(options)
     this.logger.debug('normalisedRows.rankings', normalisedRows.rankings)
     options.normalisedRows = normalisedRows
@@ -144,18 +144,18 @@ class Statistics {
   }
 
   async generateReportByChatId (options) {
-    this.logger.info(`generateReportByChatId start at ${moment().utcOffset(8).format()}`)
+    this.logger.info(`generateReportByChatId start at ${moment().format()}`)
     const chatId = options.chatId
     options.rows = await this.dynamodb.getRowsByChatId({ chatId })
     const { fullMessage, userCount, messageCount } = await this.generateReport(options)
     await this.dynamodb.updateChatIdMessagesCount({ chatId, userCount, messageCount })
-    this.logger.info(`generateReportByChatId finish at ${moment().utcOffset(8).format()}`)
+    this.logger.info(`generateReportByChatId finish at ${moment().format()}`)
     return fullMessage
   }
 
   async getStats (options) {
     const chatId = options.chatId
-    this.logger.info(`getStats start at ${moment().utcOffset(8).format()}`)
+    this.logger.info(`getStats start at ${moment().format()}`)
     let returnMessage = ''
     if (options.offFromWork) {
       returnMessage = '夠鐘收工~~\n\n'
@@ -163,14 +163,14 @@ class Statistics {
     try {
       const statsMessage = await this.generateReportByChatId(options)
       returnMessage += statsMessage
-      this.logger.info(`got stats report, sending to telegram at ${moment().utcOffset(8).format()}`)
+      this.logger.info(`got stats report, sending to telegram at ${moment().format()}`)
       await this.telegram.sendMessage(chatId, returnMessage)
     } catch (e) {
       this.logger.error(e.message)
       if (!e.message.match(/[45][0-9]{2}/)) { throw e }
       returnMessage = `bot is removed in group ${chatId}`
     }
-    this.logger.info(`getStats finish at ${moment().utcOffset(8).format()}`)
+    this.logger.info(`getStats finish at ${moment().format()}`)
     return returnMessage
   }
 
