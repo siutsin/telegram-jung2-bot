@@ -139,7 +139,7 @@ class Statistics {
     const footer = this.buildFooter(options)
     const fullMessage = header + body + footer
     this.logger.trace('fullMessage', fullMessage)
-    this.logger.info(`generateReport finish at ${moment().utcOffset(8).format()}`)
+    this.logger.info(`generateReport finish at ${moment().format()}`)
     return { fullMessage, userCount: normalisedRows.rankings.length, messageCount: normalisedRows.totalMessage }
   }
 
