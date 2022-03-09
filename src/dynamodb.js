@@ -1,3 +1,7 @@
+/*
+  Timezone offset +8 is kept here for compatibility reasons.
+ */
+
 const moment = require('moment')
 const AWS = require('aws-sdk')
 const Pino = require('pino')
