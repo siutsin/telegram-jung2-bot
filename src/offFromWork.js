@@ -16,6 +16,7 @@ class OffFromWork {
     const offTime = cronTime.toFormat('HHmm')
     const weekday = cronTime.weekdayShort.toUpperCase()
     const rows = await this.dynamodb.getAllGroupIds({ offTime, weekday })
+    this.logger.info(`getOffChatIds finish at ${moment().format()}`)
     return rows.map(o => o.chatId)
   }
 }
