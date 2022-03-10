@@ -320,7 +320,7 @@ class SQS {
     }).promise()
   }
 
-  // Urgent fix, these functions shouldn't be here, but there is a circular dependency issue.
+  // Urgent fix, this function shouldn't be here, but there is a circular dependency issue.
   // https://github.com/siutsin/telegram-jung2-bot/issues/1884
 
   async offFromWorkStatsPerGroup (timeString) {
