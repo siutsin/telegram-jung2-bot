@@ -4,6 +4,8 @@ const Pino = require('pino')
 const Statistics = require('./statistics')
 const Settings = require('./settings')
 const Help = require('./help')
+const OffFromWork = require('./offFromWork')
+const Bottleneck = require('bottleneck')
 
 const ACTION_KEY_ALLJUNG = 'alljung'
 const ACTION_KEY_JUNGHELP = 'junghelp'
@@ -14,11 +16,12 @@ const ACTION_KEY_TOPTEN = 'topten'
 const ACTION_KEY_ENABLE_ALLJUNG = 'enableAllJung'
 const ACTION_KEY_DISABLE_ALLJUNG = 'disableAllJung'
 const ACTION_KEY_SET_OFF_FROM_WORK_TIME_UTC = 'setOffFromWorkTimeUTC'
+const ACTION_KEY_ON_OFF_FROM_WORK = 'onOffFromWork'
 
 // In ECS SQS polling, the key is `StringValue` instead of `stringValue`.
 // This function will extract either the Lambda event key or SQS polling key.
 const getStringValue = (obj) => {
-  return obj.stringValue || obj.StringValue
+  return obj?.stringValue || obj?.StringValue
 }
 
 class SQS {
@@ -27,6 +30,7 @@ class SQS {
     this.sqs = new AWS.SQS()
     this.statistics = new Statistics()
     this.settings = new Settings()
+    this.offFromWork = new OffFromWork()
     this.help = new Help()
   }
 
@@ -86,6 +90,10 @@ class SQS {
             offTime: getStringValue(message.offTime),
             workday: getStringValue(message.workday)
           })
+          break
+        case ACTION_KEY_ON_OFF_FROM_WORK:
+          this.logger.info(`SQS onEvent onOffFromWork start at ${moment().format()}`)
+          await this.offFromWorkStatsPerGroup(getStringValue(message.timeString))
           break
       }
     } catch (e) {
@@ -282,6 +290,42 @@ class SQS {
       MessageBody: 'sendSetOffFromWorkTimeUTC',
       QueueUrl: process.env.EVENT_QUEUE_URL
     }).promise()
+  }
+
+  async sendOnOffFromWork (timeString) {
+    this.logger.info(`SQS sendOnOffFromWork start at ${moment().format()}`)
+    return this.sqs.sendMessage({
+      MessageAttributes: {
+        timeString: {
+          DataType: 'String',
+          StringValue: timeString
+        },
+        action: {
+          DataType: 'String',
+          StringValue: ACTION_KEY_ON_OFF_FROM_WORK
+        }
+      },
+      MessageBody: 'sendOnOffFromWork',
+      QueueUrl: process.env.EVENT_QUEUE_URL
+    }).promise()
+  }
+
+  // Urgent fix, these functions shouldn't be here, but there is a circular dependency issue.
+  // https://github.com/siutsin/telegram-jung2-bot/issues/1884
+
+  async offFromWorkStatsPerGroup (timeString) {
+    this.logger.info(`offFromWorkStatsPerGroup start at ${moment().format()}`)
+    const chatIds = await this.offFromWork.getOffChatIds(timeString)
+    const limiter = new Bottleneck({ // 200 per second
+      maxConcurrent: 1,
+      minTime: 5
+    })
+    this.logger.debug('chatIds:', chatIds)
+    for (const chatId of chatIds) {
+      this.logger.info(`chatId: ${chatId}`)
+      await limiter.schedule(() => this.sendOffFromWorkMessage(chatId))
+    }
+    this.logger.info(`offFromWorkStatsPerGroup finish at ${moment().format()}`)
   }
 }
 
