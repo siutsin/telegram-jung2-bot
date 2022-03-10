@@ -19,6 +19,7 @@ const stubAllJungMessageResponse = require('./stub/allJungMessageResponse')
 const stubAllJungDBResponse = require('./stub/allJungDatabaseResponse')
 const stubGetChatAdministratorsResponse = require('./stub/getChatAdministratorsResponse')
 const stubDynamoDBQueryStatsByChatIdResponse = require('./stub/dynamoDBQueryStatsByChatIdResponse')
+const stubChatIdScanResponse = require('./stub/chatIdScanResponse.json')
 
 dotenv.config({ path: path.resolve(__dirname, '.env.testing') })
 
@@ -37,6 +38,9 @@ test.beforeEach(() => {
     } else {
       callback(null, stubDynamoDBQueryStatsByChatIdResponse)
     }
+  })
+  AWS.mock('DynamoDB.DocumentClient', 'scan', (params, callback) => {
+    callback(null, stubChatIdScanResponse)
   })
   AWS.mock('DynamoDB.DocumentClient', 'update', (params, callback) => {
     callback(null, { Items: 'successfully update items to the database' })
@@ -212,6 +216,20 @@ test.serial('onEvent - setOffFromWorkTimeUTC', async t => {
   t.is(response, stubDeleteMessage)
 })
 
+test.serial('onEvent - sendOnOffFromWork', async t => {
+  const sqs = new SQS()
+  const response = await sqs.onEvent({
+    Records: [{
+      receiptHandle: 'long_random_string',
+      messageAttributes: {
+        action: { stringValue: 'onOffFromWork' },
+        timeString: { stringValue: '2022-03-05T23:45:00.000Z' }
+      }
+    }]
+  })
+  t.is(response, stubDeleteMessage)
+})
+
 test.serial('onEvent - junghelp with error', async t => {
   nock(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`)
     .persist()
@@ -238,4 +256,10 @@ test.serial('onEvent - alljung - ecs mode', async t => {
 
   const response = await sqs.onEvent(copy)
   t.is(response, stubDeleteMessage)
+})
+
+test.serial('sendOnOffFromWork', async t => {
+  const sqs = new SQS()
+  const response = await sqs.sendOnOffFromWork('2022-03-05T23:45:00.000Z')
+  t.is(response, stubSQSResponse)
 })
