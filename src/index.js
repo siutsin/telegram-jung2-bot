@@ -36,7 +36,7 @@ const toSQSLambdaEvent = (message) => {
 const consumer = Consumer.create({
   queueUrl: process.env.EVENT_QUEUE_URL,
   batchSize: 10, // aws max 10
-  messageAttributeNames: ['chatId', 'chatTitle', 'userId', 'action', 'offTime', 'workday'],
+  messageAttributeNames: ['chatId', 'chatTitle', 'userId', 'action', 'offTime', 'workday', 'timeString'],
   handleMessageBatch: async (messages) => {
     const startTime = performance.now()
     const requests = []
@@ -130,9 +130,9 @@ fastify.route({
   url: `/jung2bot/${process.env.STAGE}/onOffFromWork`,
   handler: async (request, reply) => {
     const timeString = request.query.timeString
-    const response = await handler.onOffFromWork(timeString)
-    reply.code(response.statusCode)
-    return response
+    await handler.onOffFromWork(timeString)
+    reply.code(202)
+    return { onOffFromWork: 'ok' }
   }
 })
 

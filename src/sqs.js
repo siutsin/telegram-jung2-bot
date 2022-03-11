@@ -4,6 +4,8 @@ const Pino = require('pino')
 const Statistics = require('./statistics')
 const Settings = require('./settings')
 const Help = require('./help')
+const OffFromWork = require('./offFromWork')
+const Bottleneck = require('bottleneck')
 
 const ACTION_KEY_ALLJUNG = 'alljung'
 const ACTION_KEY_JUNGHELP = 'junghelp'
@@ -14,11 +16,12 @@ const ACTION_KEY_TOPTEN = 'topten'
 const ACTION_KEY_ENABLE_ALLJUNG = 'enableAllJung'
 const ACTION_KEY_DISABLE_ALLJUNG = 'disableAllJung'
 const ACTION_KEY_SET_OFF_FROM_WORK_TIME_UTC = 'setOffFromWorkTimeUTC'
+const ACTION_KEY_ON_OFF_FROM_WORK = 'onOffFromWork'
 
 // In ECS SQS polling, the key is `StringValue` instead of `stringValue`.
 // This function will extract either the Lambda event key or SQS polling key.
 const getStringValue = (obj) => {
-  return obj.stringValue || obj.StringValue
+  return obj?.stringValue || obj?.StringValue
 }
 
 class SQS {
@@ -27,6 +30,7 @@ class SQS {
     this.sqs = new AWS.SQS()
     this.statistics = new Statistics()
     this.settings = new Settings()
+    this.offFromWork = new OffFromWork()
     this.help = new Help()
   }
 
@@ -38,33 +42,43 @@ class SQS {
     try {
       record = event.Records[0]
       const message = record.messageAttributes
-      const chatId = Number(getStringValue(message.chatId))
       const action = getStringValue(message.action)
       switch (action) {
         case ACTION_KEY_ALLJUNG:
           this.logger.info(`SQS onEvent alljung start at ${moment().format()}`)
-          await this.statistics.allJung({ chatId })
+          await this.statistics.allJung({
+            chatId: Number(getStringValue(message.chatId))
+          })
           break
         case ACTION_KEY_JUNGHELP:
           this.logger.info(`SQS onEvent junghelp start at ${moment().format()}`)
-          await this.help.sendHelpMessage({ chatId, chatTitle: getStringValue(message.chatTitle) })
+          await this.help.sendHelpMessage({
+            chatId: Number(getStringValue(message.chatId)),
+            chatTitle: getStringValue(message.chatTitle)
+          })
           break
         case ACTION_KEY_OFF_FROM_WORK:
           this.logger.info(`SQS onEvent offFromWork start at ${moment().format()}`)
-          await this.statistics.offFromWork({ chatId })
+          await this.statistics.offFromWork({
+            chatId: Number(getStringValue(message.chatId))
+          })
           break
         case ACTION_KEY_TOPDIVER:
           this.logger.info(`SQS onEvent topdiver start at ${moment().format()}`)
-          await this.statistics.topDiver({ chatId })
+          await this.statistics.topDiver({
+            chatId: Number(getStringValue(message.chatId))
+          })
           break
         case ACTION_KEY_TOPTEN:
           this.logger.info(`SQS onEvent topten start at ${moment().format()}`)
-          await this.statistics.topTen({ chatId })
+          await this.statistics.topTen({
+            chatId: Number(getStringValue(message.chatId))
+          })
           break
         case ACTION_KEY_ENABLE_ALLJUNG:
           this.logger.info(`SQS onEvent enableAllJung start at ${moment().format()}`)
           await this.settings.enableAllJung({
-            chatId,
+            chatId: Number(getStringValue(message.chatId)),
             chatTitle: getStringValue(message.chatTitle),
             userId: Number(getStringValue(message.userId))
           })
@@ -72,7 +86,7 @@ class SQS {
         case ACTION_KEY_DISABLE_ALLJUNG:
           this.logger.info(`SQS onEvent disableAllJung start at ${moment().format()}`)
           await this.settings.disableAllJung({
-            chatId,
+            chatId: Number(getStringValue(message.chatId)),
             chatTitle: getStringValue(message.chatTitle),
             userId: Number(getStringValue(message.userId))
           })
@@ -80,12 +94,16 @@ class SQS {
         case ACTION_KEY_SET_OFF_FROM_WORK_TIME_UTC:
           this.logger.info(`SQS onEvent setOffFromWorkTimeUTC start at ${moment().format()}`)
           await this.settings.setOffFromWorkTimeUTC({
-            chatId,
+            chatId: Number(getStringValue(message.chatId)),
             chatTitle: getStringValue(message.chatTitle),
             userId: Number(getStringValue(message.userId)),
             offTime: getStringValue(message.offTime),
             workday: getStringValue(message.workday)
           })
+          break
+        case ACTION_KEY_ON_OFF_FROM_WORK:
+          this.logger.info(`SQS onEvent onOffFromWork start at ${moment().format()}`)
+          await this.offFromWorkStatsPerGroup(getStringValue(message.timeString))
           break
       }
     } catch (e) {
@@ -282,6 +300,42 @@ class SQS {
       MessageBody: 'sendSetOffFromWorkTimeUTC',
       QueueUrl: process.env.EVENT_QUEUE_URL
     }).promise()
+  }
+
+  async sendOnOffFromWork (timeString) {
+    this.logger.info(`SQS sendOnOffFromWork start at ${moment().format()}`)
+    return this.sqs.sendMessage({
+      MessageAttributes: {
+        timeString: {
+          DataType: 'String',
+          StringValue: timeString
+        },
+        action: {
+          DataType: 'String',
+          StringValue: ACTION_KEY_ON_OFF_FROM_WORK
+        }
+      },
+      MessageBody: 'sendOnOffFromWork',
+      QueueUrl: process.env.EVENT_QUEUE_URL
+    }).promise()
+  }
+
+  // Urgent fix, this function shouldn't be here, but there is a circular dependency issue.
+  // https://github.com/siutsin/telegram-jung2-bot/issues/1884
+
+  async offFromWorkStatsPerGroup (timeString) {
+    this.logger.info(`offFromWorkStatsPerGroup start at ${moment().format()}`)
+    const chatIds = await this.offFromWork.getOffChatIds(timeString)
+    const limiter = new Bottleneck({ // 200 per second
+      maxConcurrent: 1,
+      minTime: 5
+    })
+    this.logger.debug('chatIds:', chatIds)
+    for (const chatId of chatIds) {
+      this.logger.info(`chatId: ${chatId}`)
+      await limiter.schedule(() => this.sendOffFromWorkMessage(chatId))
+    }
+    this.logger.info(`offFromWorkStatsPerGroup finish at ${moment().format()}`)
   }
 }
 
