@@ -36,7 +36,7 @@
     "luxon": "^2.4.0",
     "moment": "^2.29.3",
     "pino": "^8.0.0",
-    "pino-pretty": "^7.6.1",
+    "pino-pretty": "^8.0.0",
     "sqs-consumer": "^5.7.0"
   },
   "devDependencies": {
