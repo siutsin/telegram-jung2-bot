@@ -1,5 +1,5 @@
 const Pino = require('pino')
-const moment = require('moment')
+const { DateTime } = require('luxon')
 const ip = require('ip')
 
 const DynamoDB = require('./dynamodb.js')
@@ -77,7 +77,7 @@ class Messages {
   }
 
   async newMessage (event) {
-    this.logger.info(`newMessage start at ${moment().format()}`)
+    this.logger.info(`newMessage start at ${DateTime.now().toISO()}`)
     try {
       const xForwardedFor = event.headers['X-Forwarded-For'] || event.headers['x-forwarded-for']
       const requestIP = xForwardedFor.split(', ')[0]
@@ -97,11 +97,11 @@ class Messages {
       if (this.isBotCommand(message)) {
         await this.handleBotCommand(message)
       }
-      this.logger.info(`newMessage finish at ${moment().format()}`)
+      this.logger.info(`newMessage finish at ${DateTime.now().toISO()}`)
       return { statusCode: 200 }
     } catch (e) {
       this.logger.error(e.message)
-      this.logger.info(`newMessage finish with error at ${moment().format()}`)
+      this.logger.info(`newMessage finish with error at ${DateTime.now().toISO()}`)
       return { statusCode: 500 }
     }
   }
