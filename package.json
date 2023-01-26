@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "aws-sdk": "^2.1303.0",
-    "axios": "^1.2.4",
+    "axios": "^1.2.5",
     "bottleneck": "^2.19.5",
     "dotenv": "^16.0.3",
     "fastify": "^4.12.0",
