@@ -36,7 +36,7 @@
     "luxon": "^3.2.1",
     "pino": "^8.11.0",
     "pino-pretty": "^9.4.0",
-    "sqs-consumer": "^7.0.1"
+    "sqs-consumer": "^7.0.2"
   },
   "devDependencies": {
     "ava": "^5.2.0",
