@@ -45,7 +45,7 @@
     "nock": "^13.3.1",
     "nodemon": "^2.0.22",
     "standard": "^17.1.0",
-    "webpack": "^5.85.0",
+    "webpack": "^5.85.1",
     "webpack-cli": "^5.1.3"
   }
 }
