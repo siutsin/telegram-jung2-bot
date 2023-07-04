@@ -35,7 +35,7 @@
     "long": "^5.2.3",
     "luxon": "^3.3.0",
     "pino": "^8.14.1",
-    "pino-pretty": "^10.0.0",
+    "pino-pretty": "^10.0.1",
     "sqs-consumer": "^7.2.1"
   },
   "devDependencies": {
