@@ -8,3 +8,6 @@ updates:
     open-pull-requests-limit: 10
     labels:
       - dependency
+    ignore:
+      - dependency-name: "sqs-consumer"
+        versions: [ ">=6.0.0" ]
