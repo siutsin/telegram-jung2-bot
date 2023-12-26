@@ -4,7 +4,7 @@ WORKDIR /app
 RUN npm i
 RUN npm run build
 
-FROM gcr.io/distroless/nodejs:20
+FROM gcr.io/distroless/nodejs20-debian12:nonroot
 COPY --from=build-env /app/dist /dist
 WORKDIR /dist
 ENV DOCKER=true
