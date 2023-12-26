@@ -18,7 +18,7 @@
     "stats"
   ],
   "author": "siutsin",
-  "license": "AGPL-3.0-only",
+  "license": "MIT",
   "scripts": {
     "build": "webpack --mode=production",
     "lint": "standard --fix",
