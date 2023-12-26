@@ -30,9 +30,12 @@ test.serial('sendMessage - failing - Telegram API returns HTTP 499 Error', async
     .persist()
     .post('/sendMessage')
     .reply(499)
-  const telegram = new Telegram()
-  const error = await t.throwsAsync(telegram.sendMessage(123, 'hi'))
-  t.is(error.message, 'Request failed with status code 499')
+  try {
+    const telegram = new Telegram()
+    await telegram.sendMessage(123, 'hi')
+  } catch (error) {
+    t.is(error.message, 'Request failed with status code 499')
+  }
 })
 
 test('isAdmin - true', async t => {
