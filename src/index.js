@@ -20,7 +20,7 @@ const handler = require('./handler')
 const logger = new Pino({ level: process.env.LOG_LEVEL })
 const sqs = new SQS()
 
-// SQS Consumer. Use long polling to receive SQS messages..
+// SQS Consumer. Use long polling to receive SQS messages.
 
 const toSQSLambdaEvent = (message) => {
   return {
