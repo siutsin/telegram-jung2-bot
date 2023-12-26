@@ -20,13 +20,13 @@ const generate = async () => {
     const chatId = chatIds[Math.floor(Math.random() * chatIds.length)]
     const userId = userIds[Math.floor(Math.random() * userIds.length)]
     const record = {
-      chatId,
+      chatId: chatId,
       chatTitle: `t${chatId}`,
       dateCreated: moment().utcOffset(8).subtract(i, 'minutes').format(),
       firstName: `f${userId}`,
       lastName: `l${userId}`,
       ttl: moment().add(7, 'days').unix(),
-      userId,
+      userId: userId,
       username: `u${userId}`
     }
     data.push(record)
