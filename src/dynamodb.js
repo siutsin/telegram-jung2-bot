@@ -101,7 +101,7 @@ class DynamoDB {
   async setOffFromWorkTimeUTC ({ chatId, offTime, workday }) {
     const params = {
       TableName: process.env.CHATID_TABLE,
-      Key: { chatId: chatId },
+      Key: { chatId },
       UpdateExpression: 'SET #ot = :ot, #wd = :wd',
       ExpressionAttributeNames: {
         '#ot': 'offTime',
