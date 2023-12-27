@@ -10,7 +10,6 @@ const AWS = require('aws-sdk')
 const Pino = require('pino')
 const fastify = require('fastify')({ logger: { level: process.env.LOG_LEVEL }, trustProxy: true })
 const https = require('https')
-const ip = require('ip')
 const { Consumer } = require('sqs-consumer')
 const { performance } = require('perf_hooks')
 
@@ -76,18 +75,10 @@ const toEventObject = (request) => {
   }
 }
 
-const isTelegramIP = (requestIP) => {
-  if (!ip.cidrSubnet('91.108.4.0/22').contains(requestIP) && !ip.cidrSubnet('149.154.160.0/20').contains(requestIP)) {
-    throw new Error('Not Telegram IP')
-  }
-  return true
-}
-
 const staticFunctionHandler = async (request, reply, functionName) => {
   try {
     if (!process.env.DOCKER) {
       fastify.log.info(request.ips[0])
-      isTelegramIP(request.ips[0])
     }
     await handler[functionName]()
     reply.code(200)
