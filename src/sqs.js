@@ -1,4 +1,4 @@
-const { DateTime } = require('luxon')
+const moment = require('moment')
 const AWS = require('aws-sdk')
 const Pino = require('pino')
 const Statistics = require('./statistics')
@@ -35,7 +35,7 @@ class SQS {
   }
 
   async onEvent (event) {
-    this.logger.info(`SQS onEvent start at ${DateTime.now().toISO()}`)
+    this.logger.info(`SQS onEvent start at ${moment().format()}`)
     this.logger.debug('event')
     this.logger.debug(event)
     let record
@@ -45,38 +45,38 @@ class SQS {
       const action = getStringValue(message.action)
       switch (action) {
         case ACTION_KEY_ALLJUNG:
-          this.logger.info(`SQS onEvent alljung start at ${DateTime.now().toISO()}`)
+          this.logger.info(`SQS onEvent alljung start at ${moment().format()}`)
           await this.statistics.allJung({
             chatId: Number(getStringValue(message.chatId))
           })
           break
         case ACTION_KEY_JUNGHELP:
-          this.logger.info(`SQS onEvent junghelp start at ${DateTime.now().toISO()}`)
+          this.logger.info(`SQS onEvent junghelp start at ${moment().format()}`)
           await this.help.sendHelpMessage({
             chatId: Number(getStringValue(message.chatId)),
             chatTitle: getStringValue(message.chatTitle)
           })
           break
         case ACTION_KEY_OFF_FROM_WORK:
-          this.logger.info(`SQS onEvent offFromWork start at ${DateTime.now().toISO()}`)
+          this.logger.info(`SQS onEvent offFromWork start at ${moment().format()}`)
           await this.statistics.offFromWork({
             chatId: Number(getStringValue(message.chatId))
           })
           break
         case ACTION_KEY_TOPDIVER:
-          this.logger.info(`SQS onEvent topdiver start at ${DateTime.now().toISO()}`)
+          this.logger.info(`SQS onEvent topdiver start at ${moment().format()}`)
           await this.statistics.topDiver({
             chatId: Number(getStringValue(message.chatId))
           })
           break
         case ACTION_KEY_TOPTEN:
-          this.logger.info(`SQS onEvent topten start at ${DateTime.now().toISO()}`)
+          this.logger.info(`SQS onEvent topten start at ${moment().format()}`)
           await this.statistics.topTen({
             chatId: Number(getStringValue(message.chatId))
           })
           break
         case ACTION_KEY_ENABLE_ALLJUNG:
-          this.logger.info(`SQS onEvent enableAllJung start at ${DateTime.now().toISO()}`)
+          this.logger.info(`SQS onEvent enableAllJung start at ${moment().format()}`)
           await this.settings.enableAllJung({
             chatId: Number(getStringValue(message.chatId)),
             chatTitle: getStringValue(message.chatTitle),
@@ -84,7 +84,7 @@ class SQS {
           })
           break
         case ACTION_KEY_DISABLE_ALLJUNG:
-          this.logger.info(`SQS onEvent disableAllJung start at ${DateTime.now().toISO()}`)
+          this.logger.info(`SQS onEvent disableAllJung start at ${moment().format()}`)
           await this.settings.disableAllJung({
             chatId: Number(getStringValue(message.chatId)),
             chatTitle: getStringValue(message.chatTitle),
@@ -92,7 +92,7 @@ class SQS {
           })
           break
         case ACTION_KEY_SET_OFF_FROM_WORK_TIME_UTC:
-          this.logger.info(`SQS onEvent setOffFromWorkTimeUTC start at ${DateTime.now().toISO()}`)
+          this.logger.info(`SQS onEvent setOffFromWorkTimeUTC start at ${moment().format()}`)
           await this.settings.setOffFromWorkTimeUTC({
             chatId: Number(getStringValue(message.chatId)),
             chatTitle: getStringValue(message.chatTitle),
@@ -102,7 +102,7 @@ class SQS {
           })
           break
         case ACTION_KEY_ON_OFF_FROM_WORK:
-          this.logger.info(`SQS onEvent onOffFromWork start at ${DateTime.now().toISO()}`)
+          this.logger.info(`SQS onEvent onOffFromWork start at ${moment().format()}`)
           await this.offFromWorkStatsPerGroup(getStringValue(message.timeString))
           break
       }
@@ -118,12 +118,12 @@ class SQS {
       ReceiptHandle: record.receiptHandle
     }
     const p = this.sqs.deleteMessage(deleteParams).promise()
-    this.logger.info(`SQS onEvent end at ${DateTime.now().toISO()}`)
+    this.logger.info(`SQS onEvent end at ${moment().format()}`)
     return p
   }
 
   async sendJungHelpMessage (message) {
-    this.logger.info(`SQS sendJungHelpMessage start at ${DateTime.now().toISO()}`)
+    this.logger.info(`SQS sendJungHelpMessage start at ${moment().format()}`)
     return this.sqs.sendMessage({
       MessageAttributes: {
         chatId: {
@@ -145,7 +145,7 @@ class SQS {
   }
 
   async sendTopTenMessage (message) {
-    this.logger.info(`SQS sendTopTenMessage start at ${DateTime.now().toISO()}`)
+    this.logger.info(`SQS sendTopTenMessage start at ${moment().format()}`)
     return this.sqs.sendMessage({
       MessageAttributes: {
         chatId: {
@@ -163,7 +163,7 @@ class SQS {
   }
 
   async sendTopDiverMessage (message) {
-    this.logger.info(`SQS sendTopDiverMessage start at ${DateTime.now().toISO()}`)
+    this.logger.info(`SQS sendTopDiverMessage start at ${moment().format()}`)
     return this.sqs.sendMessage({
       MessageAttributes: {
         chatId: {
@@ -181,7 +181,7 @@ class SQS {
   }
 
   async sendOffFromWorkMessage (chatId) {
-    this.logger.info(`SQS sendOffFromWorkMessage start at ${DateTime.now().toISO()}`)
+    this.logger.info(`SQS sendOffFromWorkMessage start at ${moment().format()}`)
     return this.sqs.sendMessage({
       MessageAttributes: {
         chatId: {
@@ -199,7 +199,7 @@ class SQS {
   }
 
   async sendAllJungMessage (message) {
-    this.logger.info(`SQS sendAllJungMessage start at ${DateTime.now().toISO()}`)
+    this.logger.info(`SQS sendAllJungMessage start at ${moment().format()}`)
     return this.sqs.sendMessage({
       MessageAttributes: {
         chatId: {
@@ -217,7 +217,7 @@ class SQS {
   }
 
   async sendEnableAllJungMessage (message) {
-    this.logger.info(`SQS sendEnableAllJungMessage start at ${DateTime.now().toISO()}`)
+    this.logger.info(`SQS sendEnableAllJungMessage start at ${moment().format()}`)
     return this.sqs.sendMessage({
       MessageAttributes: {
         chatId: {
@@ -243,7 +243,7 @@ class SQS {
   }
 
   async sendDisableAllJungMessage (message) {
-    this.logger.info(`SQS sendDisableAllJungMessage start at ${DateTime.now().toISO()}`)
+    this.logger.info(`SQS sendDisableAllJungMessage start at ${moment().format()}`)
     return this.sqs.sendMessage({
       MessageAttributes: {
         chatId: {
@@ -269,7 +269,7 @@ class SQS {
   }
 
   async sendSetOffFromWorkTimeUTC ({ message, offTime, workday }) {
-    this.logger.info(`SQS sendSetOffFromWorkTimeUTC start at ${DateTime.now().toISO()}`)
+    this.logger.info(`SQS sendSetOffFromWorkTimeUTC start at ${moment().format()}`)
     return this.sqs.sendMessage({
       MessageAttributes: {
         chatId: {
@@ -303,7 +303,7 @@ class SQS {
   }
 
   async sendOnOffFromWork (timeString) {
-    this.logger.info(`SQS sendOnOffFromWork start at ${DateTime.now().toISO()}`)
+    this.logger.info(`SQS sendOnOffFromWork start at ${moment().format()}`)
     return this.sqs.sendMessage({
       MessageAttributes: {
         timeString: {
@@ -324,7 +324,7 @@ class SQS {
   // https://github.com/siutsin/telegram-jung2-bot/issues/1884
 
   async offFromWorkStatsPerGroup (timeString) {
-    this.logger.info(`offFromWorkStatsPerGroup start at ${DateTime.now().toISO()}`)
+    this.logger.info(`offFromWorkStatsPerGroup start at ${moment().format()}`)
     const chatIds = await this.offFromWork.getOffChatIds(timeString)
     const limiter = new Bottleneck({ // 200 per second
       maxConcurrent: 1,
@@ -335,7 +335,7 @@ class SQS {
       this.logger.info(`chatId: ${chatId}`)
       await limiter.schedule(() => this.sendOffFromWorkMessage(chatId))
     }
-    this.logger.info(`offFromWorkStatsPerGroup finish at ${DateTime.now().toISO()}`)
+    this.logger.info(`offFromWorkStatsPerGroup finish at ${moment().format()}`)
   }
 }
 

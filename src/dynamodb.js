@@ -2,20 +2,12 @@
   Timezone offset +8 is kept here for compatibility reasons.
  */
 
-const { DateTime } = require('luxon')
+const moment = require('moment')
 const AWS = require('aws-sdk')
 const Pino = require('pino')
 const WorkdayHelper = require('./workdayHelper')
 
 const LEGACY_OFF_JOB_WEEKDAY = new Set(['MON', 'TUE', 'WED', 'THU', 'FRI'])
-
-function getCurrentISOTimeString (zone = 'UTC+8') {
-  return DateTime.now().setZone(zone).set({ milliseconds: 0 }).toISO({ suppressMilliseconds: true })
-}
-
-function getUnixTimestampPlusDays (days) {
-  return Math.floor(DateTime.now().plus({ days }).toSeconds())
-}
 
 class DynamoDB {
   constructor (options) {
@@ -36,7 +28,7 @@ class DynamoDB {
     const ExpressionAttributeValues = {}
     const Key = {
       chatId: message.chat.id,
-      dateCreated: getCurrentISOTimeString()
+      dateCreated: moment().utcOffset(8).format()
     }
 
     const mapping = {
@@ -58,7 +50,7 @@ class DynamoDB {
 
     updateExpressionArray.push('#ttl = :ttl')
     ExpressionAttributeNames['#ttl'] = 'ttl'
-    ExpressionAttributeValues[':ttl'] = getUnixTimestampPlusDays(days)
+    ExpressionAttributeValues[':ttl'] = moment().add(days, 'days').unix()
 
     const UpdateExpression = `SET ${updateExpressionArray.join(', ')}`
     return { Key, UpdateExpression, ExpressionAttributeNames, ExpressionAttributeValues }
@@ -96,8 +88,8 @@ class DynamoDB {
       },
       ExpressionAttributeValues: {
         ':ct': message.chat.title,
-        ':dc': getCurrentISOTimeString(),
-        ':ttl': getUnixTimestampPlusDays(days)
+        ':dc': moment().utcOffset(8).format(),
+        ':ttl': moment().utcOffset(8).add(days, 'days').unix()
       }
     }
     this.logger.debug(`dynamodb.js::updateChatId params: ${JSON.stringify(params)}`)
@@ -109,7 +101,7 @@ class DynamoDB {
   async setOffFromWorkTimeUTC ({ chatId, offTime, workday }) {
     const params = {
       TableName: process.env.CHATID_TABLE,
-      Key: { chatId },
+      Key: { chatId: chatId },
       UpdateExpression: 'SET #ot = :ot, #wd = :wd',
       ExpressionAttributeNames: {
         '#ot': 'offTime',
@@ -177,7 +169,7 @@ class DynamoDB {
         ':uc': userCount,
         ':mc': messageCount,
         ':mpu': messageCount / userCount,
-        ':ct': getCurrentISOTimeString()
+        ':ct': moment().utcOffset(8).format()
       }
     }
     this.logger.debug(`dynamodb.js::updateChatIdMessagesCount params: ${JSON.stringify(params)}`)
@@ -215,7 +207,7 @@ class DynamoDB {
         ScanIndexForward: false,
         ExpressionAttributeValues: {
           ':chat_id': chatId,
-          ':date_created': getUnixTimestampPlusDays(days)
+          ':date_created': moment().utcOffset(8).subtract(days, 'days').format()
         }
       }
       if (startKey) {

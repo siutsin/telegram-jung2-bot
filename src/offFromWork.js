@@ -1,3 +1,4 @@
+const moment = require('moment')
 const Pino = require('pino')
 const { DateTime } = require('luxon')
 
@@ -10,12 +11,12 @@ class OffFromWork {
   }
 
   async getOffChatIds (timeString) {
-    this.logger.info(`getOffChatIds start at ${DateTime.now().toISO()}`)
+    this.logger.info(`getOffChatIds start at ${moment().format()}`)
     const cronTime = DateTime.fromISO(timeString)
     const offTime = cronTime.toFormat('HHmm')
     const weekday = cronTime.weekdayShort.toUpperCase()
     const rows = await this.dynamodb.getAllGroupIds({ offTime, weekday })
-    this.logger.info(`getOffChatIds finish at ${DateTime.now().toISO()}`)
+    this.logger.info(`getOffChatIds finish at ${moment().format()}`)
     return rows.map(o => o.chatId)
   }
 }

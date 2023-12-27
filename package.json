@@ -27,13 +27,14 @@
   },
   "dependencies": {
     "aws-sdk": "^2.1525.0",
-    "axios": "^1.6.2",
+    "axios": "^1.6.3",
     "bottleneck": "^2.19.5",
     "dotenv": "^16.3.1",
     "fastify": "^4.25.2",
     "ip": "^1.1.8",
     "long": "^5.2.3",
     "luxon": "^3.4.4",
+    "moment": "^2.30.0",
     "pino": "^8.17.2",
     "pino-pretty": "^10.3.0",
     "sqs-consumer": "^5.8.0"
