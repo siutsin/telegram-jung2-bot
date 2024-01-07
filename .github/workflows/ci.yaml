@@ -23,4 +23,4 @@ jobs:
             ${{ runner.OS }}-
       - run: npm ci
       - run: npm test
-      - uses: codecov/codecov-action@v2
+      - uses: codecov/codecov-action@v3
