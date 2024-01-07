@@ -8,4 +8,12 @@
     automerge: false,
   },
   minimumReleaseAge: '14 days',
+  packageRules: [
+    {
+      packageNames: [
+        'sqs-consumer'
+      ],
+      allowedVersions: "<=5.8.0"
+    },
+  ]
 }
