@@ -7,7 +7,7 @@
   major: {
     automerge: false,
   },
-  minimumReleaseAge: '3 days',
+  minimumReleaseAge: '14 days',
   rebaseWhen: "behind-base-branch",
   packageRules: [
     {
