@@ -8,13 +8,13 @@
     automerge: false,
   },
   minimumReleaseAge: '14 days',
-  rebaseWhen: "behind-base-branch",
+  rebaseWhen: 'behind-base-branch',
   packageRules: [
     {
-      packageNames: [
-        'sqs-consumer'
+      matchPackageNames: [
+        'sqs-consumer',
       ],
-      allowedVersions: "<=5.8.0"
+      allowedVersions: '<=5.8.0',
     },
-  ]
+  ],
 }
