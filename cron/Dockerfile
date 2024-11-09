@@ -1,4 +1,4 @@
-FROM node:20 AS build-env
+FROM node:22 AS build-env
 ADD . /app
 WORKDIR /app
 RUN npm i
