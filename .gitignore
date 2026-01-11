@@ -152,3 +152,9 @@ dist
 
 # End of https://www.toptal.com/developers/gitignore/api/node
 
+# Claude Code local settings
+.claude/settings.local.json
+
+# Buck2 build artifacts
+buck-out/
+.buckd/
