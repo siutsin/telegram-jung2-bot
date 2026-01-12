@@ -1,0 +1,8 @@
+go_binary(
+    name = "app",
+    srcs = ["main.go"],
+    deps = [
+        "//go/core:core",
+    ],
+    visibility = ["PUBLIC"],
+)
