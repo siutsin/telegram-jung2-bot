@@ -134,6 +134,10 @@ This document codifies Go best practices for this project.
 - [Google Go Style Guide](https://google.github.io/styleguide/go/)
 - [Effective Go](https://go.dev/doc/effective_go)
 
+## Documentation and Comments
+
+All `.go` files must include extensive comments and docstrings for exported items and non-trivial logic. Use Go doc comments and explain intent, safety, and edge cases in British English.
+
 ## Modern Go Syntax
 
 ### Use `any` not `interface{}`
@@ -613,6 +617,10 @@ This document codifies Rust best practices for this project.
 - [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/)
 - [Clippy Lints](https://rust-lang.github.io/rust-clippy/)
 - [Rustfmt](https://github.com/rust-lang/rustfmt)
+
+## Documentation and Comments
+
+All `.rs` files must include extensive comments and docstrings for public items and non-trivial logic. Use Rustdoc comments (`///` or `//!`) and explain intent, safety, and edge cases in British English.
 
 ## Project Structure
 

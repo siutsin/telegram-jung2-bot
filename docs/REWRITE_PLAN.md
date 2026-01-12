@@ -183,17 +183,14 @@ telegram-jung2-bot/
 
 #### 1.2 Rust Core Library Setup
 
-- [ ] Create `rust/BUCK` with:
+- [x] Create `rust/BUCK` with:
   - `rust_library` for core functionality
   - `rust_test` targets for unit and integration tests
   - `genrule` for cbindgen header generation
   - `prebuilt_cxx_library` for CGO integration
-- [ ] Implement Rust modules:
-  - `statistics.rs`: Data aggregation, ranking, report generation
-  - `workday.rs`: Bitmask operations (string to binary, binary matching)
-  - `datetime.rs`: UTC to local time conversion
-- [ ] Expose C-compatible FFI functions with `#[no_mangle]`
-- [ ] Configure `cbindgen.toml` for header generation
+- [x] Expose C-compatible FFI functions with `#[no_mangle]`
+- [x] Configure `cbindgen.toml` for header generation
+- [x] Create Rust modules only when implementing features (no placeholder files)
 
 #### 1.3 Go CGO Bindings
 

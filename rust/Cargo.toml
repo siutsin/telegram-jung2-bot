@@ -1,0 +1,10 @@
+[package]
+name = "core"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+# Build a static library for CGO and a rlib for Rust tooling.
+crate-type = ["staticlib", "rlib"]
+
+[dependencies]
