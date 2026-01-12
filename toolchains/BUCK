@@ -5,34 +5,54 @@ load(
     "@prelude//toolchains:python.bzl",
     "system_python_bootstrap_toolchain",
 )
+load("@prelude//toolchains:remote_test_execution.bzl", "remote_test_execution_toolchain")
 load("@prelude//toolchains:rust.bzl", "system_rust_toolchain")
+load("@prelude//tests:test_toolchain.bzl", "noop_test_toolchain")
 
+# Genrule toolchain enables cbindgen and other codegen steps in Buck.
 system_genrule_toolchain(
     name = "genrule",
     visibility = ["PUBLIC"],
 )
 
+# Python bootstrap toolchain supports Buck utilities that require Python at build time.
 system_python_bootstrap_toolchain(
     name = "python_bootstrap",
     visibility = ["PUBLIC"],
 )
 
+# CXX toolchain is required for CGO and linking native dependencies.
 system_cxx_toolchain(
     name = "cxx",
     visibility = ["PUBLIC"],
 )
 
+# Rust toolchain compiles the core library and FFI exports.
 system_rust_toolchain(
     name = "rust",
     visibility = ["PUBLIC"],
 )
 
+# Go bootstrap toolchain enables the Go toolchain to be configured by the prelude.
 system_go_bootstrap_toolchain(
     name = "go_bootstrap",
     visibility = ["PUBLIC"],
 )
 
+# Go toolchain builds the thin Go layer and test targets.
 system_go_toolchain(
     name = "go",
+    visibility = ["PUBLIC"],
+)
+
+# Noop test toolchain for go_test execution.
+noop_test_toolchain(
+    name = "test",
+    visibility = ["PUBLIC"],
+)
+
+# Remote test execution toolchain required by the prelude, even when running tests locally.
+remote_test_execution_toolchain(
+    name = "remote_test_execution",
     visibility = ["PUBLIC"],
 )

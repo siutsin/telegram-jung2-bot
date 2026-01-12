@@ -43,6 +43,12 @@ This is the canonical example of Go + Rust + Buck2 integration.
 - Never use emojis in code, comments, documentation, or commit messages
 - Keep all communication professional and text-based
 
+### Vendor BUCK Generation
+
+- `tools/buckify` generates `vendor/**/BUCK` files by parsing Go source imports to infer deps.
+- Run `make vendor` to refresh `vendor/` and regenerate BUCK files in a deterministic order.
+- The generator logs each BUCK path with its deps; keep these logs for debugging missing deps.
+
 ## Language Responsibility Split
 
 ### Go Owns (Thin Networking Layer Only)
@@ -533,6 +539,89 @@ slog.Debug("detailed debug info")  // Development only
 slog.Info("normal operation")       // Important events
 slog.Warn("recoverable issue")      // Degraded but working
 slog.Error("operation failed")      // Error that needs attention
+```
+
+## Testing
+
+### Use testify for assertions
+
+**CRITICAL**: All Go tests must use `github.com/stretchr/testify` for assertions.
+
+```go
+// GOOD: Use testify require and assert
+import (
+    "testing"
+    "github.com/stretchr/testify/assert"
+    "github.com/stretchr/testify/require"
+)
+
+func TestProcessWebhook(t *testing.T) {
+    result, err := ProcessWebhook(payload)
+    require.NoError(t, err, "ProcessWebhook should not return an error")
+
+    assert.Equal(t, 200, result.StatusCode, "expected status code 200")
+    assert.NotEmpty(t, result.ResponseText, "expected non-empty response text")
+}
+
+// BAD: Don't use manual if checks
+func TestProcessWebhook(t *testing.T) {
+    result, err := ProcessWebhook(payload)
+    if err != nil {
+        t.Fatalf("ProcessWebhook failed: %v", err)
+    }
+
+    if result.StatusCode != 200 {
+        t.Errorf("expected status code 200, got %d", result.StatusCode)
+    }
+}
+```
+
+### Use require vs assert appropriately
+
+- **require**: Use when the test cannot continue if the assertion fails (stops execution)
+- **assert**: Use for non-critical checks (test continues)
+
+```go
+// GOOD: require for critical checks
+func TestDatabaseOperation(t *testing.T) {
+    db, err := Connect()
+    require.NoError(t, err, "must connect to database") // Stop if connection fails
+    defer db.Close()
+
+    result := db.Query("SELECT * FROM users")
+    assert.NotNil(t, result, "expected result") // Continue even if nil
+    assert.Equal(t, 10, len(result), "expected 10 users")
+}
+```
+
+### Table-driven tests
+
+```go
+// GOOD: Use table-driven tests for multiple scenarios
+func TestWorkdayParsing(t *testing.T) {
+    tests := []struct {
+        name     string
+        input    string
+        expected int
+        wantErr  bool
+    }{
+        {"weekdays", "MON,TUE,WED,THU,FRI", 62, false},
+        {"weekend", "SAT,SUN", 65, false},
+        {"invalid", "INVALID", 0, true},
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            result, err := ParseWorkday(tt.input)
+            if tt.wantErr {
+                require.Error(t, err)
+                return
+            }
+            require.NoError(t, err)
+            assert.Equal(t, tt.expected, result)
+        })
+    }
+}
 ```
 
 ## Comments
@@ -1538,7 +1627,10 @@ go_binary(
 # Build main app
 buck2 build //go:app
 
-# Run all tests
+# Run all tests (recommended via Makefile)
+make test
+
+# Or run directly with Buck2
 buck2 test //...
 
 # Run specific test
@@ -1547,6 +1639,10 @@ buck2 test //go/server:server_test
 # Run with verbose output
 buck2 test //... -v 5
 ```
+
+**CRITICAL WORKFLOW REQUIREMENT**:
+
+After ANY code change (Go or Rust), you MUST run `make test` to verify all tests pass before committing or moving to the next task. This is mandatory and non-negotiable.
 
 ### Test Coverage Requirements
 

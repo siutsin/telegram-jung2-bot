@@ -10,7 +10,7 @@ Telegram group chat statistics bot. Tracks message counts, produces rankings, an
 
 ## Build and Run
 
-Build the Rust core library and headers:
+Build all Buck2 targets:
 
 ```
 make build
