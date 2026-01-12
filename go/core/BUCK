@@ -1,9 +1,19 @@
 go_library(
     name = "core",
-    srcs = glob(["*.go"]),
+    srcs = glob(["*.go"], exclude = ["*_test.go"]),
     package_name = "github.com/siutsin/telegram-jung2-bot/go/core",
     deps = [
         "//rust:cbindgen_core",
     ],
     visibility = ["PUBLIC"],
+)
+
+go_test(
+    name = "core_test",
+    srcs = glob(["*.go"]),
+    deps = [
+        "//rust:cbindgen_core",
+        "//vendor/github.com/stretchr/testify/assert:assert",
+        "//vendor/github.com/stretchr/testify/require:require",
+    ],
 )

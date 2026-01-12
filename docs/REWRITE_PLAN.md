@@ -207,34 +207,24 @@ telegram-jung2-bot/
 
 #### 1.4 Setup Test Infrastructure
 
-- [ ] **Test Toolchain Configuration**:
-  - [ ] Verify `go_test` rule is available in Buck2 prelude
-  - [ ] Configure test execution environment in `.buckconfig`
-  - [ ] Set up test discovery and filtering capabilities
-- [ ] **Go Test Setup** (`go/core/bindings_test.go`):
-  - [ ] Add `github.com/stretchr/testify` dependency to `go/go.mod`
-  - [ ] Update `AGENTS.md` with testify requirements (require/assert patterns, table-driven tests)
-  - [ ] Implement FFI integration tests using testify (valid payload, empty payload, invalid JSON)
-  - [ ] Create `go_test` target in `go/core/BUCK`
-  - [ ] Configure Buck2 test runner for Go tests
-  - [ ] Verify `buck2 test //go/core:core_test` works
-- [ ] **Rust Test Setup**:
-  - [ ] Add `#[cfg(test)]` modules to Rust source files for unit tests
-  - [ ] Create `rust/tests/*.rs` for integration tests
-  - [ ] Add `rust_test` targets to `rust/BUCK`
-  - [ ] Verify `buck2 test //rust:...` works
-- [ ] **Mock Generation Setup**:
-  - [ ] Add `go:generate` directives for `mockgen` (uber-go/mock)
-  - [ ] Create initial mock interfaces (SQS client, Telegram client, DynamoDB)
-  - [ ] Document mock generation workflow (`go generate ./...`)
-- [ ] **Coverage Configuration**:
-  - [ ] Configure Go test coverage collection
-  - [ ] Set up Rust coverage with tarpaulin (future Buck2 genrule)
-  - [ ] Establish 80%+ coverage requirement
-- [ ] **Test Automation**:
-  - [ ] Update `Makefile` with `test` target that runs `buck2 test //...`
-  - [ ] Update `AGENTS.md` to mandate running `make test` after each code change
-  - [ ] Document test workflow in agent instructions
+- [x] **Test Toolchain Configuration**:
+  - [x] Verify `go_test` rule is available in Buck2 prelude
+  - [x] Configure test execution environment with `noop_test_toolchain` and `remote_test_execution_toolchain`
+  - [x] Set up test discovery and filtering capabilities
+- [x] **Go Test Setup** (`go/core/bindings_test.go`):
+  - [x] Add `github.com/stretchr/testify` dependency to `go/go.mod`
+  - [x] Update `AGENTS.md` with testify requirements (require/assert patterns, table-driven tests)
+  - [x] Implement FFI integration tests using testify (valid payload, empty payload, invalid JSON)
+  - [x] Create `go_test` target in `go/core/BUCK`
+  - [x] Configure Buck2 test runner for Go tests with vendor dependencies
+  - [x] Verify `buck2 test //go/core:core_test` works
+- [x] **Rust Test Setup**:
+  - [x] Add `rust_test` targets to `rust/BUCK` (ready for `#[cfg(test)]` modules)
+  - [x] Verify `buck2 test //rust:core_test` works
+- [x] **Test Automation**:
+  - [x] Makefile already has `test` target that runs `buck2 test //...`
+  - [x] Update `AGENTS.md` to mandate running `make test` after each code change
+  - [x] Document test workflow in agent instructions
 
 ### Phase 2: Core Components Implementation
 
@@ -326,6 +316,17 @@ telegram-jung2-bot/
   ```
 - [ ] **FFI exports**: Expose via cbindgen
 - [ ] **Tests**: Rust unit tests
+
+#### Phase 2 Deferred Work
+
+- [ ] **Mock Generation Setup**:
+  - [ ] Add `go:generate` directives for `mockgen` (uber-go/mock)
+  - [ ] Create initial mock interfaces (SQS client, Telegram client, DynamoDB)
+  - [ ] Document mock generation workflow (`go generate ./...`)
+- [ ] **Coverage Configuration**:
+  - [ ] Configure Go test coverage collection
+  - [ ] Set up Rust coverage with tarpaulin (future Buck2 genrule)
+  - [ ] Establish 80%+ coverage requirement
 
 ### Phase 3: Testing & Migration
 

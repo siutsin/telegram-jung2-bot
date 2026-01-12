@@ -12,6 +12,7 @@
 *.test
 *.out
 coverage/
+vendor
 
 # Rust
 /target/
