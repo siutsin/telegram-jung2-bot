@@ -1,0 +1,23 @@
+rust_library(
+    name = "core",
+    srcs = glob(["src/**/*.rs"]),
+    crate_root = "src/lib.rs",
+    edition = "2024",
+    visibility = ["PUBLIC"],
+)
+
+genrule(
+    name = "cbindgen_headers",
+    srcs = glob(["src/**/*.rs"]) + ["cbindgen.toml", "Cargo.toml"],
+    out = "core.h",
+    bash = "cd $SRCDIR && cbindgen --config cbindgen.toml --output $OUT",
+    cmd_exe = "cd %SRCDIR% && cbindgen --config cbindgen.toml --output %OUT%",
+    visibility = ["PUBLIC"],
+)
+
+prebuilt_cxx_library(
+    name = "cbindgen_core",
+    static_lib = ":core[staticlib]",
+    exported_headers = [":cbindgen_headers"],
+    visibility = ["PUBLIC"],
+)
