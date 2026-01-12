@@ -174,8 +174,8 @@ telegram-jung2-bot/
 #### 1.1 Buck2 Configuration
 
 - [x] Review cgorust reference project
-- [ ] Create `.buckconfig` with cells for root, prelude, toolchains
-- [ ] Define toolchain configurations:
+- [x] Create `.buckconfig` with cells for root, prelude, toolchains
+- [x] Define toolchain configurations:
   - `system_go_toolchain` (Go 1.25.5+)
   - `system_rust_toolchain` (Rust edition 2024)
   - `system_cxx_toolchain` (for CGO)
