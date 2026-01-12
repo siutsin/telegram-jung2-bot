@@ -194,14 +194,47 @@ telegram-jung2-bot/
 
 #### 1.3 Go CGO Bindings
 
-- [ ] Create `go/core/BUCK` with `go_library` depending on `//rust:cbindgen_core`
-- [ ] Implement `bindings.go` with CGO imports:
+- [x] Create `go/core/BUCK` with `go_library` depending on `//rust:cbindgen_core`
+- [x] Implement `bindings.go` with CGO imports:
   ```go
-  // #cgo LDFLAGS: -lrust_core
   // #include "rust/core.h"
   import "C"
   ```
-- [ ] Create Go wrapper functions for Rust FFI
+- [x] Create Go wrapper functions for Rust FFI
+- [x] Implement `ActionResult` struct for FFI responses
+- [x] Create `go/main.go` demo application
+- [x] Verify end-to-end FFI integration (Go → Rust → Go)
+
+#### 1.4 Setup Test Infrastructure
+
+- [ ] **Test Toolchain Configuration**:
+  - [ ] Verify `go_test` rule is available in Buck2 prelude
+  - [ ] Configure test execution environment in `.buckconfig`
+  - [ ] Set up test discovery and filtering capabilities
+- [ ] **Go Test Setup** (`go/core/bindings_test.go`):
+  - [ ] Add `github.com/stretchr/testify` dependency to `go/go.mod`
+  - [ ] Update `AGENTS.md` with testify requirements (require/assert patterns, table-driven tests)
+  - [ ] Implement FFI integration tests using testify (valid payload, empty payload, invalid JSON)
+  - [ ] Create `go_test` target in `go/core/BUCK`
+  - [ ] Configure Buck2 test runner for Go tests
+  - [ ] Verify `buck2 test //go/core:core_test` works
+- [ ] **Rust Test Setup**:
+  - [ ] Add `#[cfg(test)]` modules to Rust source files for unit tests
+  - [ ] Create `rust/tests/*.rs` for integration tests
+  - [ ] Add `rust_test` targets to `rust/BUCK`
+  - [ ] Verify `buck2 test //rust:...` works
+- [ ] **Mock Generation Setup**:
+  - [ ] Add `go:generate` directives for `mockgen` (uber-go/mock)
+  - [ ] Create initial mock interfaces (SQS client, Telegram client, DynamoDB)
+  - [ ] Document mock generation workflow (`go generate ./...`)
+- [ ] **Coverage Configuration**:
+  - [ ] Configure Go test coverage collection
+  - [ ] Set up Rust coverage with tarpaulin (future Buck2 genrule)
+  - [ ] Establish 80%+ coverage requirement
+- [ ] **Test Automation**:
+  - [ ] Update `Makefile` with `test` target that runs `buck2 test //...`
+  - [ ] Update `AGENTS.md` to mandate running `make test` after each code change
+  - [ ] Document test workflow in agent instructions
 
 ### Phase 2: Core Components Implementation
 

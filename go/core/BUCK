@@ -1,0 +1,9 @@
+go_library(
+    name = "core",
+    srcs = glob(["*.go"]),
+    package_name = "github.com/siutsin/telegram-jung2-bot/go/core",
+    deps = [
+        "//rust:cbindgen_core",
+    ],
+    visibility = ["PUBLIC"],
+)
