@@ -1,0 +1,20 @@
+go_library(
+    name = "command",
+    srcs = glob(["*.go"], exclude = ["*_test.go"]),
+    package_name = "github.com/siutsin/telegram-jung2-bot/go/internal/command",
+    deps = [
+        "//go/internal/queue:queue",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+go_test(
+    name = "command_test",
+    srcs = glob(["*.go"]),
+    deps = [
+        ":command",
+        "//go/internal/queue:queue",
+        "//go/vendor/github.com/stretchr/testify/assert:assert",
+        "//go/vendor/github.com/stretchr/testify/require:require",
+    ],
+)
