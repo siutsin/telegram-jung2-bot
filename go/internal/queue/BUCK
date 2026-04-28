@@ -1,0 +1,16 @@
+go_library(
+    name = "queue",
+    srcs = glob(["*.go"], exclude = ["*_test.go"]),
+    package_name = "github.com/siutsin/telegram-jung2-bot/go/internal/queue",
+    visibility = ["PUBLIC"],
+)
+
+go_test(
+    name = "queue_test",
+    srcs = glob(["*.go"]),
+    deps = [
+        ":queue",
+        "//go/vendor/github.com/stretchr/testify/assert:assert",
+        "//go/vendor/github.com/stretchr/testify/require:require",
+    ],
+)
