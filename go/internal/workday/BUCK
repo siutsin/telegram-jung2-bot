@@ -1,0 +1,16 @@
+go_library(
+    name = "workday",
+    srcs = glob(["*.go"], exclude = ["*_test.go"]),
+    package_name = "github.com/siutsin/telegram-jung2-bot/go/internal/workday",
+    visibility = ["PUBLIC"],
+)
+
+go_test(
+    name = "workday_test",
+    srcs = glob(["*.go"]),
+    deps = [
+        ":workday",
+        "//go/vendor/github.com/stretchr/testify/assert:assert",
+        "//go/vendor/github.com/stretchr/testify/require:require",
+    ],
+)
