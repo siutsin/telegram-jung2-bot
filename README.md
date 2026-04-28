@@ -1,27 +1,30 @@
-[![CI](https://github.com/siutsin/telegram-jung2-bot/actions/workflows/ci.yaml/badge.svg)](https://github.com/siutsin/telegram-jung2-bot/actions/workflows/ci.yaml)
-[![Known Vulnerabilities](https://snyk.io/test/github/siutsin/telegram-jung2-bot/badge.svg?targetFile=package.json)](https://snyk.io/test/github/siutsin/telegram-jung2-bot?targetFile=package.json)
-
 # telegram-jung2-bot
 
-Add the bot to your group at [@jung2_bot](https://bit.ly/github-jung2bot)
+Telegram group chat statistics bot. Tracks message counts, produces rankings, and schedules off-work reports.
 
-<b>冗員</b>[jung2jyun4] Excess personnel in Cantonese
+## Architecture
 
-This bot is created for counting the number of messages per participant in a chat group.
+- Go owns the HTTP webhook, SQS polling, Telegram HTTP client, DynamoDB access, command routing, statistics, settings, and report formatting.
+- EventBridge Scheduler enqueues scheduled actions into SQS.
+- Historical fixtures may still exist for compatibility reference, but new runtime code belongs under `go/`.
 
-## Usage
+## Prerequisites
 
-| command     | info                                                                                                                      |
-|-------------|---------------------------------------------------------------------------------------------------------------------------|
-| `/topTen`   | Show the percentage of top ten participants for the past seven days                                                       |
-| `/topDiver` | Show the percentage of top ten divers for the past seven days (Requires at least one message from the user to be counted) |
-| `/allJung`  | Show the percentage of all participants for the past seven days                                                           |
-| `/jungHelp` | Show help message                                                                                                         |
+- [Buck2](https://buck2.build/docs/getting_started/)
+- Go 1.26+
 
-### Admin Only
+## Build
 
-| command                  | info                                                                                                                                                                                                |
-|--------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `/enableAllJung`         | Enable `/allJung` command                                                                                                                                                                           |
-| `/disableAllJung`        | Disable `/allJung` command                                                                                                                                                                          |
-| `/setOffFromWorkTimeUTC` | Set offFromWork time in UTC.<br/>Format: `/setOffFromWorkTimeUTC {{ 0000-2345, 15 minutes interval }} {{ MON,TUE,WED,THU,FRI,SAT,SUN }}`<br/>E.g. `/setOffFromWorkTimeUTC 1800 MON,TUE,WED,THU,FRI` |
+```
+make build
+```
+
+Builds the Go service with Buck2.
+
+## Testing
+
+```
+make test
+```
+
+Runs Go tests through Buck2.

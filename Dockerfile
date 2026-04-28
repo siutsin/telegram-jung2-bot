@@ -1,12 +1,13 @@
-FROM node:24 AS build-env
-ADD . /app
+FROM golang:1.26 AS build-env
 WORKDIR /app
-RUN npm i
-RUN npm run build
+COPY go/go.mod go/go.sum ./go/
+WORKDIR /app/go
+RUN go mod download
+COPY go/ ./
+RUN CGO_ENABLED=0 GOOS=linux go build -o /out/telegram-jung2-bot .
 
-FROM gcr.io/distroless/nodejs20-debian12:nonroot
-COPY --from=build-env /app/dist /dist
-WORKDIR /dist
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=build-env /out/telegram-jung2-bot /telegram-jung2-bot
 ENV DOCKER=true
 EXPOSE 3000
-CMD ["main.js"]
+ENTRYPOINT ["/telegram-jung2-bot"]
