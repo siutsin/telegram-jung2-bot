@@ -1,9 +1,10 @@
 package core
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
+
+	"github.com/siutsin/telegram-jung2-bot/go/internal/telegram"
 )
 
 // ActionResult represents the outcome of processing a Telegram webhook payload.
@@ -15,15 +16,6 @@ type ActionResult struct {
 	ResponseText string
 }
 
-type webhookPayload struct {
-	Message *struct {
-		Text string `json:"text"`
-		Chat struct {
-			ID int64 `json:"id"`
-		} `json:"chat"`
-	} `json:"message"`
-}
-
 // ProcessWebhook performs the first Go-only validation pass for a Telegram
 // webhook payload. The implementation is deliberately small while the full
 // command router and persistence layers are implemented.
@@ -33,10 +25,10 @@ func ProcessWebhook(payload string) (ActionResult, error) {
 		return result, fmt.Errorf("webhook payload is empty")
 	}
 
-	var update webhookPayload
-	if err := json.Unmarshal([]byte(payload), &update); err != nil {
+	update, err := telegram.ParseUpdate([]byte(payload))
+	if err != nil {
 		result := ActionResult{StatusCode: 400}
-		return result, fmt.Errorf("decode webhook payload: %w", err)
+		return result, fmt.Errorf("parse webhook payload: %w", err)
 	}
 
 	if update.Message == nil {

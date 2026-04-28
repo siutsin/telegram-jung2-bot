@@ -1,18 +1,15 @@
 go_library(
-    name = "core",
+    name = "telegram",
     srcs = glob(["*.go"], exclude = ["*_test.go"]),
-    package_name = "github.com/siutsin/telegram-jung2-bot/go/core",
-    deps = [
-        "//go/internal/telegram:telegram",
-    ],
+    package_name = "github.com/siutsin/telegram-jung2-bot/go/internal/telegram",
     visibility = ["PUBLIC"],
 )
 
 go_test(
-    name = "core_test",
+    name = "telegram_test",
     srcs = glob(["*.go"]),
     deps = [
-        "//go/internal/telegram:telegram",
+        ":telegram",
         "//go/vendor/github.com/stretchr/testify/assert:assert",
         "//go/vendor/github.com/stretchr/testify/require:require",
     ],
