@@ -1,12 +1,27 @@
+load(":configurable_system_go_toolchain.bzl", "configurable_system_go_toolchain")
 load("@prelude//toolchains:cxx.bzl", "system_cxx_toolchain")
 load("@prelude//toolchains:genrule.bzl", "system_genrule_toolchain")
-load("@prelude//toolchains:go.bzl", "system_go_bootstrap_toolchain", "system_go_toolchain")
+load("@prelude//toolchains:go.bzl", "system_go_bootstrap_toolchain")
 load(
     "@prelude//toolchains:python.bzl",
     "system_python_bootstrap_toolchain",
 )
 load("@prelude//toolchains:remote_test_execution.bzl", "remote_test_execution_toolchain")
 load("@prelude//tests:test_toolchain.bzl", "noop_test_toolchain")
+
+constraint_setting(
+    name = "go_test_mode",
+)
+
+constraint_value(
+    name = "default",
+    constraint_setting = ":go_test_mode",
+)
+
+constraint_value(
+    name = "race",
+    constraint_setting = ":go_test_mode",
+)
 
 # Genrule toolchain enables code generation steps in Buck.
 system_genrule_toolchain(
@@ -33,8 +48,12 @@ system_go_bootstrap_toolchain(
 )
 
 # Go toolchain builds the service and test targets.
-system_go_toolchain(
+configurable_system_go_toolchain(
     name = "go",
+    race = select({
+        ":race": True,
+        "DEFAULT": False,
+    }),
     visibility = ["PUBLIC"],
 )
 

@@ -60,8 +60,8 @@ Builds the Go service with Buck2.
 make test
 ```
 
-Runs Buck2 tests, then runs a Buck-built Go coverage check. Coverage must stay
-at 100%.
+Runs Buck2 tests with the race detector enabled, then runs a Buck-built atomic
+Go coverage check. Coverage must stay at 100%.
 
 ```bash
 make test-coverage

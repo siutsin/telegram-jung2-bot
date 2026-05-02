@@ -3,6 +3,8 @@ package integration
 import (
 	"context"
 	"errors"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -35,11 +37,13 @@ func TestWebhookIntakeSlice(t *testing.T) {
 	})
 
 	assert.Equal(t, httpserver.Response{StatusCode: 200}, response)
-	require.Len(t, store.messages, 1)
-	assert.Equal(t, map[string]any{"chatId": int64(123), "dateCreated": "2026-05-02T20:00:00+08:00"}, store.messages[0].Key)
-	require.Len(t, enqueuer.actions, 1)
-	assert.Equal(t, queue.ActionTopTen, enqueuer.actions[0].Name)
-	assert.Equal(t, "123", enqueuer.actions[0].Attributes["chatId"])
+	messages := store.messageUpdates()
+	require.Len(t, messages, 1)
+	assert.Equal(t, map[string]any{"chatId": int64(123), "dateCreated": "2026-05-02T20:00:00+08:00"}, messages[0].Key)
+	actions := enqueuer.enqueuedActions()
+	require.Len(t, actions, 1)
+	assert.Equal(t, queue.ActionTopTen, actions[0].Name)
+	assert.Equal(t, "123", actions[0].Attributes["chatId"])
 }
 
 func TestCommandExecutionSlice(t *testing.T) {
@@ -126,7 +130,7 @@ func TestScheduledReportsSlice(t *testing.T) {
 	err := service.HandleDueReport(context.Background(), time.Date(2026, 5, 1, 10, 0, 0, 0, time.UTC))
 
 	require.NoError(t, err)
-	assert.Equal(t, []queue.Action{schedule.BuildOffFromWorkAction(123)}, enqueuer.actions)
+	assert.Equal(t, []queue.Action{schedule.BuildOffFromWorkAction(123)}, enqueuer.enqueuedActions())
 }
 
 func TestApplicationWiringSlice(t *testing.T) {
@@ -144,8 +148,8 @@ func TestApplicationWiringSlice(t *testing.T) {
 	cancel()
 
 	require.NoError(t, <-done)
-	assert.True(t, factory.httpServer.shutdownCalled)
-	assert.True(t, factory.queueWorker.cancelled)
+	require.Eventually(t, factory.httpServer.shutdownCalled.Load, time.Second, time.Millisecond)
+	require.Eventually(t, factory.queueWorker.cancelled.Load, time.Second, time.Millisecond)
 }
 
 func TestApplicationWiringSliceReturnsDependencyErrors(t *testing.T) {
@@ -162,27 +166,49 @@ func fixedNow() time.Time {
 }
 
 type sliceStore struct {
+	mu       sync.Mutex
 	messages []message.UpdateExpression
 	chats    []chat.UpdateExpression
 }
 
 func (store *sliceStore) SaveMessage(ctx context.Context, request message.UpdateExpression) error {
+	store.mu.Lock()
+	defer store.mu.Unlock()
 	store.messages = append(store.messages, request)
 	return nil
 }
 
 func (store *sliceStore) SaveChat(ctx context.Context, request chat.UpdateExpression) error {
+	store.mu.Lock()
+	defer store.mu.Unlock()
 	store.chats = append(store.chats, request)
 	return nil
 }
 
+func (store *sliceStore) messageUpdates() []message.UpdateExpression {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+
+	return append([]message.UpdateExpression(nil), store.messages...)
+}
+
 type sliceEnqueuer struct {
+	mu      sync.Mutex
 	actions []queue.Action
 }
 
 func (enqueuer *sliceEnqueuer) Enqueue(ctx context.Context, action queue.Action) error {
+	enqueuer.mu.Lock()
+	defer enqueuer.mu.Unlock()
 	enqueuer.actions = append(enqueuer.actions, action)
 	return nil
+}
+
+func (enqueuer *sliceEnqueuer) enqueuedActions() []queue.Action {
+	enqueuer.mu.Lock()
+	defer enqueuer.mu.Unlock()
+
+	return append([]queue.Action(nil), enqueuer.actions...)
 }
 
 type sliceChats struct {
@@ -213,7 +239,7 @@ func (factory *sliceFactory) NewQueueWorker(config config.Config) (app.QueueWork
 type sliceHTTPServer struct {
 	started        chan struct{}
 	stopped        chan struct{}
-	shutdownCalled bool
+	shutdownCalled atomic.Bool
 }
 
 func newSliceHTTPServer() *sliceHTTPServer {
@@ -230,18 +256,18 @@ func (server *sliceHTTPServer) ListenAndServe() error {
 }
 
 func (server *sliceHTTPServer) Shutdown(ctx context.Context) error {
-	server.shutdownCalled = true
+	server.shutdownCalled.Store(true)
 	close(server.stopped)
 	return nil
 }
 
 type sliceQueueWorker struct {
-	cancelled bool
+	cancelled atomic.Bool
 }
 
 func (worker *sliceQueueWorker) Run(ctx context.Context) error {
 	<-ctx.Done()
-	worker.cancelled = true
+	worker.cancelled.Store(true)
 	return nil
 }
 

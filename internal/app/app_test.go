@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -37,8 +38,8 @@ func TestRunBuildsAndStartsDefaultRuntime(t *testing.T) {
 	cancel()
 
 	require.NoError(t, <-done)
-	assert.True(t, httpServer.shutdownCalled)
-	assert.True(t, queueWorker.cancelled)
+	require.Eventually(t, httpServer.shutdownCalled.Load, time.Second, time.Millisecond)
+	require.Eventually(t, queueWorker.cancelled.Load, time.Second, time.Millisecond)
 }
 
 func TestRunReturnsRuntimeFactoryError(t *testing.T) {
@@ -146,8 +147,8 @@ func TestRunWithShutsDownHTTPServerOnContextCancellation(t *testing.T) {
 	cancel()
 
 	require.NoError(t, <-done)
-	assert.True(t, httpServer.shutdownCalled)
-	assert.True(t, queueWorker.cancelled)
+	require.Eventually(t, httpServer.shutdownCalled.Load, time.Second, time.Millisecond)
+	require.Eventually(t, queueWorker.cancelled.Load, time.Second, time.Millisecond)
 }
 
 // A shutdown failure must win over cancellation so operators see the real stop
@@ -288,7 +289,7 @@ type fakeHTTPServer struct {
 	shutdown       chan struct{}
 	listenBlocks   bool
 	listenErr      error
-	shutdownCalled bool
+	shutdownCalled atomic.Bool
 	shutdownErr    error
 }
 
@@ -316,7 +317,7 @@ func (server *fakeHTTPServer) ListenAndServe() error {
 }
 
 func (server *fakeHTTPServer) Shutdown(ctx context.Context) error {
-	server.shutdownCalled = true
+	server.shutdownCalled.Store(true)
 	if server.shutdown != nil {
 		close(server.shutdown)
 	}
@@ -325,7 +326,7 @@ func (server *fakeHTTPServer) Shutdown(ctx context.Context) error {
 
 type fakeQueueWorker struct {
 	err       error
-	cancelled bool
+	cancelled atomic.Bool
 }
 
 func (worker *fakeQueueWorker) Run(ctx context.Context) error {
@@ -333,7 +334,7 @@ func (worker *fakeQueueWorker) Run(ctx context.Context) error {
 		return worker.err
 	}
 	<-ctx.Done()
-	worker.cancelled = true
+	worker.cancelled.Store(true)
 	return nil
 }
 
