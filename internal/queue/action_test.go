@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -45,16 +47,20 @@ func TestConsumerPollReceivesAndHandlesMessages(t *testing.T) {
 
 	rawMessages := []RawMessage{{ReceiptHandle: "one"}, {ReceiptHandle: "two"}}
 	receiver := &fakeReceiver{response: ReceiveMessageResponse{Messages: rawMessages}}
-	handled := make([]RawMessage, 0, len(rawMessages))
+	handled := make([]string, 0, len(rawMessages))
+	var mutex sync.Mutex
 
 	err := (Consumer{QueueURL: "queue-url", Receiver: receiver}).Poll(context.Background(), func(ctx context.Context, message RawMessage) error {
-		handled = append(handled, message)
+		mutex.Lock()
+		handled = append(handled, message.ReceiptHandle)
+		mutex.Unlock()
 		return nil
 	})
 
 	require.NoError(t, err)
 	assert.Equal(t, ReceiveMessageRequest{QueueURL: "queue-url", MaxNumberOfMessages: 10, WaitTimeSeconds: 20}, receiver.request)
-	assert.Equal(t, rawMessages, handled)
+	slices.Sort(handled)
+	assert.Equal(t, []string{"one", "two"}, handled)
 }
 
 func TestConsumerPollUsesConfiguredReceiveOptions(t *testing.T) {
@@ -139,6 +145,15 @@ func TestDecodeMessageSupportsStringValueCasing(t *testing.T) {
 	}
 }
 
+func TestDecodeMessageTreatsMissingActionAsNoOp(t *testing.T) {
+	t.Parallel()
+
+	action, err := DecodeMessage(RawMessage{})
+
+	require.NoError(t, err)
+	assert.Equal(t, Action{}, action)
+}
+
 func TestDecodeMessagePrefersLowerCaseStringValue(t *testing.T) {
 	t.Parallel()
 
@@ -218,13 +233,6 @@ func TestDecodeMessagePreservesContractAttributes(t *testing.T) {
 	assert.Equal(t, "123", action.Attributes["userId"])
 	assert.Equal(t, "0000", action.Attributes["offTime"])
 	assert.Equal(t, "MON", action.Attributes["workday"])
-}
-
-func TestDecodeMessageRejectsMissingAction(t *testing.T) {
-	action, err := DecodeMessage(RawMessage{})
-
-	require.Error(t, err)
-	assert.Empty(t, action.Name)
 }
 
 func TestActionNamesRemainStable(t *testing.T) {

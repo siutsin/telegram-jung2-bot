@@ -64,9 +64,10 @@ func ParseAll(text string) []Command {
 	return commands
 }
 
+// commandFromMatch builds a command from a regexp match.
 func commandFromMatch(text string, match []int) Command {
 	name := canonicalName(strings.TrimPrefix(text[match[0]:match[1]], "/"))
-	args := strings.TrimPrefix(text[match[1]:], " ")
+	args := commandArgs(text[match[1]:])
 
 	return Command{Name: name, Args: args}
 }
@@ -132,6 +133,7 @@ func ParseSetOffFromWorkTimeArgs(args string) (SetOffFromWorkTimeArgs, error) {
 	}, nil
 }
 
+// canonicalName restores the contract command casing.
 func canonicalName(name string) string {
 	switch strings.ToLower(name) {
 	case strings.ToLower(JungHelp):
@@ -153,6 +155,7 @@ func canonicalName(name string) string {
 	}
 }
 
+// baseAction returns the base queue action for a command name.
 func baseAction(commandName string) (queue.Action, error) {
 	switch commandName {
 	case JungHelp:
@@ -174,6 +177,7 @@ func baseAction(commandName string) (queue.Action, error) {
 	}
 }
 
+// normaliseWorkdayList removes duplicate day tokens in order.
 func normaliseWorkdayList(raw string) (string, error) {
 	parts := strings.Split(raw, ",")
 	if len(parts) > 7 {
@@ -193,6 +197,21 @@ func normaliseWorkdayList(raw string) (string, error) {
 	}
 
 	return strings.Join(normalised, ","), nil
+}
+
+// commandArgs strips an optional bot mention before returning args.
+func commandArgs(raw string) string {
+	args := strings.TrimPrefix(raw, " ")
+	if !strings.HasPrefix(args, "@") {
+		return args
+	}
+
+	mentionEnd := strings.Index(args, " ")
+	if mentionEnd < 0 {
+		return ""
+	}
+
+	return strings.TrimPrefix(args[mentionEnd:], " ")
 }
 
 var commandCheckOrder = []string{

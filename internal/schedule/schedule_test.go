@@ -59,31 +59,29 @@ func TestServiceHandleDueReportEnqueuesDueChats(t *testing.T) {
 	assert.Equal(t, []queue.Action{BuildOffFromWorkAction(1), BuildOffFromWorkAction(2)}, enqueuer.actions)
 }
 
-func TestServiceHandleDueReportRequiresChats(t *testing.T) {
+// These cases keep due-report failures pinned to the right validation or
+// repository boundary instead of silently skipping scheduled reports.
+func TestServiceHandleDueReportSetupErrors(t *testing.T) {
 	t.Parallel()
 
-	err := (Service{Enqueuer: &fakeEnqueuer{}}).HandleDueReport(context.Background(), time.Time{})
+	tests := []struct {
+		name    string
+		service Service
+		wantErr string
+	}{
+		{name: "missing chats", service: Service{Enqueuer: &fakeEnqueuer{}}, wantErr: "chat repository is required"},
+		{name: "missing enqueuer", service: Service{Chats: &fakeChatRepository{}}, wantErr: "enqueuer is required"},
+		{name: "list error", service: Service{Chats: &fakeChatRepository{err: errors.New("boom")}, Enqueuer: &fakeEnqueuer{}}, wantErr: "list due chats: boom"},
+	}
 
-	require.Error(t, err)
-	assert.EqualError(t, err, "chat repository is required")
-}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := test.service.HandleDueReport(context.Background(), time.Time{})
 
-func TestServiceHandleDueReportRequiresEnqueuer(t *testing.T) {
-	t.Parallel()
-
-	err := (Service{Chats: &fakeChatRepository{}}).HandleDueReport(context.Background(), time.Time{})
-
-	require.Error(t, err)
-	assert.EqualError(t, err, "enqueuer is required")
-}
-
-func TestServiceHandleDueReportWrapsListError(t *testing.T) {
-	t.Parallel()
-
-	err := (Service{Chats: &fakeChatRepository{err: errors.New("boom")}, Enqueuer: &fakeEnqueuer{}}).HandleDueReport(context.Background(), time.Time{})
-
-	require.Error(t, err)
-	assert.EqualError(t, err, "list due chats: boom")
+			require.Error(t, err)
+			assert.EqualError(t, err, test.wantErr)
+		})
+	}
 }
 
 func TestServiceHandleDueReportWrapsEnqueueError(t *testing.T) {
@@ -106,6 +104,14 @@ func TestWindowFromTime(t *testing.T) {
 	assert.Equal(t, Window{OffTime: "1000", Weekday: "FRI"}, window)
 }
 
+func TestWindowFromTimePreservesInputOffset(t *testing.T) {
+	t.Parallel()
+
+	window := WindowFromTime(time.Date(2022, 3, 4, 18, 0, 0, 0, time.FixedZone("UTC+8", 8*60*60)))
+
+	assert.Equal(t, Window{OffTime: "1800", Weekday: "FRI"}, window)
+}
+
 func TestDueChatIDs(t *testing.T) {
 	t.Parallel()
 
@@ -121,6 +127,92 @@ func TestDueChatIDs(t *testing.T) {
 	assert.Equal(t, []int64{1, 2}, chatIDs)
 }
 
+// Keep both action builders together because they pin the exact queue contract
+// shape the runtime depends on.
+func TestBuildActions(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		build     func() queue.Action
+		wantName  string
+		wantBody  string
+		wantAttrs map[string]string
+	}{
+		{
+			name:     "on off from work",
+			build:    func() queue.Action { return BuildOnOffFromWorkAction("2022-03-04T10:00:00.000Z") },
+			wantName: queue.ActionOnOffFromWork,
+			wantBody: queue.BodyOnOffFromWork,
+			wantAttrs: map[string]string{
+				"action":     "onOffFromWork",
+				"timeString": "2022-03-04T10:00:00.000Z",
+			},
+		},
+		{
+			name:     "off from work",
+			build:    func() queue.Action { return BuildOffFromWorkAction(123) },
+			wantName: queue.ActionOffFromWork,
+			wantBody: queue.BodyOffFromWork,
+			wantAttrs: map[string]string{
+				"action": "offFromWork",
+				"chatId": "123",
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			action := test.build()
+
+			assert.Equal(t, test.wantName, action.Name)
+			assert.Equal(t, test.wantBody, action.Body)
+			assert.Equal(t, test.wantAttrs, action.Attributes)
+		})
+	}
+}
+
+// Admin-only toggles share the same contract shape except for reply text and
+// boolean payload, so one table keeps the assertions aligned.
+func TestAllJungSettingChanges(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		build     func(isAdmin bool) SettingChange
+		wantReply string
+		wantAttrs map[string]any
+	}{
+		{
+			name:      "enable",
+			build:     func(isAdmin bool) SettingChange { return EnableAllJung("chats", 123, "Group", isAdmin) },
+			wantReply: "Enabled AllJung command",
+			wantAttrs: map[string]any{":eaj": true},
+		},
+		{
+			name:      "disable",
+			build:     func(isAdmin bool) SettingChange { return DisableAllJung("chats", 123, "Group", isAdmin) },
+			wantReply: "Disabled AllJung command",
+			wantAttrs: map[string]any{":eaj": false},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			change := test.build(true)
+
+			require.True(t, change.Allowed)
+			assert.Contains(t, change.Reply, test.wantReply)
+			assert.Equal(t, "chats", change.Update.TableName)
+			assert.Equal(t, map[string]any{"chatId": int64(123)}, change.Update.Key)
+			assert.Equal(t, test.wantAttrs, change.Update.ExpressionAttributeValues)
+			assert.False(t, test.build(false).Allowed)
+		})
+	}
+}
+
+// This test protects the contract that default rows implicitly fire only on
+// weekdays, which is easy to break during schedule refactors.
 func TestDueChatIDsSkipsContractDefaultOnWeekend(t *testing.T) {
 	t.Parallel()
 
@@ -129,66 +221,8 @@ func TestDueChatIDsSkipsContractDefaultOnWeekend(t *testing.T) {
 	assert.Empty(t, chatIDs)
 }
 
-func TestBuildOnOffFromWorkAction(t *testing.T) {
-	t.Parallel()
-
-	action := BuildOnOffFromWorkAction("2022-03-04T10:00:00.000Z")
-
-	assert.Equal(t, queue.ActionOnOffFromWork, action.Name)
-	assert.Equal(t, queue.BodyOnOffFromWork, action.Body)
-	assert.Equal(t, map[string]string{
-		"action":     "onOffFromWork",
-		"timeString": "2022-03-04T10:00:00.000Z",
-	}, action.Attributes)
-}
-
-func TestBuildOffFromWorkAction(t *testing.T) {
-	t.Parallel()
-
-	action := BuildOffFromWorkAction(123)
-
-	assert.Equal(t, queue.ActionOffFromWork, action.Name)
-	assert.Equal(t, queue.BodyOffFromWork, action.Body)
-	assert.Equal(t, map[string]string{
-		"action": "offFromWork",
-		"chatId": "123",
-	}, action.Attributes)
-}
-
-func TestEnableAllJung(t *testing.T) {
-	t.Parallel()
-
-	change := EnableAllJung("chats", 123, "Group", true)
-
-	require.True(t, change.Allowed)
-	assert.Contains(t, change.Reply, "Enabled AllJung command")
-	assert.Equal(t, "chats", change.Update.TableName)
-	assert.Equal(t, map[string]any{"chatId": int64(123)}, change.Update.Key)
-	assert.Equal(t, map[string]any{":eaj": true}, change.Update.ExpressionAttributeValues)
-}
-
-func TestEnableAllJungRequiresAdmin(t *testing.T) {
-	t.Parallel()
-
-	assert.False(t, EnableAllJung("chats", 123, "Group", false).Allowed)
-}
-
-func TestDisableAllJung(t *testing.T) {
-	t.Parallel()
-
-	change := DisableAllJung("chats", 123, "Group", true)
-
-	require.True(t, change.Allowed)
-	assert.Contains(t, change.Reply, "Disabled AllJung command")
-	assert.Equal(t, map[string]any{":eaj": false}, change.Update.ExpressionAttributeValues)
-}
-
-func TestDisableAllJungRequiresAdmin(t *testing.T) {
-	t.Parallel()
-
-	assert.False(t, DisableAllJung("chats", 123, "Group", false).Allowed)
-}
-
+// This keeps the admin update payload stable because callers depend on the
+// exact workday bitmask and update-expression shape.
 func TestSetOffFromWorkTimeUTC(t *testing.T) {
 	t.Parallel()
 

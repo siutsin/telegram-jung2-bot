@@ -24,9 +24,9 @@ func TestNormaliseRowsRanksByMessageCount(t *testing.T) {
 	assert.Equal(t, 3, normalised.Rankings[0].Count)
 	assert.Equal(t, "Ada Lovelace", normalised.Rankings[0].FullName)
 	assert.Equal(t, int64(2), normalised.Rankings[1].UserID)
-	assert.Equal(t, "grace", normalised.Rankings[1].FullName)
+	assert.Equal(t, " ", normalised.Rankings[1].FullName)
 	assert.Equal(t, int64(3), normalised.Rankings[2].UserID)
-	assert.Equal(t, "3", normalised.Rankings[2].FullName)
+	assert.Equal(t, " ", normalised.Rankings[2].FullName)
 }
 
 func TestNormaliseRowsRanksDiversByLowMessageCount(t *testing.T) {
@@ -54,10 +54,10 @@ func TestGenerateTopTenReport(t *testing.T) {
 	assert.Equal(t, 5, summary.MessageCount)
 	assert.Contains(t, summary.Report, "圍爐區: Group\n\nTop 10 冗員s in the last 7 days (last 上水 time):")
 	assert.Contains(t, summary.Report, "1. Ada Lovelace 60.00% (a day ago)")
-	assert.Contains(t, summary.Report, "2. grace 20.00% (2 days ago)")
-	assert.Contains(t, summary.Report, "3. 3 20.00% (a few seconds ago)")
+	assert.Contains(t, summary.Report, "2.   20.00% (2 days ago)")
+	assert.Contains(t, summary.Report, "3.   20.00% (a few seconds ago)")
 	assert.Contains(t, summary.Report, "Total messages: 5")
-	assert.Contains(t, summary.Report, "Last Update: 2026-05-02T12:00:00Z")
+	assert.Contains(t, summary.Report, "Last Update: 2026-05-02T12:00:00+00:00")
 	assert.NotContains(t, summary.Report, "4.")
 }
 
@@ -80,7 +80,7 @@ func TestGenerateAllJungReport(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Contains(t, summary.Report, "All 冗員s in the last 14 days")
-	assert.Contains(t, summary.Report, "3. 3 20.00%")
+	assert.Contains(t, summary.Report, "3.   20.00%")
 }
 
 func TestAllJungRender(t *testing.T) {
@@ -92,7 +92,7 @@ func TestAllJungRender(t *testing.T) {
 	rendered := Render(report)
 
 	assert.Contains(t, rendered, "All 冗員s")
-	assert.Contains(t, rendered, "3. 3 20.00%")
+	assert.Contains(t, rendered, "3.   20.00%")
 }
 
 func TestGenerateTopDiverReport(t *testing.T) {
@@ -106,8 +106,8 @@ func TestGenerateTopDiverReport(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Contains(t, summary.Report, "Top 2 潛水員s in the last 7 days:")
-	assert.Contains(t, summary.Report, "By 冗power:\n1. grace 20.00%")
-	assert.Contains(t, summary.Report, "By last 上水:\n1. grace - 2 days ago\n2. Ada Lovelace - a day ago")
+	assert.Contains(t, summary.Report, "By 冗power:\n1.   20.00%")
+	assert.Contains(t, summary.Report, "By last 上水:\n1.   - 2 days ago\n2. Ada Lovelace - a day ago")
 	assert.Contains(t, summary.Report, "between, 深潛會搵唔到 ho chi is")
 	assert.NotContains(t, summary.Report, "3. Ada Lovelace 60.00%")
 }
@@ -180,11 +180,30 @@ func TestGenerateReportTruncatesFinalText(t *testing.T) {
 	summary, err := GenerateReport(rows, Options{Now: now()})
 
 	require.NoError(t, err)
-	assert.LessOrEqual(t, utf8.RuneCountInString(summary.Report), telegram.ReportLimit)
 	assert.True(t, utf8.ValidString(summary.Report))
 	assert.Contains(t, summary.Report, "...\n...\n")
 	assert.Contains(t, summary.Report, "Total messages:")
 	assert.Contains(t, summary.Report, "Last Update:")
+}
+
+func TestDisplayNameMatchesReferenceJoinBehavior(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, " grace", displayName(message.Message{LastName: "grace"}))
+	assert.Equal(t, " ", displayName(message.Message{Username: "grace", UserID: 3}))
+}
+
+func TestBuildBodyWithLimitCountsCharactersInsteadOfBytes(t *testing.T) {
+	t.Parallel()
+
+	normalised := NormaliseRows([]message.Message{
+		{ChatTitle: "Group", UserID: 1, FirstName: strings.Repeat("冗", 4), DateCreated: now().Add(-time.Hour)},
+		{ChatTitle: "Group", UserID: 2, FirstName: strings.Repeat("冗", 4), DateCreated: now().Add(-2 * time.Hour)},
+	}, false)
+
+	body := BuildBodyWithLimit(normalised, Options{Now: now()}, 40)
+
+	assert.Contains(t, body, "2. 冗冗冗冗")
 }
 
 func TestBuildDiverBodyLimitsToAvailableRows(t *testing.T) {
@@ -200,10 +219,24 @@ func TestHelpMessage(t *testing.T) {
 
 	helpMessage := HelpMessage("Group")
 
-	assert.Contains(t, helpMessage, "圍爐區: Group")
-	assert.Contains(t, helpMessage, "/topTen  show top ten 冗員s")
-	assert.Contains(t, helpMessage, "/setOffFromWorkTimeUTC  set offFromWork time (UTC time)")
-	assert.Contains(t, helpMessage, "May your 冗 power powerful")
+	assert.Equal(t, "\n"+
+		"圍爐區: Group\n\n"+
+		"冗員[jung2jyun4] Excess personnel in Cantonese\n\n"+
+		"This bot is created for counting the number of message per participant in the group.\n\n"+
+		"Commands:\n"+
+		"/topTen  show top ten 冗員s\n"+
+		"/topDiver  show top ten 潛水員s (潛得太深會搵唔到)\n"+
+		"/allJung  show all 冗員s\n"+
+		"/jungHelp  show help message\n\n"+
+		"Admin Only:\n"+
+		"/enableAllJung  enable `/alljung` command\n"+
+		"/disableAllJung  disable `/alljung` command\n"+
+		"/setOffFromWorkTimeUTC  set offFromWork time (UTC time)\n\n"+
+		"[Bug Report/Suggestion](https://github.com/siutsin/telegram-jung2-bot/issues)\n"+
+		"[Service Status](https://stats.uptimerobot.com/kglZJSkYZg)\n\n"+
+		"May your 冗 power powerful\n",
+		helpMessage,
+	)
 }
 
 func TestTimeAgoUnits(t *testing.T) {

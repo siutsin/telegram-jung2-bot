@@ -82,6 +82,28 @@ func TestSendMessagePostsContractPayload(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestSendMessageWithOptionsPostsOptionalTelegramFields(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		body, err := io.ReadAll(request.Body)
+		require.NoError(t, err)
+		assert.JSONEq(t, `{"chat_id":123,"disable_web_page_preview":true,"parse_mode":"markdown","text":"hi"}`, string(body))
+
+		response.WriteHeader(http.StatusOK)
+		_, err = response.Write([]byte(`{"ok":true}`))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+
+	client := NewClient("token", WithBaseURL(server.URL), WithHTTPClient(server.Client()))
+
+	err := client.SendMessageWithOptions(context.Background(), 123, "hi", SendMessageOptions{
+		DisableWebPagePreview: true,
+		ParseMode:             "markdown",
+	})
+
+	require.NoError(t, err)
+}
+
 func TestSendMessageReturnsTelegramHTTPError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		response.WriteHeader(http.StatusTeapot)

@@ -12,6 +12,7 @@ import (
 )
 
 const defaultOffTime = "1000"
+const scheduleWorkdayMask = workday.Sun | workday.Mon | workday.Tue | workday.Wed | workday.Thu | workday.Fri | workday.Sat
 
 // Settings is the persisted chat settings model.
 type Settings struct {
@@ -58,6 +59,7 @@ type Repository struct {
 	Client    RepositoryClient
 }
 
+// Get loads chat settings by chat ID.
 func (repository Repository) Get(ctx context.Context, chatID int64) (Settings, error) {
 	if repository.Client == nil {
 		return Settings{}, fmt.Errorf("chat repository client is required")
@@ -77,6 +79,7 @@ func (repository Repository) Get(ctx context.Context, chatID int64) (Settings, e
 	return settings, nil
 }
 
+// Save stores chat settings.
 func (repository Repository) Save(ctx context.Context, settings Settings) error {
 	if repository.Client == nil {
 		return fmt.Errorf("chat repository client is required")
@@ -88,6 +91,7 @@ func (repository Repository) Save(ctx context.Context, settings Settings) error 
 	return nil
 }
 
+// ListEnabled loads chats with scheduling enabled.
 func (repository Repository) ListEnabled(ctx context.Context) ([]Settings, error) {
 	if repository.Client == nil {
 		return nil, fmt.Errorf("chat repository client is required")
@@ -98,11 +102,7 @@ func (repository Repository) ListEnabled(ctx context.Context) ([]Settings, error
 	}
 	settings := make([]Settings, 0, len(rows))
 	for _, row := range rows {
-		parsed, err := FromRow(row)
-		if err != nil {
-			return nil, fmt.Errorf("parse chat settings: %w", err)
-		}
-		settings = append(settings, parsed)
+		settings = append(settings, scheduleSettingsFromRow(row))
 	}
 
 	return settings, nil
@@ -218,6 +218,7 @@ func FilterDue(rows []Settings, offTime string, day string) []Settings {
 	return due
 }
 
+// isDue reports whether settings match the given schedule window.
 func isDue(settings Settings, offTime string, day string) bool {
 	if !settings.HasOffTime && !settings.HasWorkday {
 		return offTime == defaultOffTime && workday.MatchesDay(day, workday.Workdays(workday.Mon|workday.Tue|workday.Wed|workday.Thu|workday.Fri))
@@ -227,4 +228,28 @@ func isDue(settings Settings, offTime string, day string) bool {
 	}
 
 	return workday.MatchesDay(day, settings.Workday)
+}
+
+// scheduleSettingsFromRow loads only the fields used by scheduled fan-out.
+func scheduleSettingsFromRow(row Row) Settings {
+	enableAllJung := true
+	if row.EnableAllJung != nil {
+		enableAllJung = *row.EnableAllJung
+	}
+
+	settings := Settings{
+		ChatID:        row.ChatID,
+		ChatTitle:     row.ChatTitle,
+		TTL:           row.TTL,
+		EnableAllJung: enableAllJung,
+		OffTime:       row.OffTime,
+		HasOffTime:    row.OffTime != "",
+	}
+
+	if row.Workday != nil {
+		settings.Workday = workday.Workdays(*row.Workday & scheduleWorkdayMask)
+		settings.HasWorkday = true
+	}
+
+	return settings
 }

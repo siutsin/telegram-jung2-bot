@@ -23,6 +23,7 @@ func TestParseSupportedCommands(t *testing.T) {
 		{text: "/setOffFromWorkTimeUTC 1830 MON,TUE", name: SetOffFromWorkTimeUTC, args: "1830 MON,TUE"},
 		{text: "please /topTen now", name: TopTen, args: "now"},
 		{text: "/TOPTEN", name: TopTen},
+		{text: "/setOffFromWorkTimeUTC@jung2bot 1830 MON,TUE", name: SetOffFromWorkTimeUTC, args: "1830 MON,TUE"},
 	}
 
 	for _, test := range tests {

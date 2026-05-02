@@ -25,6 +25,11 @@ type Client struct {
 	httpClient *http.Client
 }
 
+type SendMessageOptions struct {
+	DisableWebPagePreview bool
+	ParseMode             string
+}
+
 // ClientOption customises a Telegram client.
 type ClientOption func(*Client)
 
@@ -98,10 +103,23 @@ type Administrator struct {
 
 // SendMessage sends text to a Telegram chat.
 func (client Client) SendMessage(ctx context.Context, chatID int64, text string) error {
-	payload, _ := json.Marshal(map[string]any{
+	return client.SendMessageWithOptions(ctx, chatID, text, SendMessageOptions{})
+}
+
+// SendMessageWithOptions sends text to a Telegram chat with optional Telegram
+// API sendMessage fields.
+func (client Client) SendMessageWithOptions(ctx context.Context, chatID int64, text string, options SendMessageOptions) error {
+	requestBody := map[string]any{
 		"chat_id": chatID,
 		"text":    text,
-	})
+	}
+	if options.DisableWebPagePreview {
+		requestBody["disable_web_page_preview"] = true
+	}
+	if options.ParseMode != "" {
+		requestBody["parse_mode"] = options.ParseMode
+	}
+	payload, _ := json.Marshal(requestBody)
 
 	response, err := client.do(ctx, http.MethodPost, "sendMessage", nil, payload)
 	if err != nil {
@@ -184,6 +202,7 @@ func TruncateReport(text string) string {
 	return string(runes[:ReportLimit])
 }
 
+// do sends a Telegram API request.
 func (client Client) do(
 	ctx context.Context,
 	method string,
@@ -212,6 +231,7 @@ func (client Client) do(
 	return response, nil
 }
 
+// telegramAPIError converts non-2xx responses into errors.
 func telegramAPIError(response *http.Response) error {
 	if response.StatusCode >= http.StatusOK && response.StatusCode < http.StatusMultipleChoices {
 		return nil

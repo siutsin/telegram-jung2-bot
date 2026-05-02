@@ -112,6 +112,28 @@ func TestNewRoutesContractWebhookAndHealthPaths(t *testing.T) {
 	assert.Len(t, store.messages, 1)
 }
 
+func TestNewContractWebhookRequiresExactStagePath(t *testing.T) {
+	t.Parallel()
+
+	handler := New(ServerDeps{Dependencies: testDependencies(&fakeStore{}, &fakeEnqueuer{}, nil), Stage: "dev"})
+	response := httptest.NewRecorder()
+
+	handler.ServeHTTP(response, httptest.NewRequest(http.MethodPost, "/jung2bot/dev/extra", strings.NewReader(`{}`)))
+
+	assert.Equal(t, http.StatusNotFound, response.Code)
+}
+
+func TestNewContractWebhookRejectsMissingTrailingSlash(t *testing.T) {
+	t.Parallel()
+
+	handler := New(ServerDeps{Dependencies: testDependencies(&fakeStore{}, &fakeEnqueuer{}, nil), Stage: "dev"})
+	response := httptest.NewRecorder()
+
+	handler.ServeHTTP(response, httptest.NewRequest(http.MethodPost, "/jung2bot/dev", strings.NewReader(`{}`)))
+
+	assert.Equal(t, http.StatusNotFound, response.Code)
+}
+
 func TestNewRoutesContractOffFromWork(t *testing.T) {
 	t.Parallel()
 
@@ -128,7 +150,7 @@ func TestNewRoutesContractOffFromWork(t *testing.T) {
 	assert.Equal(t, "2026-05-02T12:00:00Z", enqueuer.actions[0].Attributes["timeString"])
 }
 
-func TestNewContractOffFromWorkReturnsFailure(t *testing.T) {
+func TestNewContractOffFromWorkReturnsServerError(t *testing.T) {
 	t.Parallel()
 
 	handler := New(ServerDeps{Dependencies: testDependencies(&fakeStore{}, &fakeEnqueuer{err: errors.New("boom")}, nil), Stage: "dev"})
@@ -136,8 +158,8 @@ func TestNewContractOffFromWorkReturnsFailure(t *testing.T) {
 
 	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/jung2bot/dev/onOffFromWork", nil))
 
-	assert.Equal(t, http.StatusServiceUnavailable, response.Code)
-	assert.JSONEq(t, `{"onOffFromWork":"failed"}`, response.Body.String())
+	assert.Equal(t, http.StatusInternalServerError, response.Code)
+	assert.Equal(t, "Internal Server Error\n", response.Body.String())
 }
 
 func TestNewContractOffFromWorkRejectsUnsupportedMethod(t *testing.T) {
@@ -235,6 +257,19 @@ func TestHandleWebhookEnqueuesMultipleCommandsInContractOrder(t *testing.T) {
 	assert.Equal(t, queue.ActionAllJung, enqueuer.actions[2].Name)
 }
 
+func TestHandleWebhookInvalidSetOffDoesNotBlockOtherCommands(t *testing.T) {
+	t.Parallel()
+
+	messenger := &fakeMessenger{}
+	enqueuer := &fakeEnqueuer{}
+	response := HandleWebhook(context.Background(), []byte(`{"message":{"chat":{"id":123,"title":"Group","type":"group"},"from":{"id":456},"text":"/setOffFromWorkTimeUTC bad /topTen","entities":[{"type":"bot_command"}]}}`), testDependencies(&fakeStore{}, enqueuer, messenger))
+
+	assert.Equal(t, Response{StatusCode: 200}, response)
+	require.Len(t, messenger.messages, 1)
+	require.Len(t, enqueuer.actions, 1)
+	assert.Equal(t, queue.ActionTopTen, enqueuer.actions[0].Name)
+}
+
 func TestHandleWebhookIgnoresUnsupportedUpdate(t *testing.T) {
 	t.Parallel()
 
@@ -304,12 +339,20 @@ func TestHandleWebhookSendsInvalidSetOffReply(t *testing.T) {
 	assert.Contains(t, messenger.messages[0], "Error: Invalid format for setOffFromWorkTimeUTC")
 }
 
-func TestHandleWebhookToleratesMissingMessengerForInvalidCommand(t *testing.T) {
+func TestHandleWebhookReturnsReplyErrorWhenMessengerIsMissing(t *testing.T) {
 	t.Parallel()
 
-	response := HandleWebhook(context.Background(), []byte(`{"message":{"chat":{"id":123,"title":"Group","type":"group"},"text":"/setOffFromWorkTimeUTC bad","entities":[{"type":"bot_command"}]}}`), testDependencies(&fakeStore{}, &fakeEnqueuer{}, nil))
+	response := HandleWebhook(context.Background(), []byte(`{"message":{"chat":{"id":123,"title":"Group","type":"group"},"text":"/setOffFromWorkTimeUTC bad","entities":[{"type":"bot_command"}]}}`), Dependencies{
+		MessageTable: "messages",
+		ChatTable:    "chats",
+		Store:        &fakeStore{},
+		Enqueuer:     &fakeEnqueuer{},
+		Now: func() time.Time {
+			return time.Date(2026, 5, 2, 12, 0, 0, 0, time.UTC)
+		},
+	})
 
-	assert.Equal(t, Response{StatusCode: 200}, response)
+	assert.Equal(t, Response{StatusCode: 500, Message: "reply invalid command"}, response)
 }
 
 func TestHandleWebhookReturnsSaveMessageError(t *testing.T) {
@@ -338,6 +381,18 @@ func TestHandleWebhookReturnsEnqueueError(t *testing.T) {
 	assert.Equal(t, Response{StatusCode: 500, Message: "enqueue command"}, response)
 }
 
+func TestNewContractWebhookSuppressesInternalErrorMessage(t *testing.T) {
+	t.Parallel()
+
+	handler := New(ServerDeps{Dependencies: testDependencies(&fakeStore{}, &fakeEnqueuer{}, nil), Stage: "dev"})
+	response := httptest.NewRecorder()
+
+	handler.ServeHTTP(response, httptest.NewRequest(http.MethodPost, "/jung2bot/dev/", strings.NewReader(`{bad json`)))
+
+	assert.Equal(t, http.StatusInternalServerError, response.Code)
+	assert.JSONEq(t, `{"statusCode":500}`, response.Body.String())
+}
+
 func TestHandleWebhookDefaultsTime(t *testing.T) {
 	t.Parallel()
 
@@ -358,9 +413,14 @@ func TestValidate(t *testing.T) {
 	assert.EqualError(t, Validate(Dependencies{MessageTable: "messages"}), "chat table is required")
 	assert.EqualError(t, Validate(Dependencies{MessageTable: "messages", ChatTable: "chats"}), "store is required")
 	assert.EqualError(t, Validate(Dependencies{MessageTable: "messages", ChatTable: "chats", Store: &fakeStore{}}), "enqueuer is required")
+	assert.EqualError(t, Validate(Dependencies{MessageTable: "messages", ChatTable: "chats", Store: &fakeStore{}, Enqueuer: &fakeEnqueuer{}}), "messenger is required")
 }
 
 func testDependencies(store Store, enqueuer Enqueuer, messenger Messenger) Dependencies {
+	if messenger == nil {
+		messenger = &fakeMessenger{}
+	}
+
 	return Dependencies{
 		MessageTable: "messages",
 		ChatTable:    "chats",
@@ -401,12 +461,13 @@ func (enqueuer *fakeEnqueuer) Enqueue(ctx context.Context, action queue.Action) 
 }
 
 type fakeMessenger struct {
+	err      error
 	messages []string
 }
 
 func (messenger *fakeMessenger) SendMessage(ctx context.Context, chatID int64, text string) error {
 	messenger.messages = append(messenger.messages, text)
-	return nil
+	return messenger.err
 }
 
 type fakeScaleUpper struct {

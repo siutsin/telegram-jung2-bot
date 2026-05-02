@@ -13,6 +13,7 @@ go_test(
         "//internal/statistics:statistics",
         "//internal/telegram:telegram",
         "//internal/workday:workday",
+        "//internal/worker:worker",
         "//vendor/github.com/stretchr/testify/assert:assert",
         "//vendor/github.com/stretchr/testify/require:require",
     ],

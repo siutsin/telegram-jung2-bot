@@ -17,40 +17,66 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRunReturnsDefaultWiringError(t *testing.T) {
-	t.Parallel()
+func TestRunBuildsAndStartsDefaultRuntime(t *testing.T) {
+	original := newRuntimeFactory
+	t.Cleanup(func() { newRuntimeFactory = original })
+
+	ctx, cancel := context.WithCancel(context.Background())
+	httpServer := newBlockingHTTPServer()
+	queueWorker := &fakeQueueWorker{}
+	newRuntimeFactory = func(ctx context.Context, config config.Config) (Factory, error) {
+		return &fakeFactory{httpServer: httpServer, queueWorker: queueWorker}, nil
+	}
+	done := make(chan error, 1)
+
+	go func() {
+		done <- Run(ctx, config.Config{})
+	}()
+
+	<-httpServer.started
+	cancel()
+
+	require.NoError(t, <-done)
+	assert.True(t, httpServer.shutdownCalled)
+	assert.True(t, queueWorker.cancelled)
+}
+
+func TestRunReturnsRuntimeFactoryError(t *testing.T) {
+	original := newRuntimeFactory
+	t.Cleanup(func() { newRuntimeFactory = original })
+	newRuntimeFactory = func(ctx context.Context, config config.Config) (Factory, error) {
+		return nil, errors.New("boom")
+	}
 
 	err := Run(context.Background(), config.Config{})
 
 	require.Error(t, err)
-	assert.EqualError(t, err, "create HTTP server: validate HTTP dependencies: message table is required")
+	assert.EqualError(t, err, "build runtime factory: boom")
 }
 
-func TestRunWithRequiresFactory(t *testing.T) {
+// These cases pin the setup-stage error boundaries so wiring regressions fail
+// before the service starts goroutines.
+func TestRunWithSetupErrors(t *testing.T) {
 	t.Parallel()
 
-	err := RunWith(context.Background(), config.Config{}, Options{})
+	tests := []struct {
+		name    string
+		options Options
+		wantErr string
+	}{
+		{name: "missing factory", options: Options{}, wantErr: "factory is required"},
+		{name: "http factory error", options: Options{Factory: &fakeFactory{httpErr: errors.New("boom")}}, wantErr: "create HTTP server: boom"},
+		{name: "queue factory error", options: Options{Factory: &fakeFactory{queueErr: errors.New("boom")}}, wantErr: "create queue worker: boom"},
+	}
 
-	require.Error(t, err)
-	assert.EqualError(t, err, "factory is required")
-}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := RunWith(context.Background(), config.Config{}, test.options)
 
-func TestRunWithReturnsHTTPFactoryError(t *testing.T) {
-	t.Parallel()
-
-	err := RunWith(context.Background(), config.Config{}, Options{Factory: &fakeFactory{httpErr: errors.New("boom")}})
-
-	require.Error(t, err)
-	assert.EqualError(t, err, "create HTTP server: boom")
-}
-
-func TestRunWithReturnsQueueFactoryError(t *testing.T) {
-	t.Parallel()
-
-	err := RunWith(context.Background(), config.Config{}, Options{Factory: &fakeFactory{queueErr: errors.New("boom")}})
-
-	require.Error(t, err)
-	assert.EqualError(t, err, "create queue worker: boom")
+			require.Error(t, err)
+			assert.EqualError(t, err, test.wantErr)
+		})
+	}
 }
 
 func TestRunWithReturnsHTTPServerError(t *testing.T) {
@@ -99,6 +125,8 @@ func TestRunWithReturnsShutdownErrorAfterComponentFailure(t *testing.T) {
 	assert.EqualError(t, err, "shutdown HTTP server: shutdown boom")
 }
 
+// Cancellation is the daemon's normal shutdown path, so this test keeps the
+// HTTP and worker teardown contract explicit.
 func TestRunWithShutsDownHTTPServerOnContextCancellation(t *testing.T) {
 	t.Parallel()
 
@@ -122,6 +150,8 @@ func TestRunWithShutsDownHTTPServerOnContextCancellation(t *testing.T) {
 	assert.True(t, queueWorker.cancelled)
 }
 
+// A shutdown failure must win over cancellation so operators see the real stop
+// error instead of a clean exit.
 func TestRunWithReturnsShutdownError(t *testing.T) {
 	t.Parallel()
 
@@ -153,7 +183,7 @@ func TestRunWithUsesFallbackShutdownTimeout(t *testing.T) {
 func TestRuntimeFactoryBuildsHTTPServer(t *testing.T) {
 	t.Parallel()
 
-	server, err := (RuntimeFactory{Store: &runtimeStore{}, Sender: &runtimeSender{}}).NewHTTPServer(runtimeConfig())
+	server, err := (RuntimeFactory{Messenger: &runtimeMessenger{}, Store: &runtimeStore{}, Sender: &runtimeSender{}}).NewHTTPServer(runtimeConfig())
 
 	require.NoError(t, err)
 	httpServer, ok := server.(*http.Server)
@@ -175,6 +205,23 @@ func TestRuntimeFactoryRejectsInvalidHTTPDependencies(t *testing.T) {
 	assert.EqualError(t, err, "validate HTTP dependencies: store is required")
 }
 
+func TestRuntimeFactoryBuildsScaleUpRoute(t *testing.T) {
+	t.Parallel()
+
+	server, err := (RuntimeFactory{
+		Messenger:  &runtimeMessenger{},
+		ScaleUpper: &runtimeScaleUpper{},
+		Store:      &runtimeStore{},
+		Sender:     &runtimeSender{},
+	}).NewHTTPServer(runtimeConfig())
+
+	require.NoError(t, err)
+	httpServer := server.(*http.Server)
+	response := httptest.NewRecorder()
+	httpServer.Handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/jung2bot/dev/onScaleUp", nil))
+	assert.Equal(t, http.StatusOK, response.Code)
+}
+
 func TestRuntimeFactoryBuildsQueueWorker(t *testing.T) {
 	t.Parallel()
 
@@ -185,22 +232,26 @@ func TestRuntimeFactoryBuildsQueueWorker(t *testing.T) {
 	assert.True(t, ok)
 }
 
-func TestRuntimeFactoryQueueWorkerRequiresReceiver(t *testing.T) {
+func TestRuntimeFactoryQueueWorkerRequiresDependencies(t *testing.T) {
 	t.Parallel()
 
-	_, err := (RuntimeFactory{Deleter: &runtimeDeleter{}}).NewQueueWorker(runtimeConfig())
+	tests := []struct {
+		name    string
+		factory RuntimeFactory
+		wantErr string
+	}{
+		{name: "missing receiver", factory: RuntimeFactory{Deleter: &runtimeDeleter{}}, wantErr: "queue receiver is required"},
+		{name: "missing deleter", factory: RuntimeFactory{Receiver: &runtimeReceiver{}}, wantErr: "queue deleter is required"},
+	}
 
-	require.Error(t, err)
-	assert.EqualError(t, err, "queue receiver is required")
-}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := test.factory.NewQueueWorker(runtimeConfig())
 
-func TestRuntimeFactoryQueueWorkerRequiresDeleter(t *testing.T) {
-	t.Parallel()
-
-	_, err := (RuntimeFactory{Receiver: &runtimeReceiver{}}).NewQueueWorker(runtimeConfig())
-
-	require.Error(t, err)
-	assert.EqualError(t, err, "queue deleter is required")
+			require.Error(t, err)
+			assert.EqualError(t, err, test.wantErr)
+		})
+	}
 }
 
 type fakeFactory struct {
@@ -291,6 +342,7 @@ func runtimeConfig() config.Config {
 		MessageTable:    "messages",
 		ChatIDTable:     "chats",
 		EventQueueURL:   "queue-url",
+		Stage:           "dev",
 		ServerAddress:   ":3000",
 		HTTPTimeout:     5 * time.Second,
 		ShutdownTimeout: time.Second,
@@ -322,5 +374,17 @@ func (receiver *runtimeReceiver) ReceiveMessage(ctx context.Context, request que
 type runtimeDeleter struct{}
 
 func (deleter *runtimeDeleter) Delete(ctx context.Context, request queue.DeleteMessageRequest) error {
+	return nil
+}
+
+type runtimeMessenger struct{}
+
+func (messenger *runtimeMessenger) SendMessage(ctx context.Context, chatID int64, text string) error {
+	return nil
+}
+
+type runtimeScaleUpper struct{}
+
+func (scaleUpper *runtimeScaleUpper) ScaleUp(ctx context.Context) error {
 	return nil
 }

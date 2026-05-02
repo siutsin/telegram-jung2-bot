@@ -75,6 +75,7 @@ func MatchesDay(day string, workdays Workdays) bool {
 	return int(workdays)&bit != 0
 }
 
+// bitForWeekday returns the stored bit for a weekday.
 func bitForWeekday(weekday time.Weekday) int {
 	switch weekday {
 	case time.Sunday:

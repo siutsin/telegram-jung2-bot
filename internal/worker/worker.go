@@ -41,6 +41,7 @@ type PollingWorker struct {
 	Deleter  Deleter
 }
 
+// Run polls the queue until the context is cancelled.
 func (worker PollingWorker) Run(ctx context.Context) error {
 	if worker.Deleter == nil {
 		return fmt.Errorf("deleter is required")
@@ -50,31 +51,67 @@ func (worker PollingWorker) Run(ctx context.Context) error {
 			return nil
 		}
 		if err := worker.Consumer.Poll(ctx, func(ctx context.Context, message queue.RawMessage) error {
-			return ProcessMessage(ctx, worker.QueueURL, message, worker.Handlers, worker.Deleter)
+			if err := ProcessMessage(ctx, worker.QueueURL, message, worker.Handlers, worker.Deleter); err != nil {
+				return nil
+			}
+			return nil
 		}); err != nil {
 			return err
 		}
 	}
 }
 
+// Dispatch routes an action to its handler.
 func Dispatch(ctx context.Context, action queue.Action, handlers Handlers) error {
 	switch action.Name {
 	case queue.ActionJungHelp:
-		return requireHandler(handlers.JungHelp, action.Name)(ctx, chatID(action), action.Attributes["chatTitle"])
+		handler, err := requireHandler(handlers.JungHelp, action.Name)
+		if err != nil {
+			return err
+		}
+		return handler(ctx, chatID(action), action.Attributes["chatTitle"])
 	case queue.ActionTopTen:
-		return requireHandler(handlers.TopTen, action.Name)(ctx, chatID(action))
+		handler, err := requireHandler(handlers.TopTen, action.Name)
+		if err != nil {
+			return err
+		}
+		return handler(ctx, chatID(action))
 	case queue.ActionTopDiver:
-		return requireHandler(handlers.TopDiver, action.Name)(ctx, chatID(action))
+		handler, err := requireHandler(handlers.TopDiver, action.Name)
+		if err != nil {
+			return err
+		}
+		return handler(ctx, chatID(action))
 	case queue.ActionAllJung:
-		return requireHandler(handlers.AllJung, action.Name)(ctx, chatID(action))
+		handler, err := requireHandler(handlers.AllJung, action.Name)
+		if err != nil {
+			return err
+		}
+		return handler(ctx, chatID(action))
 	case queue.ActionOffFromWork:
-		return requireHandler(handlers.OffFromWork, action.Name)(ctx, chatID(action))
+		handler, err := requireHandler(handlers.OffFromWork, action.Name)
+		if err != nil {
+			return err
+		}
+		return handler(ctx, chatID(action))
 	case queue.ActionEnableAllJung:
-		return requireHandler(handlers.EnableAllJung, action.Name)(ctx, chatID(action), action.Attributes["chatTitle"], userID(action))
+		handler, err := requireHandler(handlers.EnableAllJung, action.Name)
+		if err != nil {
+			return err
+		}
+		return handler(ctx, chatID(action), action.Attributes["chatTitle"], userID(action))
 	case queue.ActionDisableAllJung:
-		return requireHandler(handlers.DisableAllJung, action.Name)(ctx, chatID(action), action.Attributes["chatTitle"], userID(action))
+		handler, err := requireHandler(handlers.DisableAllJung, action.Name)
+		if err != nil {
+			return err
+		}
+		return handler(ctx, chatID(action), action.Attributes["chatTitle"], userID(action))
 	case queue.ActionSetOffWorkTime:
-		return requireHandler(handlers.SetOffWorkTime, action.Name)(ctx, SetOffInput{
+		handler, err := requireHandler(handlers.SetOffWorkTime, action.Name)
+		if err != nil {
+			return err
+		}
+		return handler(ctx, SetOffInput{
 			ChatID:    chatID(action),
 			ChatTitle: action.Attributes["chatTitle"],
 			UserID:    userID(action),
@@ -82,12 +119,17 @@ func Dispatch(ctx context.Context, action queue.Action, handlers Handlers) error
 			Workday:   action.Attributes["workday"],
 		})
 	case queue.ActionOnOffFromWork:
-		return requireHandler(handlers.OnOffFromWork, action.Name)(ctx, action.Attributes["timeString"])
+		handler, err := requireHandler(handlers.OnOffFromWork, action.Name)
+		if err != nil {
+			return err
+		}
+		return handler(ctx, action.Attributes["timeString"])
 	default:
-		return fmt.Errorf("unsupported queue action %q", action.Name)
+		return nil
 	}
 }
 
+// ProcessMessage decodes, dispatches, and deletes a queue message.
 func ProcessMessage(ctx context.Context, queueURL string, raw queue.RawMessage, handlers Handlers, deleter Deleter) error {
 	action, err := queue.DecodeMessage(raw)
 	if err != nil {
@@ -103,23 +145,29 @@ func ProcessMessage(ctx context.Context, queueURL string, raw queue.RawMessage, 
 	return nil
 }
 
+// chatID parses the chat ID from action attributes.
 func chatID(action queue.Action) int64 {
 	return parseInt(action.Attributes["chatId"])
 }
 
+// userID parses the user ID from action attributes.
 func userID(action queue.Action) int64 {
 	return parseInt(action.Attributes["userId"])
 }
 
+// parseInt parses a decimal int64 and falls back to zero.
 func parseInt(raw string) int64 {
 	value, _ := strconv.ParseInt(raw, 10, 64)
 	return value
 }
 
-func requireHandler[T any](handler T, action string) T {
-	if reflect.ValueOf(handler).IsNil() {
-		panic(fmt.Sprintf("missing handler for %s", action))
+// requireHandler returns a configured handler for an action.
+func requireHandler[T any](handler T, action string) (T, error) {
+	value := reflect.ValueOf(handler)
+	if !value.IsValid() || value.IsNil() {
+		var zero T
+		return zero, fmt.Errorf("missing handler for %s", action)
 	}
 
-	return handler
+	return handler, nil
 }

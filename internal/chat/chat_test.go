@@ -107,11 +107,20 @@ func TestRepositoryListEnabledWrapsClientError(t *testing.T) {
 	assert.EqualError(t, err, "list enabled chats: boom")
 }
 
-func TestRepositoryListEnabledWrapsParseError(t *testing.T) {
-	_, err := (Repository{Client: &fakeChatClient{rows: []Row{{DateCreated: "bad"}}}}).ListEnabled(context.Background())
+func TestRepositoryListEnabledIgnoresMalformedDateCreated(t *testing.T) {
+	settings, err := (Repository{Client: &fakeChatClient{rows: []Row{{ChatID: 123, DateCreated: "bad"}}}}).ListEnabled(context.Background())
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "parse chat settings")
+	require.NoError(t, err)
+	assert.Equal(t, []Settings{{ChatID: 123, EnableAllJung: true}}, settings)
+}
+
+func TestRepositoryListEnabledMasksMalformedWorkdayBits(t *testing.T) {
+	mask := workday.Mon | 128
+
+	settings, err := (Repository{Client: &fakeChatClient{rows: []Row{{ChatID: 123, Workday: &mask}}}}).ListEnabled(context.Background())
+
+	require.NoError(t, err)
+	assert.Equal(t, []Settings{{ChatID: 123, EnableAllJung: true, Workday: workday.Workdays(workday.Mon), HasWorkday: true}}, settings)
 }
 
 func TestFromTelegramBuildsChatMetadata(t *testing.T) {

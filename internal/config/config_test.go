@@ -15,14 +15,14 @@ func TestLoadAcceptsValidConfig(t *testing.T) {
 	assert.Equal(t, "eu-west-1", config.AWSRegion)
 	assert.Equal(t, "info", config.LogLevel)
 	assert.Equal(t, "dev", config.Stage)
-	assert.Equal(t, ":3000", config.ServerAddress)
+	assert.Equal(t, "127.0.0.1:3000", config.ServerAddress)
 	assert.Equal(t, "messages-dev", config.MessageTable)
 	assert.Equal(t, "chat-id-dev", config.ChatIDTable)
 	assert.Empty(t, config.AWSEndpointURL)
 	assert.Equal(t, "https://api.telegram.org", config.TelegramAPIBaseURL)
 	assert.Equal(t, 10*time.Second, config.HTTPTimeout)
 	assert.Equal(t, 10*time.Second, config.ShutdownTimeout)
-	assert.Equal(t, 1, config.ScaleUpReadCapacity)
+	assert.Equal(t, 0, config.ScaleUpReadCapacity)
 }
 
 func TestLoadUsesOverrides(t *testing.T) {
@@ -49,6 +49,16 @@ func TestLoadUsesOverrides(t *testing.T) {
 	assert.Equal(t, "http://localhost:8081", config.TelegramAPIBaseURL)
 	assert.Equal(t, 3*time.Second, config.HTTPTimeout)
 	assert.Equal(t, 4*time.Second, config.ShutdownTimeout)
+}
+
+func TestLoadUsesDockerBindDefault(t *testing.T) {
+	env := validEnv()
+	env["DOCKER"] = "1"
+
+	config, err := Load(env)
+	require.NoError(t, err)
+
+	assert.Equal(t, "0.0.0.0:3000", config.ServerAddress)
 }
 
 func TestLoadRejectsMissingRequiredValues(t *testing.T) {
@@ -122,7 +132,7 @@ func TestLoadFallsBackForInvalidScaleUpReadCapacity(t *testing.T) {
 
 			config, err := Load(env)
 			require.NoError(t, err)
-			assert.Equal(t, 1, config.ScaleUpReadCapacity)
+			assert.Equal(t, 0, config.ScaleUpReadCapacity)
 		})
 	}
 }
