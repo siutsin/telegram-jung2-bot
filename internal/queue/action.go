@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 )
 
 // Stable action names used in SQS messages.
@@ -91,6 +92,7 @@ type Producer struct {
 	Sender   Sender
 }
 
+// Enqueue sends an action to the queue.
 func (producer Producer) Enqueue(ctx context.Context, action Action) error {
 	if producer.Sender == nil {
 		return fmt.Errorf("queue sender is required")
@@ -109,6 +111,7 @@ type Consumer struct {
 	WaitTimeSeconds     int
 }
 
+// Poll receives queue messages and dispatches them to handler.
 func (consumer Consumer) Poll(ctx context.Context, handler Handler) error {
 	if consumer.Receiver == nil {
 		return fmt.Errorf("queue receiver is required")
@@ -124,10 +127,27 @@ func (consumer Consumer) Poll(ctx context.Context, handler Handler) error {
 	if err != nil {
 		return fmt.Errorf("receive SQS messages: %w", err)
 	}
+	var (
+		firstErr error
+		mutex    sync.Mutex
+		waiter   sync.WaitGroup
+	)
 	for _, message := range response.Messages {
-		if err := handler(ctx, message); err != nil {
-			return err
-		}
+		waiter.Add(1)
+		go func(message RawMessage) {
+			defer waiter.Done()
+			if err := handler(ctx, message); err != nil {
+				mutex.Lock()
+				if firstErr == nil {
+					firstErr = err
+				}
+				mutex.Unlock()
+			}
+		}(message)
+	}
+	waiter.Wait()
+	if firstErr != nil {
+		return firstErr
 	}
 
 	return nil
@@ -155,6 +175,7 @@ func (attribute *MessageAttribute) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// value returns the message attribute value regardless of casing.
 func (attribute MessageAttribute) value() string {
 	if attribute.stringValue != "" {
 		return attribute.stringValue
@@ -174,7 +195,7 @@ type RawMessage struct {
 func DecodeMessage(message RawMessage) (Action, error) {
 	attribute, ok := message.MessageAttributes["action"]
 	if !ok || attribute.value() == "" {
-		return Action{}, fmt.Errorf("missing action message attribute")
+		return Action{}, nil
 	}
 
 	attributes := make(map[string]string, len(message.MessageAttributes))
@@ -200,6 +221,7 @@ func DecodeEvent(event Event) (Action, error) {
 	return DecodeMessage(event.Records[0])
 }
 
+// messageBodyText returns the raw body as a plain string.
 func messageBodyText(body json.RawMessage) string {
 	var value string
 	if err := json.Unmarshal(body, &value); err == nil {
@@ -238,6 +260,7 @@ func BuildDeleteMessageRequest(queueURL string, message RawMessage) DeleteMessag
 	}
 }
 
+// maxNumberOfMessages returns the receive batch size.
 func maxNumberOfMessages(value int) int {
 	if value > 0 {
 		return value
@@ -246,6 +269,7 @@ func maxNumberOfMessages(value int) int {
 	return 10
 }
 
+// waitTimeSeconds returns the long-poll duration.
 func waitTimeSeconds(value int) int {
 	if value > 0 {
 		return value

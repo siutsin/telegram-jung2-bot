@@ -56,6 +56,7 @@ type ServerDeps struct {
 	Stage        string
 }
 
+// New builds the HTTP handler for service routes.
 func New(dependencies ServerDeps) http.Handler {
 	mux := http.NewServeMux()
 	healthHandler := func(writer http.ResponseWriter, request *http.Request) {
@@ -88,7 +89,14 @@ func New(dependencies ServerDeps) http.Handler {
 			}
 			writeJSONResponse(writer, http.StatusOK, map[string]string{"health": "ok"})
 		})
+		mux.HandleFunc(stagePrefix, func(writer http.ResponseWriter, request *http.Request) {
+			http.NotFound(writer, request)
+		})
 		mux.HandleFunc(stagePrefix+"/", func(writer http.ResponseWriter, request *http.Request) {
+			if request.URL.Path != stagePrefix+"/" {
+				http.NotFound(writer, request)
+				return
+			}
 			if request.Method != http.MethodPost {
 				http.Error(writer, "method not allowed", http.StatusMethodNotAllowed)
 				return
@@ -107,7 +115,7 @@ func New(dependencies ServerDeps) http.Handler {
 				return
 			}
 			if err := dependencies.Enqueuer.Enqueue(request.Context(), schedule.BuildOnOffFromWorkAction(request.URL.Query().Get("timeString"))); err != nil {
-				writeJSONResponse(writer, http.StatusServiceUnavailable, map[string]string{"onOffFromWork": "failed"})
+				http.Error(writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return
 			}
 			writeJSONResponse(writer, http.StatusAccepted, map[string]string{"onOffFromWork": "ok"})
@@ -132,10 +140,12 @@ func New(dependencies ServerDeps) http.Handler {
 	return mux
 }
 
+// Health returns the health check response.
 func Health() Response {
 	return Response{StatusCode: 200, Message: "ok"}
 }
 
+// HandleWebhook processes a Telegram webhook payload.
 func HandleWebhook(ctx context.Context, payload []byte, dependencies Dependencies) Response {
 	update, err := telegram.ParseUpdate(payload)
 	if err != nil {
@@ -167,8 +177,13 @@ func HandleWebhook(ctx context.Context, payload []byte, dependencies Dependencie
 			UserID:    userID(update.Message.From),
 		})
 		if err != nil {
-			if parsedCommand.Name == command.SetOffFromWorkTimeUTC && dependencies.Messenger != nil {
-				_ = dependencies.Messenger.SendMessage(ctx, update.Message.Chat.ID, schedule.InvalidSetOffFromWorkTimeUTCMessage(update.Message.Chat.Title))
+			if parsedCommand.Name == command.SetOffFromWorkTimeUTC {
+				if dependencies.Messenger == nil {
+					return Response{StatusCode: 500, Message: "reply invalid command"}
+				}
+				if sendErr := dependencies.Messenger.SendMessage(ctx, update.Message.Chat.ID, schedule.InvalidSetOffFromWorkTimeUTCMessage(update.Message.Chat.Title)); sendErr != nil {
+					return Response{StatusCode: 500, Message: "reply invalid command"}
+				}
 			}
 			continue
 		}
@@ -180,6 +195,7 @@ func HandleWebhook(ctx context.Context, payload []byte, dependencies Dependencie
 	return Response{StatusCode: 200}
 }
 
+// currentTime returns the injected time or time.Now.
 func currentTime(dependencies Dependencies) time.Time {
 	if dependencies.Now == nil {
 		return time.Now()
@@ -188,6 +204,7 @@ func currentTime(dependencies Dependencies) time.Time {
 	return dependencies.Now()
 }
 
+// userID returns the Telegram user ID or zero.
 func userID(user *telegram.User) int64 {
 	if user == nil {
 		return 0
@@ -196,6 +213,7 @@ func userID(user *telegram.User) int64 {
 	return user.ID
 }
 
+// parseCommands extracts supported bot commands from a message.
 func parseCommands(message telegram.Message) []command.Command {
 	if len(message.Entities) == 0 || message.Entities[0].Type != "bot_command" {
 		return nil
@@ -204,6 +222,7 @@ func parseCommands(message telegram.Message) []command.Command {
 	return command.ParseAll(message.Text)
 }
 
+// Validate checks required HTTP dependencies.
 func Validate(dependencies Dependencies) error {
 	if dependencies.MessageTable == "" {
 		return fmt.Errorf("message table is required")
@@ -217,10 +236,14 @@ func Validate(dependencies Dependencies) error {
 	if dependencies.Enqueuer == nil {
 		return fmt.Errorf("enqueuer is required")
 	}
+	if dependencies.Messenger == nil {
+		return fmt.Errorf("messenger is required")
+	}
 
 	return nil
 }
 
+// maxBodyBytes returns the configured body size limit.
 func maxBodyBytes(dependencies ServerDeps) int64 {
 	if dependencies.MaxBodyBytes > 0 {
 		return dependencies.MaxBodyBytes
@@ -229,6 +252,7 @@ func maxBodyBytes(dependencies ServerDeps) int64 {
 	return 1 << 20
 }
 
+// writeResponse writes a plain response body.
 func writeResponse(writer http.ResponseWriter, response Response) {
 	writer.WriteHeader(response.StatusCode)
 	if response.Message != "" {
@@ -236,14 +260,16 @@ func writeResponse(writer http.ResponseWriter, response Response) {
 	}
 }
 
+// writeStageWebhookResponse writes the stage-compatible webhook response.
 func writeStageWebhookResponse(writer http.ResponseWriter, response Response) {
 	body := map[string]any{"statusCode": response.StatusCode}
-	if response.Message != "" {
+	if response.Message != "" && response.StatusCode < http.StatusInternalServerError {
 		body["message"] = response.Message
 	}
 	writeJSONResponse(writer, response.StatusCode, body)
 }
 
+// writeJSONResponse writes a JSON response body.
 func writeJSONResponse(writer http.ResponseWriter, statusCode int, body any) {
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(statusCode)

@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"errors"
+	"sync/atomic"
 	"testing"
 
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
@@ -70,6 +71,52 @@ func TestPollingWorkerProcessesAndDeletesMessages(t *testing.T) {
 	assert.Equal(t, []queue.DeleteMessageRequest{{QueueURL: "queue-url", ReceiptHandle: "receipt"}}, deleter.requests)
 }
 
+func TestPollingWorkerContinuesAfterMessageFailure(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	var calls atomic.Int32
+	rawMessages := []queue.RawMessage{
+		{
+			ReceiptHandle: "one",
+			MessageAttributes: map[string]queue.MessageAttribute{
+				"action": mustAttribute(t, `{"StringValue":"topten"}`),
+				"chatId": mustAttribute(t, `{"StringValue":"123"}`),
+			},
+		},
+		{
+			ReceiptHandle: "two",
+			MessageAttributes: map[string]queue.MessageAttribute{
+				"action": mustAttribute(t, `{"StringValue":"topten"}`),
+				"chatId": mustAttribute(t, `{"StringValue":"123"}`),
+			},
+		},
+	}
+	deleter := &fakeDeleter{}
+	receiver := &workerReceiver{response: queue.ReceiveMessageResponse{Messages: rawMessages}}
+	handlerSet := handlers(nil, nil)
+	handlerSet.TopTen = func(ctx context.Context, chatID int64) error {
+		if calls.Add(1) == 1 {
+			return errors.New("boom")
+		}
+		cancel()
+		return nil
+	}
+
+	err := (PollingWorker{
+		Consumer: queue.Consumer{QueueURL: "queue-url", Receiver: receiver},
+		QueueURL: "queue-url",
+		Handlers: handlerSet,
+		Deleter:  deleter,
+	}).Run(ctx)
+
+	require.NoError(t, err)
+	assert.Equal(t, int32(2), calls.Load())
+	require.Len(t, deleter.requests, 1)
+	assert.Equal(t, "queue-url", deleter.requests[0].QueueURL)
+	assert.Contains(t, []string{"one", "two"}, deleter.requests[0].ReceiptHandle)
+}
+
 func TestPollingWorkerRequiresDeleter(t *testing.T) {
 	t.Parallel()
 
@@ -124,6 +171,50 @@ func TestDispatchPassesSetOffInput(t *testing.T) {
 	}, input)
 }
 
+func TestDispatchPassesHelpAndAdminFields(t *testing.T) {
+	t.Parallel()
+
+	var helpChatID int64
+	var helpChatTitle string
+	var enableChatID int64
+	var enableChatTitle string
+	var enableUserID int64
+	var disableChatID int64
+	var disableChatTitle string
+	var disableUserID int64
+	handlerSet := handlers(nil, nil)
+	handlerSet.JungHelp = func(ctx context.Context, chatID int64, chatTitle string) error {
+		helpChatID = chatID
+		helpChatTitle = chatTitle
+		return nil
+	}
+	handlerSet.EnableAllJung = func(ctx context.Context, chatID int64, chatTitle string, userID int64) error {
+		enableChatID = chatID
+		enableChatTitle = chatTitle
+		enableUserID = userID
+		return nil
+	}
+	handlerSet.DisableAllJung = func(ctx context.Context, chatID int64, chatTitle string, userID int64) error {
+		disableChatID = chatID
+		disableChatTitle = chatTitle
+		disableUserID = userID
+		return nil
+	}
+
+	require.NoError(t, Dispatch(context.Background(), action(queue.ActionJungHelp), handlerSet))
+	require.NoError(t, Dispatch(context.Background(), action(queue.ActionEnableAllJung), handlerSet))
+	require.NoError(t, Dispatch(context.Background(), action(queue.ActionDisableAllJung), handlerSet))
+
+	assert.Equal(t, int64(123), helpChatID)
+	assert.Equal(t, "Group", helpChatTitle)
+	assert.Equal(t, int64(123), enableChatID)
+	assert.Equal(t, "Group", enableChatTitle)
+	assert.Equal(t, int64(456), enableUserID)
+	assert.Equal(t, int64(123), disableChatID)
+	assert.Equal(t, "Group", disableChatTitle)
+	assert.Equal(t, int64(456), disableUserID)
+}
+
 func TestDispatchReturnsHandlerError(t *testing.T) {
 	t.Parallel()
 
@@ -133,21 +224,21 @@ func TestDispatchReturnsHandlerError(t *testing.T) {
 	assert.EqualError(t, err, "boom")
 }
 
-func TestDispatchRejectsUnsupportedAction(t *testing.T) {
+func TestDispatchDropsUnsupportedAction(t *testing.T) {
 	t.Parallel()
 
 	err := Dispatch(context.Background(), queue.Action{Name: "nope"}, handlers(nil, nil))
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), `unsupported queue action "nope"`)
+	require.NoError(t, err)
 }
 
-func TestDispatchPanicsForMissingHandler(t *testing.T) {
+func TestDispatchReturnsErrorForMissingHandler(t *testing.T) {
 	t.Parallel()
 
-	assert.PanicsWithValue(t, "missing handler for topten", func() {
-		_ = Dispatch(context.Background(), action(queue.ActionTopTen), Handlers{})
-	})
+	err := Dispatch(context.Background(), action(queue.ActionTopTen), Handlers{})
+
+	require.Error(t, err)
+	assert.EqualError(t, err, "missing handler for topten")
 }
 
 func TestProcessMessageDeletesAfterSuccessfulDispatch(t *testing.T) {
@@ -182,13 +273,12 @@ func TestProcessMessageKeepsMessageOnDispatchFailure(t *testing.T) {
 	assert.Empty(t, deleter.requests)
 }
 
-func TestProcessMessageReturnsDecodeError(t *testing.T) {
+func TestProcessMessageDropsMessageWithoutAction(t *testing.T) {
 	t.Parallel()
 
 	err := ProcessMessage(context.Background(), "queue-url", queue.RawMessage{}, handlers(nil, nil), &fakeDeleter{})
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "missing action")
+	require.NoError(t, err)
 }
 
 func TestProcessMessageReturnsDeleteError(t *testing.T) {

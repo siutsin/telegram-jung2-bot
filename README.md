@@ -60,15 +60,15 @@ Builds the Go service with Buck2.
 make test
 ```
 
-Runs Go tests through Buck2, then runs Go coverage checks. Coverage must stay at
-100%.
+Runs Buck2 tests, then runs a Buck-built Go coverage check. Coverage must stay
+at 100%.
 
 ```bash
 make test-coverage
 ```
 
-Runs Go tests with coverage enabled and fails unless total statement coverage is
-100%.
+Runs the Buck-built Go coverage check and fails unless total statement coverage
+is 100%.
 
 ```bash
 make lint

@@ -176,7 +176,7 @@ complete. It must be removed before the final cleanup gate.
   no longer depends on those public HTTP paths.
 - [ ] Ensure searches for migration-only wording return no matches outside
   intentionally archived material before final release.
-- [ ] Re-run `go test ./...`, `make test`, and `make lint`.
+- [ ] Re-run `make test` and `make lint`.
 
 ## Module Contracts
 

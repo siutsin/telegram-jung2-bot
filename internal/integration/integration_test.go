@@ -16,6 +16,7 @@ import (
 	"github.com/siutsin/telegram-jung2-bot/internal/schedule"
 	"github.com/siutsin/telegram-jung2-bot/internal/statistics"
 	"github.com/siutsin/telegram-jung2-bot/internal/workday"
+	"github.com/siutsin/telegram-jung2-bot/internal/worker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -62,8 +63,41 @@ func TestCommandExecutionSlice(t *testing.T) {
 
 	assert.Equal(t, queue.ActionTopTen, action.Name)
 	assert.Contains(t, rendered, "圍爐區: Group")
-	assert.Contains(t, rendered, "1. Ada 66.67%")
-	assert.Contains(t, rendered, "2. Grace 33.33%")
+	assert.Contains(t, rendered, "1. Ada  66.67%")
+	assert.Contains(t, rendered, "2. Grace  33.33%")
+}
+
+func TestQueueExecutionSlice(t *testing.T) {
+	t.Parallel()
+
+	raw := queue.RawMessage{
+		ReceiptHandle: "receipt",
+		MessageAttributes: map[string]queue.MessageAttribute{
+			"action":    mustAttribute(t, `{"StringValue":"enableAllJung"}`),
+			"chatId":    mustAttribute(t, `{"StringValue":"123"}`),
+			"chatTitle": mustAttribute(t, `{"StringValue":"Group"}`),
+			"userId":    mustAttribute(t, `{"StringValue":"456"}`),
+		},
+	}
+	deleter := &sliceDeleter{}
+	var gotChatID int64
+	var gotChatTitle string
+	var gotUserID int64
+
+	err := worker.ProcessMessage(context.Background(), "queue-url", raw, worker.Handlers{
+		EnableAllJung: func(ctx context.Context, chatID int64, chatTitle string, userID int64) error {
+			gotChatID = chatID
+			gotChatTitle = chatTitle
+			gotUserID = userID
+			return nil
+		},
+	}, deleter)
+
+	require.NoError(t, err)
+	assert.Equal(t, int64(123), gotChatID)
+	assert.Equal(t, "Group", gotChatTitle)
+	assert.Equal(t, int64(456), gotUserID)
+	assert.Equal(t, []queue.DeleteMessageRequest{{QueueURL: "queue-url", ReceiptHandle: "receipt"}}, deleter.requests)
 }
 
 func TestSettingsManagementSlice(t *testing.T) {
@@ -208,5 +242,22 @@ type sliceQueueWorker struct {
 func (worker *sliceQueueWorker) Run(ctx context.Context) error {
 	<-ctx.Done()
 	worker.cancelled = true
+	return nil
+}
+
+func mustAttribute(t *testing.T, raw string) queue.MessageAttribute {
+	t.Helper()
+
+	var attribute queue.MessageAttribute
+	require.NoError(t, attribute.UnmarshalJSON([]byte(raw)))
+	return attribute
+}
+
+type sliceDeleter struct {
+	requests []queue.DeleteMessageRequest
+}
+
+func (deleter *sliceDeleter) Delete(ctx context.Context, request queue.DeleteMessageRequest) error {
+	deleter.requests = append(deleter.requests, request)
 	return nil
 }

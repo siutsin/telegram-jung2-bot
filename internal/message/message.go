@@ -59,6 +59,7 @@ type Repository struct {
 	Now       func() time.Time
 }
 
+// Save stores a Telegram message row.
 func (repository Repository) Save(ctx context.Context, message Message) error {
 	if repository.Client == nil {
 		return fmt.Errorf("message repository client is required")
@@ -76,6 +77,7 @@ func (repository Repository) Save(ctx context.Context, message Message) error {
 	return nil
 }
 
+// QueryByChat loads messages for a chat in descending order.
 func (repository Repository) QueryByChat(ctx context.Context, chatID int64, since time.Time, until time.Time) ([]Message, error) {
 	if repository.Client == nil {
 		return nil, fmt.Errorf("message repository client is required")
@@ -94,6 +96,7 @@ func (repository Repository) QueryByChat(ctx context.Context, chatID int64, sinc
 	return rows, nil
 }
 
+// now returns the repository clock value.
 func (repository Repository) now() time.Time {
 	if repository.Now == nil {
 		return time.Now()
@@ -169,6 +172,7 @@ func BuildSaveUpdate(tableName string, message Message) UpdateExpression {
 	}
 }
 
+// addStringAttribute adds a non-empty string attribute to an update.
 func addStringAttribute(
 	assignments []string,
 	names map[string]string,
@@ -187,6 +191,7 @@ func addStringAttribute(
 	return append(assignments, placeholder+" = "+valuePlaceholder)
 }
 
+// addIntAttribute adds a non-zero integer attribute to an update.
 func addIntAttribute(
 	assignments []string,
 	names map[string]string,
@@ -205,6 +210,7 @@ func addIntAttribute(
 	return append(assignments, placeholder+" = "+valuePlaceholder)
 }
 
+// joinAssignments joins update assignments with commas.
 func joinAssignments(assignments []string) string {
 	result := assignments[0]
 	for _, assignment := range assignments[1:] {

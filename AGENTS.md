@@ -61,9 +61,12 @@ used to verify behaviour until production adapter parity is complete.
 
 - `make vendor` refreshes Go vendoring and generated Buck targets.
 - `make build` builds the Go service with Buck2.
-- `make test` runs Go tests with Buck2 and enforces 100% Go statement coverage.
-- `make test-coverage` runs only the Go coverage gate; coverage must remain
-  100%.
+- Use `make test` as the only supported test entrypoint for this repository.
+- Do not invoke native `go test` directly for validation.
+- `make test` runs Buck2 tests and a Buck-built Go coverage gate, and enforces
+  100% Go statement coverage.
+- `make test-coverage` runs only the Buck-built Go coverage gate; coverage must
+  remain 100%.
 - `make lint` runs `gofmt` checks, `go vet`, `golangci-lint`, and
   `markdownlint-cli2`.
 - `make lint-fix` applies supported formatting/lint fixes.

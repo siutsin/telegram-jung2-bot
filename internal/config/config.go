@@ -34,7 +34,7 @@ func Load(env map[string]string) (Config, error) {
 		AWSRegion:           valueOrDefault(env, "AWS_REGION", "eu-west-1"),
 		LogLevel:            valueOrDefault(env, "LOG_LEVEL", "info"),
 		Stage:               valueOrDefault(env, "STAGE", "dev"),
-		ServerAddress:       valueOrDefault(env, "SERVER_ADDRESS", ":3000"),
+		ServerAddress:       serverAddress(env),
 		TelegramAPIBaseURL:  valueOrDefault(env, "TELEGRAM_API_BASE_URL", "https://api.telegram.org"),
 		TelegramBotToken:    env["TELEGRAM_BOT_TOKEN"],
 		MessageTable:        env["MESSAGE_TABLE"],
@@ -43,7 +43,7 @@ func Load(env map[string]string) (Config, error) {
 		AWSEndpointURL:      env["AWS_ENDPOINT_URL"],
 		HTTPTimeout:         10 * time.Second,
 		ShutdownTimeout:     10 * time.Second,
-		ScaleUpReadCapacity: 1,
+		ScaleUpReadCapacity: 0,
 	}
 
 	if config.TelegramBotToken == "" {
@@ -89,6 +89,7 @@ func Load(env map[string]string) (Config, error) {
 	return config, nil
 }
 
+// valueOrDefault returns fallback when env[key] is empty.
 func valueOrDefault(env map[string]string, key string, fallback string) string {
 	if env[key] == "" {
 		return fallback
@@ -97,6 +98,19 @@ func valueOrDefault(env map[string]string, key string, fallback string) string {
 	return env[key]
 }
 
+// serverAddress returns the default bind address for the current environment.
+func serverAddress(env map[string]string) string {
+	if env["SERVER_ADDRESS"] != "" {
+		return env["SERVER_ADDRESS"]
+	}
+	if env["DOCKER"] != "" {
+		return "0.0.0.0:3000"
+	}
+
+	return "127.0.0.1:3000"
+}
+
+// validateTableName checks a DynamoDB table name.
 func validateTableName(key string, value string) error {
 	if value == "" {
 		return fmt.Errorf("%s is required", key)
@@ -108,6 +122,7 @@ func validateTableName(key string, value string) error {
 	return nil
 }
 
+// validateURL checks that value is an absolute URL.
 func validateURL(key string, value string) error {
 	if value == "" {
 		return fmt.Errorf("%s is required", key)
@@ -121,6 +136,7 @@ func validateURL(key string, value string) error {
 	return nil
 }
 
+// validateOptionalURL checks an optional absolute URL.
 func validateOptionalURL(key string, value string) error {
 	if value == "" {
 		return nil
@@ -129,6 +145,7 @@ func validateOptionalURL(key string, value string) error {
 	return validateURL(key, value)
 }
 
+// parsePositiveSeconds parses a positive timeout in seconds.
 func parsePositiveSeconds(key string, raw string) (time.Duration, error) {
 	value, err := strconv.Atoi(raw)
 	if err != nil || value < 1 {

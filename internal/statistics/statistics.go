@@ -14,6 +14,8 @@ import (
 
 const defaultWindowDays = 7
 
+const updateTimestampLayout = "2006-01-02T15:04:05-07:00"
+
 type Options struct {
 	Limit       int
 	Reverse     bool
@@ -49,6 +51,7 @@ type Ranking struct {
 	Count       int
 }
 
+// NormaliseRows groups rows by user and counts messages.
 func NormaliseRows(rows []message.Message, reverse bool) NormalisedRows {
 	tally := make(map[int64]int)
 	firstSeen := make([]Ranking, 0, len(rows))
@@ -87,6 +90,7 @@ func NormaliseRows(rows []message.Message, reverse bool) NormalisedRows {
 	}
 }
 
+// GenerateReport builds a statistics report summary.
 func GenerateReport(rows []message.Message, options Options) (Summary, error) {
 	if len(rows) == 0 {
 		return Summary{}, fmt.Errorf("statistics rows are empty")
@@ -101,23 +105,20 @@ func GenerateReport(rows []message.Message, options Options) (Summary, error) {
 	normalisedRows := NormaliseRows(rows, options.Reverse)
 	report := BuildHeader(normalisedRows, options)
 	footer := BuildFooter(normalisedRows, options)
-	bodyLimit := telegram.ReportLimit - utf8.RuneCountInString(report) - utf8.RuneCountInString(footer)
-	if options.OffFromWork {
-		bodyLimit -= utf8.RuneCountInString("夠鐘收工~~\n\n")
-	}
-	report += BuildBodyWithLimit(normalisedRows, options, bodyLimit)
+	report += BuildBodyWithLimit(normalisedRows, options, telegram.ReportLimit)
 	report += footer
 	if options.OffFromWork {
 		report = "夠鐘收工~~\n\n" + report
 	}
 
 	return Summary{
-		Report:       telegram.TruncateReport(report),
+		Report:       report,
 		UserCount:    len(normalisedRows.Rankings),
 		MessageCount: normalisedRows.TotalMessage,
 	}, nil
 }
 
+// TopTen builds a top-ten report request.
 func TopTen(messages []message.Message) Report {
 	return Report{
 		Rows:    messages,
@@ -125,6 +126,7 @@ func TopTen(messages []message.Message) Report {
 	}
 }
 
+// TopDiver builds a top-diver report request.
 func TopDiver(messages []message.Message, participants []telegram.User) Report {
 	return Report{
 		Rows:    messages,
@@ -132,10 +134,12 @@ func TopDiver(messages []message.Message, participants []telegram.User) Report {
 	}
 }
 
+// AllJung builds an all-users report request.
 func AllJung(messages []message.Message) Report {
 	return Report{Rows: messages}
 }
 
+// Render renders a report to text.
 func Render(report Report) string {
 	summary, err := GenerateReport(report.Rows, report.Options)
 	if err != nil {
@@ -145,6 +149,7 @@ func Render(report Report) string {
 	return summary.Report
 }
 
+// BuildHeader builds the report header text.
 func BuildHeader(normalisedRows NormalisedRows, options Options) string {
 	chatTitle := normalisedRows.Rankings[0].ChatTitle
 	limitText := "All"
@@ -162,10 +167,12 @@ func BuildHeader(normalisedRows NormalisedRows, options Options) string {
 	return fmt.Sprintf("圍爐區: %s\n\n%s %s in the last %d days%s\n\n", chatTitle, limitText, personType, options.WindowDays, suffix)
 }
 
+// BuildBody builds the report body text.
 func BuildBody(normalisedRows NormalisedRows, options Options) string {
 	return BuildBodyWithLimit(normalisedRows, options, telegram.ReportLimit)
 }
 
+// BuildBodyWithLimit builds the report body within limit.
 func BuildBodyWithLimit(normalisedRows NormalisedRows, options Options, limit int) string {
 	if limit < 0 {
 		limit = 0
@@ -185,7 +192,7 @@ func BuildBodyWithLimit(normalisedRows NormalisedRows, options Options, limit in
 		ranking := normalisedRows.Rankings[index]
 		percentage := float64(ranking.Count) / float64(normalisedRows.TotalMessage) * 100
 		item := fmt.Sprintf("%d. %s %.2f%% (%s)\n", index+1, ranking.FullName, percentage, timeAgo(ranking.DateCreated, options.Now))
-		if utf8.RuneCountInString(body)+utf8.RuneCountInString(item)+utf8.RuneCountInString("...\n...\n") > limit {
+		if utf8.RuneCountInString(body) >= limit {
 			truncated = true
 			break
 		}
@@ -203,6 +210,7 @@ func BuildBodyWithLimit(normalisedRows NormalisedRows, options Options, limit in
 	return body
 }
 
+// BuildDiverBody builds the reverse-ranking detail section.
 func BuildDiverBody(normalisedRows NormalisedRows, options Options) string {
 	rankings := append([]Ranking(nil), normalisedRows.Rankings...)
 	sort.SliceStable(rankings, func(left int, right int) bool {
@@ -223,15 +231,17 @@ func BuildDiverBody(normalisedRows NormalisedRows, options Options) string {
 	return body
 }
 
+// BuildFooter builds the report footer text.
 func BuildFooter(normalisedRows NormalisedRows, options Options) string {
 	footer := fmt.Sprintf("\nTotal messages: %d\n\n", normalisedRows.TotalMessage)
 	if options.Reverse {
 		footer += "between, 深潛會搵唔到 ho chi is\n"
 	}
-	footer += fmt.Sprintf("Last Update: %s", options.Now.Format(time.RFC3339))
+	footer += fmt.Sprintf("Last Update: %s", options.Now.Format(updateTimestampLayout))
 	return footer
 }
 
+// HelpMessage returns the bot help message.
 func HelpMessage(chatTitle string) string {
 	return fmt.Sprintf(`
 圍爐區: %s
@@ -258,18 +268,12 @@ May your 冗 power powerful
 `, chatTitle)
 }
 
+// displayName returns the preferred ranking display name.
 func displayName(row message.Message) string {
-	name := strings.TrimSpace(strings.Join([]string{row.FirstName, row.LastName}, " "))
-	if name != "" {
-		return name
-	}
-	if row.Username != "" {
-		return row.Username
-	}
-
-	return fmt.Sprintf("%d", row.UserID)
+	return strings.Join([]string{row.FirstName, row.LastName}, " ")
 }
 
+// timeAgo formats a relative timestamp.
 func timeAgo(dateCreated time.Time, now time.Time) string {
 	duration := now.Sub(dateCreated)
 	if duration < 0 {
@@ -302,6 +306,7 @@ func timeAgo(dateCreated time.Time, now time.Time) string {
 	}
 }
 
+// plural formats a pluralised relative time string.
 func plural(value int, unit string) string {
 	if value == 1 {
 		if unit == "hour" {

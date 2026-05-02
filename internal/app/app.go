@@ -10,6 +10,7 @@ import (
 	"github.com/siutsin/telegram-jung2-bot/internal/config"
 	"github.com/siutsin/telegram-jung2-bot/internal/httpserver"
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
+	"github.com/siutsin/telegram-jung2-bot/internal/runtime"
 	"github.com/siutsin/telegram-jung2-bot/internal/worker"
 )
 
@@ -33,22 +34,32 @@ type Options struct {
 }
 
 type RuntimeFactory struct {
-	Store     httpserver.Store
-	Sender    queue.Sender
-	Receiver  queue.Receiver
-	Deleter   worker.Deleter
-	Messenger httpserver.Messenger
-	Handlers  worker.Handlers
-	Now       func() time.Time
+	Store      httpserver.Store
+	Sender     queue.Sender
+	Receiver   queue.Receiver
+	Deleter    worker.Deleter
+	Messenger  httpserver.Messenger
+	ScaleUpper httpserver.ScaleUpper
+	Handlers   worker.Handlers
+	Now        func() time.Time
 }
 
+var newRuntimeFactory = buildRuntimeFactory
+
+// Run starts the app with the default runtime factory.
 func Run(ctx context.Context, config config.Config) error {
+	factory, err := newRuntimeFactory(ctx, config)
+	if err != nil {
+		return fmt.Errorf("build runtime factory: %w", err)
+	}
+
 	return RunWith(ctx, config, Options{
-		Factory:         RuntimeFactory{},
+		Factory:         factory,
 		ShutdownTimeout: config.ShutdownTimeout,
 	})
 }
 
+// RunWith starts the app with the provided runtime options.
 func RunWith(ctx context.Context, config config.Config, options Options) error {
 	if options.Factory == nil {
 		return fmt.Errorf("factory is required")
@@ -90,6 +101,7 @@ func RunWith(ctx context.Context, config config.Config, options Options) error {
 	}
 }
 
+// shutdownHTTP stops the HTTP server with a timeout.
 func shutdownHTTP(httpServer HTTPServer, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -101,6 +113,7 @@ func shutdownHTTP(httpServer HTTPServer, timeout time.Duration) error {
 	return nil
 }
 
+// shutdownTimeout returns the configured shutdown timeout.
 func shutdownTimeout(config config.Config, options Options) time.Duration {
 	if options.ShutdownTimeout > 0 {
 		return options.ShutdownTimeout
@@ -112,6 +125,7 @@ func shutdownTimeout(config config.Config, options Options) time.Duration {
 	return 10 * time.Second
 }
 
+// NewHTTPServer builds the app HTTP server.
 func (factory RuntimeFactory) NewHTTPServer(config config.Config) (HTTPServer, error) {
 	dependencies := httpserver.Dependencies{
 		MessageTable: config.MessageTable,
@@ -119,6 +133,7 @@ func (factory RuntimeFactory) NewHTTPServer(config config.Config) (HTTPServer, e
 		Store:        factory.Store,
 		Enqueuer:     queue.Producer{QueueURL: config.EventQueueURL, Sender: factory.Sender},
 		Messenger:    factory.Messenger,
+		ScaleUpper:   factory.ScaleUpper,
 		Now:          factory.Now,
 	}
 	if err := httpserver.Validate(dependencies); err != nil {
@@ -135,6 +150,7 @@ func (factory RuntimeFactory) NewHTTPServer(config config.Config) (HTTPServer, e
 	}, nil
 }
 
+// NewQueueWorker builds the app queue worker.
 func (factory RuntimeFactory) NewQueueWorker(config config.Config) (QueueWorker, error) {
 	if factory.Receiver == nil {
 		return nil, fmt.Errorf("queue receiver is required")
@@ -148,5 +164,24 @@ func (factory RuntimeFactory) NewQueueWorker(config config.Config) (QueueWorker,
 		QueueURL: config.EventQueueURL,
 		Handlers: factory.Handlers,
 		Deleter:  factory.Deleter,
+	}, nil
+}
+
+// buildRuntimeFactory assembles the production runtime factory.
+func buildRuntimeFactory(ctx context.Context, config config.Config) (Factory, error) {
+	components, err := runtime.NewComponents(ctx, config)
+	if err != nil {
+		return nil, err
+	}
+
+	return RuntimeFactory{
+		Store:      components.Store,
+		Sender:     components.Sender,
+		Receiver:   components.Receiver,
+		Deleter:    components.Deleter,
+		Messenger:  components.Messenger,
+		ScaleUpper: components.ScaleUpper,
+		Handlers:   components.Handlers,
+		Now:        components.Now,
 	}, nil
 }
