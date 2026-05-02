@@ -23,13 +23,14 @@ fi
 
 build_output="$(
   buck2 build \
-    -m 'prelude//go/constraints:coverage_mode[set]' \
+    -m 'toolchains//:race' \
+    -m 'prelude//go/constraints:coverage_mode[atomic]' \
     "${test_targets[@]}" \
     --show-full-json-output
 )"
 build_json="$(printf '%s\n' "$build_output" | tail -n 1)"
 
-printf 'mode: set\n' > "$coverage_file"
+printf 'mode: atomic\n' > "$coverage_file"
 
 while IFS=$'\t' read -r target binary; do
   profile_name="$(printf '%s' "$target" | tr -c '[:alnum:]._' '_')"
