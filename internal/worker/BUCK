@@ -1,0 +1,20 @@
+go_library(
+    name = "worker",
+    srcs = glob(["*.go"], exclude = ["*_test.go"]),
+    package_name = "github.com/siutsin/telegram-jung2-bot/internal/worker",
+    deps = [
+        "//internal/queue:queue",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+go_test(
+    name = "worker_test",
+    srcs = glob(["*.go"]),
+    deps = [
+        "//internal/queue:queue",
+        "//vendor/github.com/stretchr/testify/assert:assert",
+        "//vendor/github.com/stretchr/testify/require:require",
+        ":worker",
+    ],
+)

@@ -1,0 +1,24 @@
+go_library(
+    name = "schedule",
+    srcs = glob(["*.go"], exclude = ["*_test.go"]),
+    package_name = "github.com/siutsin/telegram-jung2-bot/internal/schedule",
+    deps = [
+        "//internal/chat:chat",
+        "//internal/queue:queue",
+        "//internal/workday:workday",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+go_test(
+    name = "schedule_test",
+    srcs = glob(["*.go"]),
+    deps = [
+        "//internal/chat:chat",
+        "//internal/queue:queue",
+        "//internal/workday:workday",
+        "//vendor/github.com/stretchr/testify/assert:assert",
+        "//vendor/github.com/stretchr/testify/require:require",
+        ":schedule",
+    ],
+)

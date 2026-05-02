@@ -1,0 +1,284 @@
+package worker
+
+import (
+	"context"
+	"errors"
+	"testing"
+
+	"github.com/siutsin/telegram-jung2-bot/internal/queue"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestDispatchRoutesActions(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		action     queue.Action
+		wantCalled string
+	}{
+		{name: "jung help", action: action(queue.ActionJungHelp), wantCalled: "junghelp"},
+		{name: "top ten", action: action(queue.ActionTopTen), wantCalled: "topten"},
+		{name: "top diver", action: action(queue.ActionTopDiver), wantCalled: "topdiver"},
+		{name: "all jung", action: action(queue.ActionAllJung), wantCalled: "alljung"},
+		{name: "off from work", action: action(queue.ActionOffFromWork), wantCalled: "offFromWork"},
+		{name: "enable", action: action(queue.ActionEnableAllJung), wantCalled: "enableAllJung"},
+		{name: "disable", action: action(queue.ActionDisableAllJung), wantCalled: "disableAllJung"},
+		{name: "set off", action: action(queue.ActionSetOffWorkTime), wantCalled: "setOffFromWorkTimeUTC"},
+		{name: "on off", action: queue.Action{Name: queue.ActionOnOffFromWork, Attributes: map[string]string{"timeString": "2022-03-04T10:00:00Z"}}, wantCalled: "onOffFromWork"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			calls := make([]string, 0, 1)
+			err := Dispatch(context.Background(), test.action, handlers(&calls, nil))
+
+			require.NoError(t, err)
+			assert.Equal(t, []string{test.wantCalled}, calls)
+		})
+	}
+}
+
+func TestPollingWorkerProcessesAndDeletesMessages(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	raw := queue.RawMessage{
+		ReceiptHandle: "receipt",
+		MessageAttributes: map[string]queue.MessageAttribute{
+			"action": mustAttribute(t, `{"StringValue":"topten"}`),
+			"chatId": mustAttribute(t, `{"StringValue":"123"}`),
+		},
+	}
+	deleter := &fakeDeleter{}
+	receiver := &workerReceiver{response: queue.ReceiveMessageResponse{Messages: []queue.RawMessage{raw}}}
+	handlerSet := handlers(nil, nil)
+	handlerSet.TopTen = func(ctx context.Context, chatID int64) error {
+		cancel()
+		return nil
+	}
+
+	err := (PollingWorker{
+		Consumer: queue.Consumer{QueueURL: "queue-url", Receiver: receiver},
+		QueueURL: "queue-url",
+		Handlers: handlerSet,
+		Deleter:  deleter,
+	}).Run(ctx)
+
+	require.NoError(t, err)
+	assert.Equal(t, []queue.DeleteMessageRequest{{QueueURL: "queue-url", ReceiptHandle: "receipt"}}, deleter.requests)
+}
+
+func TestPollingWorkerRequiresDeleter(t *testing.T) {
+	t.Parallel()
+
+	err := (PollingWorker{}).Run(context.Background())
+
+	require.Error(t, err)
+	assert.EqualError(t, err, "deleter is required")
+}
+
+func TestPollingWorkerReturnsPollError(t *testing.T) {
+	t.Parallel()
+
+	err := (PollingWorker{
+		Consumer: queue.Consumer{Receiver: &workerReceiver{err: errors.New("boom")}},
+		Deleter:  &fakeDeleter{},
+	}).Run(context.Background())
+
+	require.Error(t, err)
+	assert.EqualError(t, err, "receive SQS messages: boom")
+}
+
+func TestPollingWorkerStopsOnCancelledContext(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	err := (PollingWorker{Deleter: &fakeDeleter{}}).Run(ctx)
+
+	require.NoError(t, err)
+}
+
+func TestDispatchPassesSetOffInput(t *testing.T) {
+	t.Parallel()
+
+	var input SetOffInput
+	handlerSet := handlers(nil, nil)
+	handlerSet.SetOffWorkTime = func(ctx context.Context, received SetOffInput) error {
+		input = received
+		return nil
+	}
+
+	err := Dispatch(context.Background(), action(queue.ActionSetOffWorkTime), handlerSet)
+
+	require.NoError(t, err)
+	assert.Equal(t, SetOffInput{
+		ChatID:    123,
+		ChatTitle: "Group",
+		UserID:    456,
+		OffTime:   "1800",
+		Workday:   "MON",
+	}, input)
+}
+
+func TestDispatchReturnsHandlerError(t *testing.T) {
+	t.Parallel()
+
+	err := Dispatch(context.Background(), action(queue.ActionTopTen), handlers(nil, errors.New("boom")))
+
+	require.Error(t, err)
+	assert.EqualError(t, err, "boom")
+}
+
+func TestDispatchRejectsUnsupportedAction(t *testing.T) {
+	t.Parallel()
+
+	err := Dispatch(context.Background(), queue.Action{Name: "nope"}, handlers(nil, nil))
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `unsupported queue action "nope"`)
+}
+
+func TestDispatchPanicsForMissingHandler(t *testing.T) {
+	t.Parallel()
+
+	assert.PanicsWithValue(t, "missing handler for topten", func() {
+		_ = Dispatch(context.Background(), action(queue.ActionTopTen), Handlers{})
+	})
+}
+
+func TestProcessMessageDeletesAfterSuccessfulDispatch(t *testing.T) {
+	t.Parallel()
+
+	deleter := &fakeDeleter{}
+	raw := queue.RawMessage{
+		ReceiptHandle: "receipt",
+		MessageAttributes: map[string]queue.MessageAttribute{
+			"action": mustAttribute(t, `{"StringValue":"topten"}`),
+			"chatId": mustAttribute(t, `{"StringValue":"123"}`),
+		},
+	}
+
+	err := ProcessMessage(context.Background(), "queue-url", raw, handlers(nil, nil), deleter)
+
+	require.NoError(t, err)
+	assert.Equal(t, []queue.DeleteMessageRequest{{QueueURL: "queue-url", ReceiptHandle: "receipt"}}, deleter.requests)
+}
+
+func TestProcessMessageKeepsMessageOnDispatchFailure(t *testing.T) {
+	t.Parallel()
+
+	deleter := &fakeDeleter{}
+	raw := queue.RawMessage{MessageAttributes: map[string]queue.MessageAttribute{
+		"action": mustAttribute(t, `{"StringValue":"topten"}`),
+	}}
+
+	err := ProcessMessage(context.Background(), "queue-url", raw, handlers(nil, errors.New("boom")), deleter)
+
+	require.Error(t, err)
+	assert.Empty(t, deleter.requests)
+}
+
+func TestProcessMessageReturnsDecodeError(t *testing.T) {
+	t.Parallel()
+
+	err := ProcessMessage(context.Background(), "queue-url", queue.RawMessage{}, handlers(nil, nil), &fakeDeleter{})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "missing action")
+}
+
+func TestProcessMessageReturnsDeleteError(t *testing.T) {
+	t.Parallel()
+
+	raw := queue.RawMessage{MessageAttributes: map[string]queue.MessageAttribute{
+		"action": mustAttribute(t, `{"StringValue":"topten"}`),
+	}}
+
+	err := ProcessMessage(context.Background(), "queue-url", raw, handlers(nil, nil), &fakeDeleter{err: errors.New("boom")})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "delete SQS message")
+}
+
+func action(name string) queue.Action {
+	return queue.Action{
+		Name: name,
+		Attributes: map[string]string{
+			"chatId":    "123",
+			"chatTitle": "Group",
+			"userId":    "456",
+			"offTime":   "1800",
+			"workday":   "MON",
+		},
+	}
+}
+
+func handlers(calls *[]string, err error) Handlers {
+	record := func(name string) error {
+		if calls != nil {
+			*calls = append(*calls, name)
+		}
+		return err
+	}
+
+	return Handlers{
+		JungHelp: func(ctx context.Context, chatID int64, chatTitle string) error {
+			return record("junghelp")
+		},
+		TopTen: func(ctx context.Context, chatID int64) error {
+			return record("topten")
+		},
+		TopDiver: func(ctx context.Context, chatID int64) error {
+			return record("topdiver")
+		},
+		AllJung: func(ctx context.Context, chatID int64) error {
+			return record("alljung")
+		},
+		OffFromWork: func(ctx context.Context, chatID int64) error {
+			return record("offFromWork")
+		},
+		EnableAllJung: func(ctx context.Context, chatID int64, chatTitle string, userID int64) error {
+			return record("enableAllJung")
+		},
+		DisableAllJung: func(ctx context.Context, chatID int64, chatTitle string, userID int64) error {
+			return record("disableAllJung")
+		},
+		SetOffWorkTime: func(ctx context.Context, input SetOffInput) error {
+			return record("setOffFromWorkTimeUTC")
+		},
+		OnOffFromWork: func(ctx context.Context, timeString string) error {
+			return record("onOffFromWork")
+		},
+	}
+}
+
+func mustAttribute(t *testing.T, raw string) queue.MessageAttribute {
+	t.Helper()
+
+	var attribute queue.MessageAttribute
+	require.NoError(t, attribute.UnmarshalJSON([]byte(raw)))
+	return attribute
+}
+
+type fakeDeleter struct {
+	requests []queue.DeleteMessageRequest
+	err      error
+}
+
+func (deleter *fakeDeleter) Delete(ctx context.Context, request queue.DeleteMessageRequest) error {
+	deleter.requests = append(deleter.requests, request)
+	return deleter.err
+}
+
+type workerReceiver struct {
+	response queue.ReceiveMessageResponse
+	err      error
+}
+
+func (receiver *workerReceiver) ReceiveMessage(ctx context.Context, request queue.ReceiveMessageRequest) (queue.ReceiveMessageResponse, error) {
+	return receiver.response, receiver.err
+}

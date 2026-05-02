@@ -1,0 +1,20 @@
+go_library(
+    name = "message",
+    srcs = glob(["*.go"], exclude = ["*_test.go"]),
+    package_name = "github.com/siutsin/telegram-jung2-bot/internal/message",
+    deps = [
+        "//internal/telegram:telegram",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+go_test(
+    name = "message_test",
+    srcs = glob(["*.go"]),
+    deps = [
+        "//internal/telegram:telegram",
+        "//vendor/github.com/stretchr/testify/assert:assert",
+        "//vendor/github.com/stretchr/testify/require:require",
+        ":message",
+    ],
+)
