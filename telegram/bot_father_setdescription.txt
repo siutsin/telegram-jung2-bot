@@ -1,5 +1,0 @@
-冗員[jung2jyun4] Excess personnel in Cantonese
-
-This bot is created for counting the number of message per participant in the group.
-
-Source Code: https://github.com/siutsin/telegram-jung2-bot

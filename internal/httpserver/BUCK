@@ -1,0 +1,30 @@
+go_library(
+    name = "httpserver",
+    srcs = glob(["*.go"], exclude = ["*_test.go"]),
+    package_name = "github.com/siutsin/telegram-jung2-bot/internal/httpserver",
+    deps = [
+        "//internal/chat:chat",
+        "//internal/command:command",
+        "//internal/message:message",
+        "//internal/queue:queue",
+        "//internal/schedule:schedule",
+        "//internal/telegram:telegram",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+go_test(
+    name = "httpserver_test",
+    srcs = glob(["*.go"]),
+    deps = [
+        "//internal/chat:chat",
+        "//internal/command:command",
+        "//internal/message:message",
+        "//internal/queue:queue",
+        "//internal/schedule:schedule",
+        "//internal/telegram:telegram",
+        "//vendor/github.com/stretchr/testify/assert:assert",
+        "//vendor/github.com/stretchr/testify/require:require",
+        ":httpserver",
+    ],
+)

@@ -1,0 +1,13 @@
+{
+  "globs": [
+    "**/*.md",
+    "!buck-out/**",
+    "!l[e]gacy/**",
+    "!node_modules/**",
+    "!vendor/**"
+  ],
+  "config": {
+    "MD013": false,
+    "MD041": false
+  }
+}

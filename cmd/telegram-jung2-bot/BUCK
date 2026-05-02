@@ -1,0 +1,21 @@
+go_binary(
+    name = "app",
+    srcs = ["main.go"],
+    deps = [
+        "//internal/app:app",
+        "//internal/config:config",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+go_test(
+    name = "main_test",
+    srcs = glob(["*.go"]),
+    package_name = "github.com/siutsin/telegram-jung2-bot/cmd/telegram-jung2-bot",
+    deps = [
+        "//internal/app:app",
+        "//internal/config:config",
+        "//vendor/github.com/stretchr/testify/assert:assert",
+        "//vendor/github.com/stretchr/testify/require:require",
+    ],
+)
