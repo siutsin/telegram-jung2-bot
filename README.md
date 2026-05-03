@@ -8,18 +8,17 @@ Telegram group chat statistics bot. Tracks message counts, produces rankings, an
 - EventBridge Scheduler enqueues scheduled actions into SQS.
 - Migration-only reference material is temporary and must be removed before the
   project is considered a standalone Go service.
-- The service executable lives under `cmd/telegram-jung2-bot`; private Go packages live under `internal/`.
+- The service executable lives under `cmd/`; private Go packages live under `internal/`.
 - Buck2 targets control build visibility.
-- Buck2 builds, tests, and vendors the service.
+- Buck2 builds and tests the service. Vendoring is refreshed explicitly.
 
 ## Layout
 
 ```text
 .
 ├── cmd/
-│   └── telegram-jung2-bot/
-│       ├── BUCK
-│       └── main.go
+│   ├── BUCK
+│   └── main.go
 ├── internal/
 │   ├── app/
 │   ├── chat/
@@ -54,27 +53,37 @@ Installs or upgrades Buck2 from the latest pre-built release.
 make build
 ```
 
-Builds the Go service with Buck2.
+Builds the Go service with Buck2. This does not refresh vendoring.
+
+```bash
+make ci
+```
+
+Runs the full CI gate in order: `make vendor`, then `make coverage`. Since
+`make coverage` depends on `make test`, and `make test` depends on `make lint`,
+the effective sequence is vendoring, lint, race-enabled tests, then coverage
+collection.
 
 ```bash
 make test
 ```
 
-Runs Buck2 tests with the race detector enabled, then runs a Buck-built atomic
-Go coverage check. Coverage must stay at 100%.
+Runs Buck2 tests with the race detector enabled. This does not refresh
+vendoring. `make lint` runs first.
 
 ```bash
-make test-coverage
+make coverage
 ```
 
-Runs the Buck-built Go coverage check and fails unless total statement coverage
-is 100%.
+Runs the Buck-built Go coverage check and fails unless `internal/` statement
+coverage is 100%. It reuses the same Buck test target set and race mode as
+`make test`.
 
 ```bash
 make lint
 ```
 
-Runs Go and Markdown lint checks.
+Runs Go, shell, and Markdown lint checks.
 
 ```bash
 make lint-fix
@@ -86,13 +95,8 @@ Applies supported lint fixes.
 make vendor
 ```
 
-Refreshes Go vendoring and generated vendor `BUCK` files.
-
-```bash
-make check-gobuckify
-```
-
-Regenerates Buck targets with the official Buck2 `gobuckify` tool.
+Refreshes Go vendoring and generated vendor `BUCK` files. Run this after
+dependency changes.
 
 ```bash
 make clean

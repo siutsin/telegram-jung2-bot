@@ -1,17 +1,23 @@
-.PHONY: build test test-coverage vendor lint lint-fix install-buck2 check-gobuckify clean
+.PHONY: build coverage test ci vendor lint lint-fix install-buck2 clean
 
-build: vendor
+TEST_TARGETS := //...
+TEST_MODIFIERS := -m toolchains//:race
+
+build:
 	buck2 build //...
 
-test: vendor
-	buck2 test -m 'toolchains//:race' //...
+test: lint
+	buck2 test $(TEST_MODIFIERS) $(TEST_TARGETS)
+
+coverage: test
+	COVERAGE_TEST_TARGETS="$$(buck2 uquery "kind('go_test', $(TEST_TARGETS))" | sort | tr '\n' ' ')" \
+	COVERAGE_TEST_MODIFIERS="$(TEST_MODIFIERS) -m prelude//go/constraints:coverage_mode[atomic]" \
 	./hack/test-coverage.sh
 
-test-coverage:
-	./hack/test-coverage.sh
+ci: vendor
+	$(MAKE) coverage
 
-vendor:
-	buck2 clean
+vendor: clean
 	go mod vendor
 	buck2 run prelude//go/tools/gobuckify:gobuckify -- .
 
@@ -23,9 +29,6 @@ lint-fix:
 
 install-buck2:
 	./hack/install-buck2.sh
-
-check-gobuckify:
-	buck2 run prelude//go/tools/gobuckify:gobuckify -- .
 
 clean:
 	buck2 clean

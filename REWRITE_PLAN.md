@@ -16,7 +16,9 @@ paths.
 Final acceptance requires:
 
 - Full production feature parity for supported bot behaviour.
-- `make test` passing with the required 100% Go statement coverage.
+- `make test` passing.
+- `make coverage` passing with the required 100% Go statement coverage for
+  `internal/` packages.
 - `make lint` passing.
 - Production adapters and worker handlers wired in the default runtime path.
 - A cleanup pass that removes migration-only artifacts and wording.
@@ -52,7 +54,7 @@ Final acceptance requires:
 ## Current Layout
 
 The Go module lives at the repository root. The service executable lives under
-`cmd/telegram-jung2-bot`, and private Go packages live under `internal/`. Do not
+`cmd/`, and private Go packages live under `internal/`. Do not
 create a `go/` subdirectory; Buck2 target visibility controls package access.
 
 Migration-only reference material is allowed until production adapter parity is
@@ -63,11 +65,11 @@ complete. It must be removed before the final cleanup gate.
 ├── go.mod
 ├── go.sum
 ├── cmd/
-│   └── telegram-jung2-bot/
-│       ├── BUCK
-│       └── main.go
+│   ├── BUCK
+│   └── main.go
 ├── internal/
 │   ├── app/
+│   ├── bootstrap/
 │   ├── chat/
 │   ├── command/
 │   ├── config/
@@ -96,7 +98,7 @@ complete. It must be removed before the final cleanup gate.
   fixture it preserves.
 - Buck2 is the long-term build and test system; keep Buck targets deterministic.
 - Use Buck2's official `prelude//go/tools/gobuckify:gobuckify` for vendor BUCK
-  generation.
+  generation through `make vendor`.
 
 ## Completed Streams
 
@@ -157,8 +159,8 @@ complete. It must be removed before the final cleanup gate.
 
 ### Bootstrap
 
-- [x] `cmd/telegram-jung2-bot/main.go` is reduced to process bootstrap only:
-  load config, construct the app, and run it.
+- [x] `cmd/main.go` contains only `main()`.
+- [x] Process startup composition lives under `internal/bootstrap`.
 - [x] Environment loading now uses `github.com/caarlos0/env/v11` through
   `internal/config`.
 - [x] The application is wrapped by `app.App`, so dependencies can be injected
@@ -168,10 +170,8 @@ complete. It must be removed before the final cleanup gate.
 
 ### Test And Coverage Gate
 
-- [ ] Raise total Go statement coverage from the current `87.4%` to the
-  required `100.0%` so `make test` passes end to end.
-- [ ] Add coverage for the remaining uncovered bootstrap paths in
-  `cmd/telegram-jung2-bot/main.go`.
+- [ ] Raise total Go statement coverage from the current `87.5%` to the
+  required `100.0%` for `internal/` packages so `make coverage` passes.
 - [ ] Add coverage for the remaining uncovered runtime-construction and AWS
   adapter paths in `internal/app/app.go` and `internal/runtime/runtime.go`.
 - [ ] Add coverage for the remaining uncovered HTTP edge paths in
@@ -180,6 +180,15 @@ complete. It must be removed before the final cleanup gate.
 ### Build And Tooling Hygiene
 
 - [ ] Run `make lint` and fix any remaining lint failures.
+- [x] Keep `make build` and `make test` cache-friendly by making vendoring an
+  explicit `make vendor` step instead of a prerequisite for every build/test
+  run.
+- [x] Keep test selection centralized in `make test`; `make coverage` reuses
+  the same Buck test target set and race mode instead of discovering its own
+  test graph.
+- [x] Keep CI minimal and ordered: `make ci` now runs `make vendor`, then
+  `make coverage`; `make coverage` in turn pulls in `make test`, which pulls
+  in `make lint`.
 - [ ] Document or otherwise preserve the convention that first-party BUCK deps
   still need manual maintenance when Go imports change; `gobuckify` only
   generates vendored third-party BUCK targets in this repo.
@@ -193,7 +202,7 @@ complete. It must be removed before the final cleanup gate.
   no longer depends on those public HTTP paths.
 - [ ] Ensure searches for migration-only wording return no matches outside
   intentionally archived material before final release.
-- [ ] Re-run `make test` and `make lint`.
+- [ ] Re-run `make test`, `make coverage`, and `make lint`.
 
 ## Module Contracts
 
@@ -280,8 +289,7 @@ A package is complete when:
 
 - Its public API is narrow and documented by tests.
 - Relevant production-contract tests have coverage.
-- Go statement coverage remains at 100% through `make test` or
-  `make test-coverage`.
+- Go statement coverage remains at 100% through `make coverage`.
 - It has no direct dependency on unrelated adapters or app wiring.
 - It handles contexts for network, AWS, Telegram, and shutdown-aware operations.
 - Errors are wrapped with useful context using `%w`.

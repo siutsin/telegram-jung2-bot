@@ -11,20 +11,17 @@ trap 'rm -rf "$coverage_dir"' EXIT
 
 cd "$repo_root"
 
-test_targets=()
-while IFS= read -r target; do
-  test_targets+=("$target")
-done < <(buck2 uquery "kind('go_test', //...)" | sort)
-
-if [[ "${#test_targets[@]}" -eq 0 ]]; then
-  echo "no go_test targets found" >&2
+if [[ -z "${COVERAGE_TEST_TARGETS:-}" ]]; then
+  echo "COVERAGE_TEST_TARGETS must be set by make coverage" >&2
   exit 1
 fi
 
+read -r -a test_targets <<<"${COVERAGE_TEST_TARGETS}"
+read -r -a coverage_modifiers <<<"${COVERAGE_TEST_MODIFIERS:-}"
+
 build_output="$(
   buck2 build \
-    -m 'toolchains//:race' \
-    -m 'prelude//go/constraints:coverage_mode[atomic]' \
+    "${coverage_modifiers[@]}" \
     "${test_targets[@]}" \
     --show-full-json-output
 )"
@@ -46,9 +43,9 @@ while IFS=$'\t' read -r target binary; do
 
   if [[ -f "$profile_path" ]]; then
     {
-      rg '^(cmd|internal)/' "$profile_path" || true
+      rg '^internal/' "$profile_path" || true
     } | rg -v '_test\.go:' | sed \
-      "s#^cmd/#$repo_root/cmd/#; s#^internal/#$repo_root/internal/#" \
+      "s#^internal/#$repo_root/internal/#" \
       >> "$coverage_file"
   fi
 done < <(
