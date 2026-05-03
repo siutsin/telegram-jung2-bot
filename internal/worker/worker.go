@@ -54,9 +54,10 @@ func (worker PollingWorker) Run(ctx context.Context) error {
 			return nil
 		default:
 		}
-		if err := worker.Consumer.Poll(ctx, func(ctx context.Context, message queue.RawMessage) error {
+		err := worker.Consumer.Poll(ctx, func(ctx context.Context, message queue.RawMessage) error {
 			return ProcessMessage(ctx, worker.QueueURL, message, worker.Handlers, worker.Deleter)
-		}); err != nil {
+		})
+		if err != nil {
 			return err
 		}
 	}
@@ -78,10 +79,12 @@ func ProcessMessage(ctx context.Context, queueURL string, raw queue.RawMessage, 
 	if err != nil {
 		return err
 	}
-	if err := Dispatch(ctx, action, handlers); err != nil {
+	err = Dispatch(ctx, action, handlers)
+	if err != nil {
 		return err
 	}
-	if err := deleter.Delete(ctx, queue.BuildDeleteMessageRequest(queueURL, raw)); err != nil {
+	err = deleter.Delete(ctx, queue.BuildDeleteMessageRequest(queueURL, raw))
+	if err != nil {
 		return fmt.Errorf("delete SQS message: %w", err)
 	}
 

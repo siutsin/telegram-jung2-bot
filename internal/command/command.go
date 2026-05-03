@@ -187,7 +187,8 @@ func normaliseWorkdayList(raw string) (string, error) {
 	normalised := make([]string, 0, len(parts))
 
 	for _, part := range parts {
-		if _, err := workday.ParseList(part); err != nil {
+		_, err := workday.ParseList(part)
+		if err != nil {
 			return "", err
 		}
 		if !seen[part] {

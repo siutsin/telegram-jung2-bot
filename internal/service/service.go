@@ -108,10 +108,12 @@ func (service Service) OnOffFromWork(ctx context.Context, timeString string) err
 		Sender:   service.Sender,
 	}
 	for _, chatID := range chatIDs {
-		if err := producer.Enqueue(ctx, schedule.BuildOffFromWorkAction(chatID)); err != nil {
+		err = producer.Enqueue(ctx, schedule.BuildOffFromWorkAction(chatID))
+		if err != nil {
 			return fmt.Errorf("enqueue due off-work report: %w", err)
 		}
-		if err := pauseFanOut(ctx, 5*time.Millisecond); err != nil {
+		err = pauseFanOut(ctx, 5*time.Millisecond)
+		if err != nil {
 			return err
 		}
 	}
@@ -149,7 +151,8 @@ func (service Service) applySettingChange(ctx context.Context, chatID int64, cha
 	if !change.Allowed {
 		return nil
 	}
-	if err := service.ChatStore.Update(ctx, change.Update); err != nil {
+	err := service.ChatStore.Update(ctx, change.Update)
+	if err != nil {
 		return err
 	}
 
@@ -167,11 +170,12 @@ func (service Service) now() time.Time {
 
 // parseScheduledTime parses the scheduler time string.
 func parseScheduledTime(raw string) (time.Time, error) {
-	if timestamp, err := time.Parse(time.RFC3339Nano, raw); err == nil {
+	timestamp, err := time.Parse(time.RFC3339Nano, raw)
+	if err == nil {
 		return timestamp, nil
 	}
 
-	timestamp, err := time.Parse(time.RFC3339, raw)
+	timestamp, err = time.Parse(time.RFC3339, raw)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("parse scheduled time: %w", err)
 	}
@@ -206,11 +210,13 @@ func (service Service) sendStatistics(ctx context.Context, chatID int64, options
 	if err != nil {
 		return err
 	}
-	if err := service.ChatStore.SaveStatistics(ctx, service.ChatTable, chatID, summary.UserCount, summary.MessageCount, now); err != nil {
+	err = service.ChatStore.SaveStatistics(ctx, service.ChatTable, chatID, summary.UserCount, summary.MessageCount, now)
+	if err != nil {
 		return err
 	}
 
-	if err := service.Messenger.SendMessage(ctx, chatID, summary.Report); err != nil {
+	err = service.Messenger.SendMessage(ctx, chatID, summary.Report)
+	if err != nil {
 		if isTelegramStatusError(err) {
 			return nil
 		}

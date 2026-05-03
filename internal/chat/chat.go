@@ -84,7 +84,8 @@ func (repository Repository) Save(ctx context.Context, settings Settings) error 
 	if repository.Client == nil {
 		return fmt.Errorf("chat repository client is required")
 	}
-	if err := repository.Client.Update(ctx, BuildMetadataUpdate(repository.TableName, settings)); err != nil {
+	err := repository.Client.Update(ctx, BuildMetadataUpdate(repository.TableName, settings))
+	if err != nil {
 		return fmt.Errorf("save chat settings: %w", err)
 	}
 

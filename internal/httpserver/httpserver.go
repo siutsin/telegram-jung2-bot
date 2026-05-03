@@ -163,7 +163,8 @@ func registerOnOffFromWorkRoute(mux *http.ServeMux, stagePrefix string, dependen
 			http.Error(writer, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		if err := dependencies.Enqueuer.Enqueue(request.Context(), schedule.BuildOnOffFromWorkAction(request.URL.Query().Get("timeString"))); err != nil {
+		err := dependencies.Enqueuer.Enqueue(request.Context(), schedule.BuildOnOffFromWorkAction(request.URL.Query().Get("timeString")))
+		if err != nil {
 			http.Error(writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
@@ -178,7 +179,8 @@ func registerScaleUpRoute(mux *http.ServeMux, stagePrefix string, dependencies S
 			http.Error(writer, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		if err := scaleUp(request.Context(), dependencies.ScaleUpper); err != nil {
+		err := scaleUp(request.Context(), dependencies.ScaleUpper)
+		if err != nil {
 			writeJSONResponse(writer, http.StatusServiceUnavailable, map[string]string{"onScaleUp": "failed"})
 			return
 		}
@@ -215,10 +217,12 @@ func parseGroupMessage(payload []byte) (*telegram.Message, Response, bool) {
 
 // saveWebhookState persists the message and chat records for a webhook update.
 func saveWebhookState(ctx context.Context, telegramMessage telegram.Message, now time.Time, dependencies Dependencies) (Response, bool) {
-	if err := saveWebhookMessage(ctx, telegramMessage, now, dependencies); err != nil {
+	err := saveWebhookMessage(ctx, telegramMessage, now, dependencies)
+	if err != nil {
 		return Response{StatusCode: 500, Message: "save message"}, false
 	}
-	if err := saveWebhookChat(ctx, telegramMessage, now, dependencies); err != nil {
+	err = saveWebhookChat(ctx, telegramMessage, now, dependencies)
+	if err != nil {
 		return Response{StatusCode: 500, Message: "save chat"}, false
 	}
 
@@ -257,7 +261,8 @@ func enqueueWebhookCommand(ctx context.Context, telegramMessage telegram.Message
 		UserID:    userID(telegramMessage.From),
 	})
 	if err == nil {
-		if enqueueErr := dependencies.Enqueuer.Enqueue(ctx, action); enqueueErr != nil {
+		err = dependencies.Enqueuer.Enqueue(ctx, action)
+		if err != nil {
 			return Response{StatusCode: 500, Message: "enqueue command"}, false
 		}
 		return Response{}, true
@@ -265,7 +270,8 @@ func enqueueWebhookCommand(ctx context.Context, telegramMessage telegram.Message
 	if shouldIgnoreCommandError(parsedCommand) {
 		return Response{}, true
 	}
-	if sendErr := sendInvalidSetOffReply(ctx, telegramMessage, dependencies); sendErr != nil {
+	err = sendInvalidSetOffReply(ctx, telegramMessage, dependencies)
+	if err != nil {
 		return Response{StatusCode: 500, Message: "reply invalid command"}, false
 	}
 
@@ -348,7 +354,8 @@ func maxBodyBytes(dependencies ServerDeps) int64 {
 func writeResponse(writer http.ResponseWriter, response Response) {
 	writer.WriteHeader(response.StatusCode)
 	if response.Message != "" && allowsResponseBody(response.StatusCode) {
-		if _, err := writer.Write([]byte(response.Message)); err != nil {
+		_, err := writer.Write([]byte(response.Message))
+		if err != nil {
 			logResponseWriteError("write plain response", response.StatusCode, err)
 		}
 	}
@@ -367,7 +374,8 @@ func writeStageWebhookResponse(writer http.ResponseWriter, response Response) {
 func writeJSONResponse(writer http.ResponseWriter, statusCode int, body any) {
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(statusCode)
-	if err := json.NewEncoder(writer).Encode(body); err != nil {
+	err := json.NewEncoder(writer).Encode(body)
+	if err != nil {
 		logResponseWriteError("encode JSON response", statusCode, err)
 	}
 }

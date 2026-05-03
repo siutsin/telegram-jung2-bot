@@ -97,7 +97,8 @@ func (producer Producer) Enqueue(ctx context.Context, action Action) error {
 	if producer.Sender == nil {
 		return fmt.Errorf("queue sender is required")
 	}
-	if err := producer.Sender.SendMessage(ctx, BuildSendMessageRequest(producer.QueueURL, action)); err != nil {
+	err := producer.Sender.SendMessage(ctx, BuildSendMessageRequest(producer.QueueURL, action))
+	if err != nil {
 		return fmt.Errorf("send SQS message: %w", err)
 	}
 
@@ -133,17 +134,16 @@ func (consumer Consumer) Poll(ctx context.Context, handler Handler) error {
 		waiter   sync.WaitGroup
 	)
 	for _, message := range response.Messages {
-		waiter.Add(1)
-		go func(message RawMessage) {
-			defer waiter.Done()
-			if err := handler(ctx, message); err != nil {
+		waiter.Go(func() {
+			err := handler(ctx, message)
+			if err != nil {
 				mutex.Lock()
 				if firstErr == nil {
 					firstErr = err
 				}
 				mutex.Unlock()
 			}
-		}(message)
+		})
 	}
 	waiter.Wait()
 	if firstErr != nil {
@@ -166,7 +166,8 @@ func (attribute *MessageAttribute) UnmarshalJSON(data []byte) error {
 		StringValue string `json:"StringValue"`
 		LowerValue  string `json:"stringValue"`
 	}
-	if err := json.Unmarshal(data, &raw); err != nil {
+	err := json.Unmarshal(data, &raw)
+	if err != nil {
 		return fmt.Errorf("decode message attribute: %w", err)
 	}
 
@@ -224,7 +225,8 @@ func DecodeEvent(event Event) (Action, error) {
 // messageBodyText returns the raw body as a plain string.
 func messageBodyText(body json.RawMessage) string {
 	var value string
-	if err := json.Unmarshal(body, &value); err == nil {
+	err := json.Unmarshal(body, &value)
+	if err == nil {
 		return value
 	}
 

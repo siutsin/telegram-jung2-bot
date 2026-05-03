@@ -73,7 +73,8 @@ func CollectPages[T any](ctx context.Context, fetch FetchPage[T]) ([]T, error) {
 	var startKey map[string]any
 
 	for {
-		if err := ctx.Err(); err != nil {
+		err := ctx.Err()
+		if err != nil {
 			return nil, fmt.Errorf("collect dynamodb pages: %w", err)
 		}
 
@@ -160,7 +161,8 @@ func BuildChatCountUpdate(tableName string, chatID int64, userCount int, message
 // BuildScaleUpRequest builds a table throughput update request.
 func BuildScaleUpRequest(tableName string, currentRead int64, currentWrite int64, desiredReadRaw string) Request {
 	desiredRead := currentRead
-	if parsed, err := parsePositiveInt64(desiredReadRaw); err == nil {
+	parsed, err := parsePositiveInt64(desiredReadRaw)
+	if err == nil {
 		desiredRead = parsed
 	}
 
