@@ -11,12 +11,13 @@ import (
 	ddbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	awssqs "github.com/aws/aws-sdk-go-v2/service/sqs"
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/siutsin/telegram-jung2-bot/internal/config"
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
 	"github.com/siutsin/telegram-jung2-bot/internal/telegram"
 	"github.com/siutsin/telegram-jung2-bot/internal/worker"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestBuildComponentsHelpHandlerSendsMarkdownHelp(t *testing.T) {

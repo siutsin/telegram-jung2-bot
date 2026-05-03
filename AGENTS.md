@@ -77,7 +77,7 @@ used to verify behaviour until production adapter parity is complete.
 - `make build` and `make test` do not refresh vendoring; run `make vendor`
   explicitly after dependency changes.
 - `make lint` runs `gofmt` checks, `go vet`, `golangci-lint`, `shellcheck`,
-  and `markdownlint-cli2`.
+  `typos`, and `markdownlint-cli2`.
 - `make lint-fix` applies supported formatting/lint fixes.
 - `make install-buck2` installs or updates Buck2 for the local platform.
 - Use Buck2's official `prelude//go/tools/gobuckify:gobuckify` target for Go

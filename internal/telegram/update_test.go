@@ -66,12 +66,12 @@ func TestSendMessagePostsContractPayload(t *testing.T) {
 		assert.Equal(t, "application/json", request.Header.Get("Content-Type"))
 
 		body, err := io.ReadAll(request.Body)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		assert.JSONEq(t, `{"chat_id":123,"text":"hi"}`, string(body))
 
 		response.WriteHeader(http.StatusOK)
 		_, err = response.Write([]byte(`{"ok":true}`))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	}))
 	defer server.Close()
 
@@ -85,12 +85,12 @@ func TestSendMessagePostsContractPayload(t *testing.T) {
 func TestSendMessageWithOptionsPostsOptionalTelegramFields(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		body, err := io.ReadAll(request.Body)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		assert.JSONEq(t, `{"chat_id":123,"disable_web_page_preview":true,"parse_mode":"markdown","text":"hi"}`, string(body))
 
 		response.WriteHeader(http.StatusOK)
 		_, err = response.Write([]byte(`{"ok":true}`))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	}))
 	defer server.Close()
 
@@ -143,7 +143,7 @@ func TestGetChatAdministratorsDecodesResponse(t *testing.T) {
 		assert.Equal(t, "123", request.URL.Query().Get("chat_id"))
 
 		_, err := response.Write([]byte(`{"ok":true,"result":[{"user":{"id":234,"first_name":"first_name","username":"username"}}]}`))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	}))
 	defer server.Close()
 
@@ -161,7 +161,7 @@ func TestGetChatAdministratorsDecodesResponse(t *testing.T) {
 func TestGetChatAdministratorsReturnsDecodeError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		_, err := response.Write([]byte(`{`))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	}))
 	defer server.Close()
 
@@ -185,7 +185,7 @@ func TestGetChatAdministratorsReturnsHTTPClientError(t *testing.T) {
 func TestIsAdminReportsMembership(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		_, err := response.Write([]byte(`{"ok":true,"result":[{"user":{"id":234}},{"user":{"id":345}}]}`))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	}))
 	defer server.Close()
 

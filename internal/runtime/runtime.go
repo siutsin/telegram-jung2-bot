@@ -16,6 +16,7 @@ import (
 	ddbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	awssqs "github.com/aws/aws-sdk-go-v2/service/sqs"
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
+
 	"github.com/siutsin/telegram-jung2-bot/internal/chat"
 	"github.com/siutsin/telegram-jung2-bot/internal/config"
 	contractdynamodb "github.com/siutsin/telegram-jung2-bot/internal/dynamodb"
@@ -252,11 +253,20 @@ func (client sqsClient) SendMessage(ctx context.Context, request queue.SendMessa
 
 // ReceiveMessage polls one SQS batch.
 func (client sqsClient) ReceiveMessage(ctx context.Context, request queue.ReceiveMessageRequest) (queue.ReceiveMessageResponse, error) {
+	maxMessages, err := toInt32(request.MaxNumberOfMessages, "maxNumberOfMessages")
+	if err != nil {
+		return queue.ReceiveMessageResponse{}, err
+	}
+	waitSeconds, err := toInt32(request.WaitTimeSeconds, "waitTimeSeconds")
+	if err != nil {
+		return queue.ReceiveMessageResponse{}, err
+	}
+
 	output, err := client.queue.ReceiveMessage(ctx, &awssqs.ReceiveMessageInput{
 		QueueUrl:              awscore.String(request.QueueURL),
-		MaxNumberOfMessages:   int32(request.MaxNumberOfMessages),
+		MaxNumberOfMessages:   maxMessages,
 		MessageAttributeNames: []string{"All"},
-		WaitTimeSeconds:       int32(request.WaitTimeSeconds),
+		WaitTimeSeconds:       waitSeconds,
 	})
 	if err != nil {
 		return queue.ReceiveMessageResponse{}, fmt.Errorf("receive SQS messages: %w", err)
@@ -427,19 +437,19 @@ func (service actionService) onOffFromWork(ctx context.Context, timeString strin
 
 // buildComponents assembles runtime dependencies from concrete clients.
 func buildComponents(serviceConfig config.Config, dynamoClient dynamoAPI, queueClient sqsAPI, telegramClient telegramAPI) Components {
-	chatClient := chatClient{dynamo: dynamoClient}
-	messageClient := messageClient{dynamo: dynamoClient}
+	chatStoreClient := chatClient{dynamo: dynamoClient}
+	messageStoreClient := messageClient{dynamo: dynamoClient}
 	chatRepository := chat.Repository{
 		TableName: serviceConfig.ChatIDTable,
-		Client:    chatClient,
+		Client:    chatStoreClient,
 	}
 	messageRepository := message.Repository{
 		TableName: serviceConfig.MessageTable,
-		Client:    messageClient,
+		Client:    messageStoreClient,
 	}
 	queueClientAdapter := sqsClient{queue: queueClient}
 	actions := actionService{
-		chatClient:         chatClient,
+		chatClient:         chatStoreClient,
 		chatRepository:     chatRepository,
 		chatTable:          serviceConfig.ChatIDTable,
 		dynamo:             dynamoClient,
@@ -767,8 +777,21 @@ func int64Attribute(item map[string]ddbtypes.AttributeValue, key string) int64 {
 		return 0
 	}
 
-	parsed, _ := strconv.ParseInt(value.Value, 10, 64)
+	parsed, err := strconv.ParseInt(value.Value, 10, 64)
+	if err != nil {
+		return 0
+	}
+
 	return parsed
+}
+
+// toInt32 converts an int to int32 with bounds checking for AWS SDK inputs.
+func toInt32(value int, field string) (int32, error) {
+	if value < -2147483648 || value > 2147483647 {
+		return 0, fmt.Errorf("%s out of int32 range", field)
+	}
+
+	return int32(value), nil
 }
 
 // intAttribute returns an int attribute when present.

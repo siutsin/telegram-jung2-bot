@@ -6,9 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/siutsin/telegram-jung2-bot/internal/telegram"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/siutsin/telegram-jung2-bot/internal/telegram"
 )
 
 func TestRepositorySaveBuildsContractUpdate(t *testing.T) {

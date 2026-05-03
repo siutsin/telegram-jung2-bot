@@ -3,9 +3,10 @@ package command
 import (
 	"testing"
 
-	"github.com/siutsin/telegram-jung2-bot/internal/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/siutsin/telegram-jung2-bot/internal/queue"
 )
 
 func TestParseSupportedCommands(t *testing.T) {

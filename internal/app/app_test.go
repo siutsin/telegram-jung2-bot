@@ -10,13 +10,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/siutsin/telegram-jung2-bot/internal/chat"
 	"github.com/siutsin/telegram-jung2-bot/internal/config"
 	"github.com/siutsin/telegram-jung2-bot/internal/message"
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
 	"github.com/siutsin/telegram-jung2-bot/internal/worker"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestRunBuildsAndStartsDefaultRuntime(t *testing.T) {
@@ -211,7 +212,7 @@ func TestRuntimeFactoryBuildsHTTPServer(t *testing.T) {
 	assert.Equal(t, 5*time.Second, httpServer.ReadTimeout)
 
 	response := httptest.NewRecorder()
-	httpServer.Handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/health", nil))
+	httpServer.Handler.ServeHTTP(response, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/health", nil))
 	assert.Equal(t, http.StatusOK, response.Code)
 }
 
@@ -235,9 +236,10 @@ func TestRuntimeFactoryBuildsScaleUpRoute(t *testing.T) {
 	}).NewHTTPServer(runtimeConfig())
 
 	require.NoError(t, err)
-	httpServer := server.(*http.Server)
+	httpServer, ok := server.(*http.Server)
+	require.True(t, ok)
 	response := httptest.NewRecorder()
-	httpServer.Handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/jung2bot/dev/onScaleUp", nil))
+	httpServer.Handler.ServeHTTP(response, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/jung2bot/dev/onScaleUp", nil))
 	assert.Equal(t, http.StatusOK, response.Code)
 }
 

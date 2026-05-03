@@ -6,9 +6,10 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/siutsin/telegram-jung2-bot/internal/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/siutsin/telegram-jung2-bot/internal/queue"
 )
 
 func TestDispatchRoutesActions(t *testing.T) {
@@ -71,7 +72,7 @@ func TestPollingWorkerProcessesAndDeletesMessages(t *testing.T) {
 	assert.Equal(t, []queue.DeleteMessageRequest{{QueueURL: "queue-url", ReceiptHandle: "receipt"}}, deleter.requests)
 }
 
-func TestPollingWorkerContinuesAfterMessageFailure(t *testing.T) {
+func TestPollingWorkerReturnsMessageFailure(t *testing.T) {
 	t.Parallel()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -110,7 +111,8 @@ func TestPollingWorkerContinuesAfterMessageFailure(t *testing.T) {
 		Deleter:  deleter,
 	}).Run(ctx)
 
-	require.NoError(t, err)
+	require.Error(t, err)
+	require.EqualError(t, err, "boom")
 	assert.Equal(t, int32(2), calls.Load())
 	require.Len(t, deleter.requests, 1)
 	assert.Equal(t, "queue-url", deleter.requests[0].QueueURL)

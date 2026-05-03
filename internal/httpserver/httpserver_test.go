@@ -9,11 +9,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/siutsin/telegram-jung2-bot/internal/chat"
 	"github.com/siutsin/telegram-jung2-bot/internal/message"
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestHealth(t *testing.T) {
@@ -409,11 +410,11 @@ func TestValidate(t *testing.T) {
 	t.Parallel()
 
 	require.NoError(t, Validate(testDependencies(&fakeStore{}, &fakeEnqueuer{}, nil)))
-	assert.EqualError(t, Validate(Dependencies{}), "message table is required")
-	assert.EqualError(t, Validate(Dependencies{MessageTable: "messages"}), "chat table is required")
-	assert.EqualError(t, Validate(Dependencies{MessageTable: "messages", ChatTable: "chats"}), "store is required")
-	assert.EqualError(t, Validate(Dependencies{MessageTable: "messages", ChatTable: "chats", Store: &fakeStore{}}), "enqueuer is required")
-	assert.EqualError(t, Validate(Dependencies{MessageTable: "messages", ChatTable: "chats", Store: &fakeStore{}, Enqueuer: &fakeEnqueuer{}}), "messenger is required")
+	require.EqualError(t, Validate(Dependencies{}), "message table is required")
+	require.EqualError(t, Validate(Dependencies{MessageTable: "messages"}), "chat table is required")
+	require.EqualError(t, Validate(Dependencies{MessageTable: "messages", ChatTable: "chats"}), "store is required")
+	require.EqualError(t, Validate(Dependencies{MessageTable: "messages", ChatTable: "chats", Store: &fakeStore{}}), "enqueuer is required")
+	require.EqualError(t, Validate(Dependencies{MessageTable: "messages", ChatTable: "chats", Store: &fakeStore{}, Enqueuer: &fakeEnqueuer{}}), "messenger is required")
 }
 
 func testDependencies(store Store, enqueuer Enqueuer, messenger Messenger) Dependencies {

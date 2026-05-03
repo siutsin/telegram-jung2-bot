@@ -50,10 +50,20 @@ if ((${#shell_files[@]} > 0)); then
   shellcheck "${shell_files[@]}"
 fi
 
+typos_args=(
+  --exclude ./buck-out
+  --exclude ./legacy
+  --exclude ./node_modules
+  --exclude ./vendor
+  .
+)
+
 if [[ "${mode}" == "fix" ]]; then
   golangci-lint run --fix ./cmd/... ./internal/...
+  typos --write-changes "${typos_args[@]}"
   markdownlint-cli2 --fix
 else
   golangci-lint run ./cmd/... ./internal/...
+  typos "${typos_args[@]}"
   markdownlint-cli2
 fi

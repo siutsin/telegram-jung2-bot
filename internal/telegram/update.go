@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -108,7 +109,7 @@ func (client Client) SendMessage(ctx context.Context, chatID int64, text string)
 
 // SendMessageWithOptions sends text to a Telegram chat with optional Telegram
 // API sendMessage fields.
-func (client Client) SendMessageWithOptions(ctx context.Context, chatID int64, text string, options SendMessageOptions) error {
+func (client Client) SendMessageWithOptions(ctx context.Context, chatID int64, text string, options SendMessageOptions) (err error) {
 	requestBody := map[string]any{
 		"chat_id": chatID,
 		"text":    text,
@@ -119,14 +120,17 @@ func (client Client) SendMessageWithOptions(ctx context.Context, chatID int64, t
 	if options.ParseMode != "" {
 		requestBody["parse_mode"] = options.ParseMode
 	}
-	payload, _ := json.Marshal(requestBody)
+	payload, err := json.Marshal(requestBody)
+	if err != nil {
+		return fmt.Errorf("marshal sendMessage request: %w", err)
+	}
 
 	response, err := client.do(ctx, http.MethodPost, "sendMessage", nil, payload)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		_ = response.Body.Close()
+		err = errors.Join(err, closeResponseBody(response.Body, "sendMessage"))
 	}()
 
 	if err := telegramAPIError(response); err != nil {
@@ -137,14 +141,14 @@ func (client Client) SendMessageWithOptions(ctx context.Context, chatID int64, t
 }
 
 // GetChatAdministrators returns the administrators of a Telegram chat.
-func (client Client) GetChatAdministrators(ctx context.Context, chatID int64) ([]Administrator, error) {
+func (client Client) GetChatAdministrators(ctx context.Context, chatID int64) (administrators []Administrator, err error) {
 	query := url.Values{"chat_id": {fmt.Sprint(chatID)}}
 	response, err := client.do(ctx, http.MethodGet, "getChatAdministrators", query, nil)
 	if err != nil {
 		return nil, err
 	}
 	defer func() {
-		_ = response.Body.Close()
+		err = errors.Join(err, closeResponseBody(response.Body, "getChatAdministrators"))
 	}()
 
 	if err := telegramAPIError(response); err != nil {
@@ -237,6 +241,19 @@ func telegramAPIError(response *http.Response) error {
 		return nil
 	}
 
-	_, _ = io.Copy(io.Discard, response.Body)
-	return fmt.Errorf("telegram API returned HTTP %d", response.StatusCode)
+	statusErr := fmt.Errorf("telegram API returned HTTP %d", response.StatusCode)
+	if _, err := io.Copy(io.Discard, response.Body); err != nil {
+		return errors.Join(statusErr, fmt.Errorf("drain telegram API error response: %w", err))
+	}
+
+	return statusErr
+}
+
+// closeResponseBody closes a Telegram HTTP response body with context.
+func closeResponseBody(body io.Closer, endpoint string) error {
+	if err := body.Close(); err != nil {
+		return fmt.Errorf("close Telegram %s response body: %w", endpoint, err)
+	}
+
+	return nil
 }
