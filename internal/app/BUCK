@@ -8,7 +8,10 @@ go_library(
         "//internal/queue:queue",
         "//internal/worker:worker",
     ],
-    visibility = ["PUBLIC"],
+    visibility = [
+        "//cmd:",
+        "//internal/...",
+    ],
 )
 
 go_test(

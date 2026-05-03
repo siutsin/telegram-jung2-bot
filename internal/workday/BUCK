@@ -2,7 +2,10 @@ go_library(
     name = "workday",
     srcs = glob(["*.go"], exclude = ["*_test.go"]),
     package_name = "github.com/siutsin/telegram-jung2-bot/internal/workday",
-    visibility = ["PUBLIC"],
+    visibility = [
+        "//cmd:",
+        "//internal/...",
+    ],
 )
 
 go_test(

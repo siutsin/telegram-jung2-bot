@@ -22,7 +22,7 @@ type QueueWorker interface {
 	Run(ctx context.Context) error
 }
 
-// App wraps the configured application runtime and its dependencies.
+// App wraps the configured application processes and dependencies.
 type App struct {
 	httpServer      HTTPServer
 	queueWorker     QueueWorker
@@ -34,7 +34,7 @@ type Options struct {
 	ShutdownTimeout time.Duration
 }
 
-// Dependencies contains the runtime collaborators the app needs.
+// Dependencies contains the collaborators the app needs.
 type Dependencies struct {
 	Chats      httpserver.ChatStore
 	Messages   httpserver.MessageStore
@@ -47,7 +47,7 @@ type Dependencies struct {
 	Now        func() time.Time
 }
 
-// New constructs an application with the provided runtime options.
+// New constructs an application with the provided dependencies and options.
 func New(config config.Config, dependencies Dependencies, options Options) (*App, error) {
 	httpServer, err := newHTTPServer(config, dependencies)
 	if err != nil {
