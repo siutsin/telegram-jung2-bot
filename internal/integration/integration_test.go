@@ -23,20 +23,20 @@ import (
 func TestWebhookIntakeSlice(t *testing.T) {
 	t.Parallel()
 
-	store := &sliceStore{}
+	messageStore := &sliceMessageStore{}
+	chatStore := &sliceChatStore{}
 	enqueuer := &sliceEnqueuer{}
 	response := httpserver.HandleWebhook(context.Background(), []byte(`{"message":{"chat":{"id":123,"title":"Group","type":"supergroup"},"from":{"id":456,"first_name":"Ada"},"text":"/topTen","entities":[{"type":"bot_command"}]}}`), httpserver.Dependencies{
-		MessageTable: "messages",
-		ChatTable:    "chats",
-		Store:        store,
-		Enqueuer:     enqueuer,
-		Now:          fixedNow,
+		Messages: messageStore,
+		Chats:    chatStore,
+		Enqueuer: enqueuer,
+		Now:      fixedNow,
 	})
 
 	assert.Equal(t, httpserver.Response{StatusCode: 200}, response)
-	messages := store.messageUpdates()
-	require.Len(t, messages, 1)
-	assert.Equal(t, map[string]any{"chatId": int64(123), "dateCreated": "2026-05-02T20:00:00+08:00"}, messages[0].Key)
+	require.Len(t, messageStore.messages, 1)
+	assert.Equal(t, int64(123), messageStore.messages[0].ChatID)
+	assert.Equal(t, "2026-05-02T20:00:00+08:00", message.FormatDateCreated(messageStore.messages[0].DateCreated))
 	actions := enqueuer.enqueuedActions()
 	require.Len(t, actions, 1)
 	assert.Equal(t, queue.ActionTopTen, actions[0].Name)
@@ -134,31 +134,28 @@ func fixedNow() time.Time {
 	return time.Date(2026, 5, 2, 12, 0, 0, 0, time.UTC)
 }
 
-type sliceStore struct {
+type sliceMessageStore struct {
 	mu       sync.Mutex
-	messages []message.UpdateExpression
-	chats    []chat.UpdateExpression
+	messages []message.Message
 }
 
-func (store *sliceStore) SaveMessage(ctx context.Context, request message.UpdateExpression) error {
+func (store *sliceMessageStore) Save(ctx context.Context, row message.Message) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
-	store.messages = append(store.messages, request)
+	store.messages = append(store.messages, row)
 	return nil
 }
 
-func (store *sliceStore) SaveChat(ctx context.Context, request chat.UpdateExpression) error {
-	store.mu.Lock()
-	defer store.mu.Unlock()
-	store.chats = append(store.chats, request)
-	return nil
+type sliceChatStore struct {
+	mu    sync.Mutex
+	chats []chat.Settings
 }
 
-func (store *sliceStore) messageUpdates() []message.UpdateExpression {
+func (store *sliceChatStore) Save(ctx context.Context, settings chat.Settings) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
-
-	return append([]message.UpdateExpression(nil), store.messages...)
+	store.chats = append(store.chats, settings)
+	return nil
 }
 
 type sliceEnqueuer struct {

@@ -20,7 +20,7 @@ Final acceptance requires:
 - `make coverage` passing with the required 100% Go statement coverage for
   `internal/` packages.
 - `make lint` passing.
-- Production adapters and worker handlers wired in the default runtime path.
+- Production adapters and worker handlers wired in the default startup path.
 - A cleanup pass that removes migration-only artifacts and wording.
 
 ## Production Contract
@@ -77,6 +77,7 @@ complete. It must be removed before the final cleanup gate.
 │   ├── message/
 │   ├── queue/
 │   ├── schedule/
+│   ├── service/
 │   ├── statistics/
 │   ├── telegram/
 │   ├── worker/
@@ -142,12 +143,12 @@ complete. It must be removed before the final cleanup gate.
 - [x] Covered: fakeable HTTP server and queue worker lifecycle, cancellation,
   shutdown timeout, dependency-construction errors, and test coverage.
 
-### Runtime Wiring
+### Startup And Adapters
 
-- [x] Production runtime assembly lives under `internal/runtime`, with
-  `internal/app` owning the application wrapper and graceful lifecycle.
+- [x] Production startup assembly lives in `cmd/main.go`, with
+  `internal/app` owning only the application wrapper and graceful lifecycle.
 - [x] The default startup path builds real DynamoDB, SQS, Telegram, and
-  scale-up adapters.
+  scale-up adapters without an `internal/runtime` aggregation package.
 - [x] Worker handlers are wired for `junghelp`, `topten`, `topdiver`,
   `alljung`, `offFromWork`, `enableAllJung`, `disableAllJung`,
   `setOffFromWorkTimeUTC`, and `onOffFromWork`.
@@ -159,7 +160,8 @@ complete. It must be removed before the final cleanup gate.
 ### Bootstrap
 
 - [x] `cmd/main.go` contains only `main()`.
-- [x] Process startup composition lives in `cmd/main.go`, with production dependencies initialised there and passed into `internal/app`.
+- [x] Process startup composition lives in `cmd/main.go`, with production
+  dependencies initialised there and passed into `internal/app`.
 - [x] Environment loading now uses `github.com/caarlos0/env/v11` through
   `internal/config`.
 - [x] The application is wrapped by `app.App`, so dependencies can be injected
@@ -171,14 +173,15 @@ complete. It must be removed before the final cleanup gate.
 
 - [ ] Raise total Go statement coverage from the current `87.5%` to the
   required `100.0%` for `internal/` packages so `make coverage` passes.
-- [ ] Add coverage for the remaining uncovered runtime-construction and AWS
-  adapter paths in `internal/app/app.go` and `internal/runtime/runtime.go`.
+- [ ] Add coverage for the remaining uncovered startup and AWS adapter paths in
+  `cmd/main.go`, `internal/dynamodb/store.go`, `internal/queue/sqs.go`, and
+  `internal/service/service.go`.
 - [ ] Add coverage for the remaining uncovered HTTP edge paths in
   `internal/httpserver/httpserver.go`.
 
 ### Build And Tooling Hygiene
 
-- [ ] Run `make lint` and fix any remaining lint failures.
+- [x] `make lint` passes.
 - [x] Keep `make build` and `make test` cache-friendly by making vendoring an
   explicit `make vendor` step instead of a prerequisite for every build/test
   run.
@@ -229,20 +232,28 @@ complete. It must be removed before the final cleanup gate.
 ### `queue`
 
 - Owns SQS action model, stable action names, long polling, enqueueing,
-  decoding, dispatch, and deletion.
+  decoding, dispatch, deletion, and the concrete SQS adapter.
 - Public API: `Action`, `Consumer.Poll`, `Producer.Enqueue`,
-  `DecodeMessage`, and `DecodeEvent`.
+  `DecodeMessage`, `DecodeEvent`, and `Client`.
+
+### `dynamodb`
+
+- Owns SDK-free DynamoDB request helpers plus the concrete DynamoDB-backed
+  adapters for message storage, chat storage, and scale-up.
+- Public API: `CollectPages`, `BuildChatCountUpdate`, `BuildScaleUpRequest`,
+  `MessageClient`, `ChatClient`, and `ScaleUpper`.
+
+### `service`
+
+- Owns queue-action behaviour for help, reports, admin settings, and scheduled
+  off-work fan-out.
+- Public API: `Service` and its action methods used by `worker.Handlers`.
 
 ### `command`
 
 - Owns supported Telegram commands, validation, argument parsing, and conversion
   to queue actions.
 - Public API: `Parse`, `ParseAll`, and `ActionFor`.
-
-### `dynamodb`
-
-- Owns request shapes, pagination helpers, common error classification, and
-  sanitised logging fields.
 
 ### `message`
 
