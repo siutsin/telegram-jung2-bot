@@ -1,0 +1,8 @@
+go_binary(
+    name = "app",
+    srcs = ["main.go"],
+    deps = [
+        "//internal/bootstrap:bootstrap",
+    ],
+    visibility = ["PUBLIC"],
+)

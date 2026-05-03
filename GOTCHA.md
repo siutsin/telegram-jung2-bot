@@ -5,7 +5,7 @@
 ### Keep Go code in the executable and private package trees
 
 Do not reintroduce root-level Go package directories. The service executable
-lives under `cmd/telegram-jung2-bot`, and private packages live under
+lives under `cmd/`, and private packages live under
 `internal/`. Buck2 target visibility should stay explicit even where Go import
 visibility also applies.
 

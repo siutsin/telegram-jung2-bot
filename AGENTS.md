@@ -9,7 +9,7 @@ used to verify behaviour until production adapter parity is complete.
 - Work on independent modules first; defer app wiring until package contracts
   and parity tests are stable.
 - Do not create a `go/` subdirectory. The service executable lives under
-  `cmd/telegram-jung2-bot`; private Go packages live under `internal/`.
+  `cmd/`; private Go packages live under `internal/`.
 - Keep Buck target visibility explicit even though the Go `internal` import
   rule also prevents imports from outside this module tree.
 - Do not add shared `testutil`, shared mocks, or abstraction packages until
@@ -61,17 +61,25 @@ used to verify behaviour until production adapter parity is complete.
 
 - `make vendor` refreshes Go vendoring and generated Buck targets.
 - `make build` builds the Go service with Buck2.
-- Use `make test` as the only supported test entrypoint for this repository.
+- `make ci` runs the full CI gate in order: `vendor`, then `make coverage`
+  (which runs `make test`, and therefore `make lint`, before collecting
+  coverage).
+- Use `make test` for Buck2 test execution and `make coverage` for the Buck-built
+  coverage gate.
 - Do not invoke native `go test` directly for validation.
-- `make test` runs Buck2 tests with the race detector enabled and a Buck-built
-  atomic Go coverage gate, and enforces 100% Go statement coverage.
-- `make test-coverage` runs only the Buck-built Go coverage gate; coverage must
-  remain 100%.
-- `make lint` runs `gofmt` checks, `go vet`, `golangci-lint`, and
-  `markdownlint-cli2`.
+- `make test` runs `make lint` first.
+- `make test` runs Buck2 tests with the race detector enabled.
+- `make coverage` runs only the Buck-built atomic Go coverage gate; coverage
+  must remain 100% for `internal/` packages, and `cmd/` entrypoints are
+  excluded from the coverage gate.
+- `make coverage` reuses the same Buck test target set and race mode as
+  `make test`; test selection lives in the `Makefile`, not the coverage script.
+- `make build` and `make test` do not refresh vendoring; run `make vendor`
+  explicitly after dependency changes.
+- `make lint` runs `gofmt` checks, `go vet`, `golangci-lint`, `shellcheck`,
+  and `markdownlint-cli2`.
 - `make lint-fix` applies supported formatting/lint fixes.
 - `make install-buck2` installs or updates Buck2 for the local platform.
-- `make check-gobuckify` regenerates Buck targets with Buck2's official
-  `gobuckify` tool.
 - Use Buck2's official `prelude//go/tools/gobuckify:gobuckify` target for Go
-  vendor BUCK generation; do not reintroduce a custom generator.
+  vendor BUCK generation through `make vendor`; do not reintroduce a custom
+  generator.

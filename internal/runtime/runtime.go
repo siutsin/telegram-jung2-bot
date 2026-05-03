@@ -115,8 +115,8 @@ func NewComponents(ctx context.Context, serviceConfig config.Config) (Components
 		return Components{}, fmt.Errorf("load AWS config: %w", err)
 	}
 
-	dynamoClient := awsdynamodb.NewFromConfig(awsConfig)
-	queueClient := awssqs.NewFromConfig(awsConfig)
+	dynamoClient := awsdynamodb.NewFromConfig(awsConfig, dynamoOptions(serviceConfig)...)
+	queueClient := awssqs.NewFromConfig(awsConfig, sqsOptions(serviceConfig)...)
 	telegramClient := telegram.NewClient(
 		serviceConfig.TelegramBotToken,
 		telegram.WithBaseURL(serviceConfig.TelegramAPIBaseURL),
@@ -481,13 +481,6 @@ func loadAWSConfig(ctx context.Context, serviceConfig config.Config) (awscore.Co
 	options := []func(*awscfg.LoadOptions) error{
 		awscfg.WithRegion(serviceConfig.AWSRegion),
 	}
-	if serviceConfig.AWSEndpointURL != "" {
-		options = append(options, awscfg.WithEndpointResolverWithOptions(
-			awscore.EndpointResolverWithOptionsFunc(func(service string, region string, options ...interface{}) (awscore.Endpoint, error) {
-				return awscore.Endpoint{URL: serviceConfig.AWSEndpointURL, HostnameImmutable: true}, nil
-			}),
-		))
-	}
 
 	awsConfig, err := awscfg.LoadDefaultConfig(ctx, options...)
 	if err != nil {
@@ -495,6 +488,32 @@ func loadAWSConfig(ctx context.Context, serviceConfig config.Config) (awscore.Co
 	}
 
 	return awsConfig, nil
+}
+
+// dynamoOptions applies DynamoDB client overrides from service configuration.
+func dynamoOptions(serviceConfig config.Config) []func(*awsdynamodb.Options) {
+	if serviceConfig.AWSEndpointURL == "" {
+		return nil
+	}
+
+	return []func(*awsdynamodb.Options){
+		func(options *awsdynamodb.Options) {
+			options.BaseEndpoint = awscore.String(serviceConfig.AWSEndpointURL)
+		},
+	}
+}
+
+// sqsOptions applies SQS client overrides from service configuration.
+func sqsOptions(serviceConfig config.Config) []func(*awssqs.Options) {
+	if serviceConfig.AWSEndpointURL == "" {
+		return nil
+	}
+
+	return []func(*awssqs.Options){
+		func(options *awssqs.Options) {
+			options.BaseEndpoint = awscore.String(serviceConfig.AWSEndpointURL)
+		},
+	}
 }
 
 // updateItem applies a contract update expression in DynamoDB.

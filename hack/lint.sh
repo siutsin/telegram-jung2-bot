@@ -19,6 +19,18 @@ done < <(find . \
   -not -path './vendor/*' \
   | sort)
 
+shell_files=()
+while IFS= read -r shell_file; do
+  shell_files+=("${shell_file}")
+done < <(find . \
+  -type f \
+  -name '*.sh' \
+  -not -path './buck-out/*' \
+  -not -path './l[e]gacy/*' \
+  -not -path './node_modules/*' \
+  -not -path './vendor/*' \
+  | sort)
+
 if ((${#go_files[@]} > 0)); then
   if [[ "${mode}" == "fix" ]]; then
     gofmt -w "${go_files[@]}"
@@ -32,14 +44,16 @@ if ((${#go_files[@]} > 0)); then
   fi
 fi
 
-buck2 clean >/dev/null
+go vet ./cmd ./internal/...
 
-go vet ./...
+if ((${#shell_files[@]} > 0)); then
+  shellcheck "${shell_files[@]}"
+fi
 
 if [[ "${mode}" == "fix" ]]; then
-  golangci-lint run --fix
+  golangci-lint run --fix ./cmd/... ./internal/...
   markdownlint-cli2 --fix
 else
-  golangci-lint run
+  golangci-lint run ./cmd/... ./internal/...
   markdownlint-cli2
 fi
