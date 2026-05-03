@@ -2,12 +2,11 @@
 
 ## Purpose
 
-This package owns stored chat settings and chat update shapes.
+This package parses stored chat settings, builds chat update shapes, and filters scheduled chats.
 
 It:
 
-- loads chat settings
-- saves chat metadata
+- parses stored chat setting rows
 - builds chat update requests
 - applies stored chat defaults
 - filters chats for scheduled reports
@@ -22,22 +21,55 @@ This package depends on:
 - `internal/telegram`
 - `internal/workday`
 
-## API
+## Flow
 
-- `FromTelegram(input telegram.Message, now time.Time) Settings`
-- `FromRow(row Row) (Settings, error)`
-- `FromScheduleRow(row Row) Settings`
-- `BuildMetadataUpdate(tableName string, settings Settings) UpdateExpression`
-- `BuildAllJungUpdate(tableName string, chatID int64, enabled bool) UpdateExpression`
-- `BuildOffWorkUpdate(tableName string, chatID int64, offTime string, workdays workday.Workdays) UpdateExpression`
-- `FilterDue(rows []Settings, offTime string, day string) []Settings`
+### Telegram metadata flow
+
+```mermaid
+flowchart TD
+    telegram[Telegram message] --> fromTelegram[FromTelegram]
+    fromTelegram --> settings[ChatSetting]
+    settings --> metadataUpdate[BuildMetadataUpdate]
+    metadataUpdate --> dynamoUpdate[DynamoDB update request]
+```
+
+- `FromTelegram` builds chat metadata from one Telegram message.
+- `BuildMetadataUpdate` turns those settings into the DynamoDB update shape used
+  to save chat metadata.
+
+### Full row parsing flow
+
+```mermaid
+flowchart TD
+    storedRow[Stored chat row] --> parseRow[ParseRow]
+    parseRow --> validatedSettings[Validated ChatSetting]
+```
+
+- `ParseRow` is the strict path for full stored rows.
+- It applies defaults, including `enableAllJung=true` when the stored value is missing.
+- It parses `dateCreated` and validates `workday`.
+- This path returns an error when stored data is malformed.
+
+### Schedule filtering flow
+
+```mermaid
+flowchart TD
+    scheduleRow[Stored schedule row] --> fromScheduleRow[FromScheduleRow]
+    fromScheduleRow --> scheduleSettings[Schedule ChatSetting]
+    scheduleSettings --> filterDue[FilterDue]
+    filterDue --> dueChats[Due chats]
+```
+
+- `FromScheduleRow` is the permissive path for scheduled fan-out.
+- It ignores `dateCreated` and masks unknown `workday` bits instead of failing.
+- `FilterDue` keeps only chats that match the requested off-work time and day.
 
 ## Scope
 
 This package owns:
 
-- chat settings models
-- chat repository wrapper
+- chat setting models
+- stored row parsing
 - chat update request shapes
 - chat defaulting
 - due-chat filtering
@@ -48,10 +80,3 @@ Chat loading fails when:
 
 - stored `dateCreated` is invalid
 - stored `workday` is invalid in full row parsing
-
-## Fallbacks
-
-These do not fail:
-
-- missing stored rows, which default to enabled chat settings
-- malformed scheduled `workday` bits in `ListEnabled`, which are masked to known weekday bits

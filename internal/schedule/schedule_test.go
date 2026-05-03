@@ -18,18 +18,18 @@ func TestServiceSyncChat(t *testing.T) {
 	t.Parallel()
 
 	scheduler := &fakeScheduler{}
-	settings := chat.Settings{ChatID: 123}
+	settings := chat.ChatSetting{ChatID: 123}
 
 	err := (Service{Scheduler: scheduler}).SyncChat(context.Background(), settings)
 
 	require.NoError(t, err)
-	assert.Equal(t, []chat.Settings{settings}, scheduler.synced)
+	assert.Equal(t, []chat.ChatSetting{settings}, scheduler.synced)
 }
 
 func TestServiceSyncChatRequiresScheduler(t *testing.T) {
 	t.Parallel()
 
-	err := (Service{}).SyncChat(context.Background(), chat.Settings{})
+	err := (Service{}).SyncChat(context.Background(), chat.ChatSetting{})
 
 	require.Error(t, err)
 	assert.EqualError(t, err, "scheduler is required")
@@ -38,7 +38,7 @@ func TestServiceSyncChatRequiresScheduler(t *testing.T) {
 func TestServiceSyncChatWrapsSchedulerError(t *testing.T) {
 	t.Parallel()
 
-	err := (Service{Scheduler: &fakeScheduler{err: errors.New("boom")}}).SyncChat(context.Background(), chat.Settings{})
+	err := (Service{Scheduler: &fakeScheduler{err: errors.New("boom")}}).SyncChat(context.Background(), chat.ChatSetting{})
 
 	require.Error(t, err)
 	assert.EqualError(t, err, "sync chat schedule: boom")
@@ -48,7 +48,7 @@ func TestServiceHandleDueReportEnqueuesDueChats(t *testing.T) {
 	t.Parallel()
 
 	enqueuer := &fakeEnqueuer{}
-	rows := []chat.Settings{
+	rows := []chat.ChatSetting{
 		{ChatID: 1},
 		{ChatID: 2, OffTime: "1000", HasOffTime: true, Workday: workday.Workdays(workday.Fri), HasWorkday: true},
 		{ChatID: 3, OffTime: "1800", HasOffTime: true, Workday: workday.Workdays(workday.Fri), HasWorkday: true},
@@ -89,7 +89,7 @@ func TestServiceHandleDueReportWrapsEnqueueError(t *testing.T) {
 	t.Parallel()
 
 	err := (Service{
-		Chats:    &fakeChatRepository{rows: []chat.Settings{{ChatID: 1}}},
+		Chats:    &fakeChatRepository{rows: []chat.ChatSetting{{ChatID: 1}}},
 		Enqueuer: &fakeEnqueuer{err: errors.New("boom")},
 	}).HandleDueReport(context.Background(), time.Date(2022, 3, 4, 10, 0, 0, 0, time.UTC))
 
@@ -116,7 +116,7 @@ func TestWindowFromTimePreservesInputOffset(t *testing.T) {
 func TestDueChatIDs(t *testing.T) {
 	t.Parallel()
 
-	rows := []chat.Settings{
+	rows := []chat.ChatSetting{
 		{ChatID: 1},
 		{ChatID: 2, OffTime: "1000", HasOffTime: true, Workday: workday.Workdays(workday.Fri), HasWorkday: true},
 		{ChatID: 3, OffTime: "1000", HasOffTime: true, Workday: workday.Workdays(workday.Mon), HasWorkday: true},
@@ -217,7 +217,7 @@ func TestAllJungSettingChanges(t *testing.T) {
 func TestDueChatIDsSkipsContractDefaultOnWeekend(t *testing.T) {
 	t.Parallel()
 
-	chatIDs := DueChatIDs([]chat.Settings{{ChatID: 1}}, time.Date(2022, 3, 5, 10, 0, 0, 0, time.UTC))
+	chatIDs := DueChatIDs([]chat.ChatSetting{{ChatID: 1}}, time.Date(2022, 3, 5, 10, 0, 0, 0, time.UTC))
 
 	assert.Empty(t, chatIDs)
 }
@@ -280,21 +280,21 @@ func TestWeekdayToken(t *testing.T) {
 }
 
 type fakeScheduler struct {
-	synced []chat.Settings
+	synced []chat.ChatSetting
 	err    error
 }
 
-func (scheduler *fakeScheduler) Sync(ctx context.Context, settings chat.Settings) error {
+func (scheduler *fakeScheduler) Sync(ctx context.Context, settings chat.ChatSetting) error {
 	scheduler.synced = append(scheduler.synced, settings)
 	return scheduler.err
 }
 
 type fakeChatRepository struct {
-	rows []chat.Settings
+	rows []chat.ChatSetting
 	err  error
 }
 
-func (repository *fakeChatRepository) ListEnabled(ctx context.Context, tableName string) ([]chat.Settings, error) {
+func (repository *fakeChatRepository) ListEnabled(ctx context.Context, tableName string) ([]chat.ChatSetting, error) {
 	return repository.rows, repository.err
 }
 

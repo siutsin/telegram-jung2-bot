@@ -26,7 +26,7 @@ type dynamoRequester interface {
 	UpdateTable(ctx context.Context, params *awsdynamodb.UpdateTableInput, optFns ...func(*awsdynamodb.Options)) (*awsdynamodb.UpdateTableOutput, error)
 }
 
-// MessageClient adapts DynamoDB to the message repository contract.
+// MessageClient adapts DynamoDB to the message storage contract.
 type MessageClient struct {
 	Dynamo dynamoRequester
 }
@@ -100,8 +100,8 @@ func (client MessageClient) QueryByChat(ctx context.Context, tableName string, c
 	}
 }
 
-// Get loads one chat settings row.
-func (client ChatClient) Get(ctx context.Context, tableName string, chatID int64) (chat.Settings, bool, error) {
+// Get loads one stored chat row.
+func (client ChatClient) Get(ctx context.Context, tableName string, chatID int64) (chat.ChatSetting, bool, error) {
 	output, err := client.Dynamo.GetItem(ctx, &awsdynamodb.GetItemInput{
 		TableName: awscore.String(tableName),
 		Key: map[string]ddbtypes.AttributeValue{
@@ -109,21 +109,21 @@ func (client ChatClient) Get(ctx context.Context, tableName string, chatID int64
 		},
 	})
 	if err != nil {
-		return chat.Settings{}, false, fmt.Errorf("get DynamoDB chat row: %w", err)
+		return chat.ChatSetting{}, false, fmt.Errorf("get DynamoDB chat row: %w", err)
 	}
 	if len(output.Item) == 0 {
-		return chat.Settings{}, false, nil
+		return chat.ChatSetting{}, false, nil
 	}
 
-	settings, err := chat.FromRow(decodeChat(output.Item))
+	settings, err := chat.ParseRow(decodeChat(output.Item))
 	if err != nil {
-		return chat.Settings{}, false, fmt.Errorf("parse DynamoDB chat row: %w", err)
+		return chat.ChatSetting{}, false, fmt.Errorf("parse DynamoDB chat row: %w", err)
 	}
 
 	return settings, true, nil
 }
 
-// Update stores a chat settings update expression.
+// Update stores a chat setting update expression.
 func (client ChatClient) Update(ctx context.Context, request chat.UpdateExpression) error {
 	return updateItem(ctx, client.Dynamo, Request{
 		ExpressionAttributeNames:  request.ExpressionAttributeNames,
@@ -134,8 +134,8 @@ func (client ChatClient) Update(ctx context.Context, request chat.UpdateExpressi
 	})
 }
 
-// Save stores a chat settings row.
-func (client ChatClient) Save(ctx context.Context, tableName string, settings chat.Settings) error {
+// Save stores a chat record row.
+func (client ChatClient) Save(ctx context.Context, tableName string, settings chat.ChatSetting) error {
 	request := chat.BuildMetadataUpdate(tableName, settings)
 	return updateItem(ctx, client.Dynamo, Request{
 		ExpressionAttributeNames:  request.ExpressionAttributeNames,
@@ -146,9 +146,9 @@ func (client ChatClient) Save(ctx context.Context, tableName string, settings ch
 	})
 }
 
-// ListEnabled scans chat settings rows for scheduling.
-func (client ChatClient) ListEnabled(ctx context.Context, tableName string) ([]chat.Settings, error) {
-	rows := make([]chat.Settings, 0)
+// ListEnabled scans stored chat rows for scheduling.
+func (client ChatClient) ListEnabled(ctx context.Context, tableName string) ([]chat.ChatSetting, error) {
+	rows := make([]chat.ChatSetting, 0)
 	startKey := map[string]ddbtypes.AttributeValue(nil)
 
 	for {

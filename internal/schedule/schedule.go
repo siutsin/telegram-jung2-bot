@@ -24,7 +24,7 @@ type SettingChange struct {
 }
 
 type ChatLister interface {
-	ListEnabled(ctx context.Context, tableName string) ([]chat.Settings, error)
+	ListEnabled(ctx context.Context, tableName string) ([]chat.ChatSetting, error)
 }
 
 type Enqueuer interface {
@@ -32,7 +32,7 @@ type Enqueuer interface {
 }
 
 type Scheduler interface {
-	Sync(ctx context.Context, settings chat.Settings) error
+	Sync(ctx context.Context, settings chat.ChatSetting) error
 }
 
 type Service struct {
@@ -43,7 +43,7 @@ type Service struct {
 }
 
 // SyncChat syncs one chat's schedule state.
-func (service Service) SyncChat(ctx context.Context, settings chat.Settings) error {
+func (service Service) SyncChat(ctx context.Context, settings chat.ChatSetting) error {
 	if service.Scheduler == nil {
 		return fmt.Errorf("scheduler is required")
 	}
@@ -88,7 +88,7 @@ func WindowFromTime(timestamp time.Time) Window {
 
 // DueChatIDs returns chat IDs due for a scheduled report.
 // For example, chats due at Monday 18:30 become just their chat ID list.
-func DueChatIDs(rows []chat.Settings, timestamp time.Time) []int64 {
+func DueChatIDs(rows []chat.ChatSetting, timestamp time.Time) []int64 {
 	window := WindowFromTime(timestamp)
 	due := chat.FilterDue(rows, window.OffTime, window.Weekday)
 	chatIDs := make([]int64, 0, len(due))

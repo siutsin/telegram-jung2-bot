@@ -29,7 +29,7 @@ type MessageSaver interface {
 }
 
 type ChatSaver interface {
-	Save(ctx context.Context, tableName string, settings chat.Settings) error
+	Save(ctx context.Context, tableName string, settings chat.ChatSetting) error
 }
 
 type Enqueuer interface {

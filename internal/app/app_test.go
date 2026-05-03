@@ -379,7 +379,7 @@ func (store *runtimeMessageStore) Save(ctx context.Context, tableName string, ro
 
 type runtimeChatStore struct{}
 
-func (store *runtimeChatStore) Save(ctx context.Context, tableName string, settings chat.Settings) error {
+func (store *runtimeChatStore) Save(ctx context.Context, tableName string, settings chat.ChatSetting) error {
 	return nil
 }
 

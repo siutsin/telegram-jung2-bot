@@ -16,28 +16,30 @@ func TestFromTelegramBuildsChatMetadata(t *testing.T) {
 
 	settings := FromTelegram(telegram.Message{Chat: telegram.Chat{ID: 123, Title: "title"}}, now)
 
-	assert.Equal(t, int64(123), settings.ChatID)
-	assert.Equal(t, "title", settings.ChatTitle)
-	assert.Equal(t, now, settings.DateCreated)
-	assert.Equal(t, int64(1554691104), settings.TTL)
-	assert.True(t, settings.EnableAllJung)
+	assert.Equal(t, ChatSetting{
+		ChatID:        123,
+		ChatTitle:     "title",
+		DateCreated:   now,
+		TTL:           1554691104,
+		EnableAllJung: true,
+	}, settings)
 }
 
-func TestFromRowAppliesContractDefaults(t *testing.T) {
-	settings, err := FromRow(Row{ChatID: 123})
+func TestParseRowAppliesContractDefaults(t *testing.T) {
+	settings, err := ParseRow(Row{ChatID: 123})
 	require.NoError(t, err)
 
-	assert.Equal(t, int64(123), settings.ChatID)
-	assert.True(t, settings.EnableAllJung)
-	assert.False(t, settings.HasOffTime)
-	assert.False(t, settings.HasWorkday)
+	assert.Equal(t, ChatSetting{
+		ChatID:        123,
+		EnableAllJung: true,
+	}, settings)
 }
 
-func TestFromRowUsesStoredValues(t *testing.T) {
+func TestParseRowUsesStoredValues(t *testing.T) {
 	enabled := false
 	mask := workday.Mon | workday.Fri
 
-	settings, err := FromRow(Row{
+	settings, err := ParseRow(Row{
 		ChatID:        123,
 		ChatTitle:     "title",
 		DateCreated:   "2019-03-16T02:26:19+08:00",
@@ -48,18 +50,20 @@ func TestFromRowUsesStoredValues(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	assert.Equal(t, int64(123), settings.ChatID)
-	assert.Equal(t, "title", settings.ChatTitle)
-	assert.Equal(t, "2019-03-16T02:26:19+08:00", settings.DateCreated.Format(time.RFC3339))
-	assert.Equal(t, int64(1558349640), settings.TTL)
-	assert.False(t, settings.EnableAllJung)
-	assert.Equal(t, "1800", settings.OffTime)
-	assert.True(t, settings.HasOffTime)
-	assert.Equal(t, workday.Workdays(mask), settings.Workday)
-	assert.True(t, settings.HasWorkday)
+	assert.Equal(t, ChatSetting{
+		ChatID:        123,
+		ChatTitle:     "title",
+		DateCreated:   mustParseTime(t, "2019-03-16T02:26:19+08:00"),
+		TTL:           1558349640,
+		EnableAllJung: false,
+		OffTime:       "1800",
+		Workday:       workday.Workdays(mask),
+		HasOffTime:    true,
+		HasWorkday:    true,
+	}, settings)
 }
 
-func TestFromRowRejectsMalformedValues(t *testing.T) {
+func TestParseRowRejectsMalformedValues(t *testing.T) {
 	badMask := 128
 
 	tests := []Row{
@@ -68,7 +72,7 @@ func TestFromRowRejectsMalformedValues(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		_, err := FromRow(test)
+		_, err := ParseRow(test)
 		require.Error(t, err)
 	}
 }
@@ -77,14 +81,14 @@ func TestFromScheduleRowPreservesScheduleParity(t *testing.T) {
 	disabled := false
 	mask := workday.Mon | 128
 
-	settings := []Settings{
+	settings := []ChatSetting{
 		FromScheduleRow(Row{ChatID: 1}),
 		FromScheduleRow(Row{ChatID: 2, EnableAllJung: &disabled}),
 		FromScheduleRow(Row{ChatID: 3, DateCreated: "bad"}),
 		FromScheduleRow(Row{ChatID: 4, Workday: &mask}),
 	}
 
-	assert.Equal(t, []Settings{
+	assert.Equal(t, []ChatSetting{
 		{ChatID: 1, EnableAllJung: true},
 		{ChatID: 2, EnableAllJung: false},
 		{ChatID: 3, EnableAllJung: true},
@@ -92,45 +96,79 @@ func TestFromScheduleRowPreservesScheduleParity(t *testing.T) {
 	}, settings)
 }
 
-func TestBuildMetadataUpdatePreservesContractShape(t *testing.T) {
-	settings := Settings{
-		ChatID:      123,
-		ChatTitle:   "title",
-		DateCreated: mustParseTime(t, "2019-04-01T02:38:24Z"),
-		TTL:         1554691104,
+func TestBuildUpdatePreservesContractShape(t *testing.T) {
+	tests := []struct {
+		name   string
+		update UpdateExpression
+		want   UpdateExpression
+	}{
+		{
+			name: "metadata",
+			update: BuildMetadataUpdate("chat-id-dev", ChatSetting{
+				ChatID:      123,
+				ChatTitle:   "title",
+				DateCreated: mustParseTime(t, "2019-04-01T02:38:24Z"),
+				TTL:         1554691104,
+			}),
+			want: UpdateExpression{
+				TableName:        "chat-id-dev",
+				Key:              map[string]any{"chatId": int64(123)},
+				UpdateExpression: "SET #ct = :ct, #dc = :dc, #ttl = :ttl",
+				ExpressionAttributeNames: map[string]string{
+					"#ct":  "chatTitle",
+					"#dc":  "dateCreated",
+					"#ttl": "ttl",
+				},
+				ExpressionAttributeValues: map[string]any{
+					":ct":  "title",
+					":dc":  "2019-04-01T10:38:24+08:00",
+					":ttl": int64(1554691104),
+				},
+			},
+		},
+		{
+			name:   "all jung",
+			update: BuildAllJungUpdate("chat-id-dev", 123, false),
+			want: UpdateExpression{
+				TableName:        "chat-id-dev",
+				Key:              map[string]any{"chatId": int64(123)},
+				UpdateExpression: "SET #eaj = :eaj",
+				ExpressionAttributeNames: map[string]string{
+					"#eaj": "enableAllJung",
+				},
+				ExpressionAttributeValues: map[string]any{
+					":eaj": false,
+				},
+			},
+		},
+		{
+			name:   "off work",
+			update: BuildOffWorkUpdate("chat-id-dev", 123, "1800", workday.Workdays(workday.Mon|workday.Fri)),
+			want: UpdateExpression{
+				TableName:        "chat-id-dev",
+				Key:              map[string]any{"chatId": int64(123)},
+				UpdateExpression: "SET #ot = :ot, #wd = :wd",
+				ExpressionAttributeNames: map[string]string{
+					"#ot": "offTime",
+					"#wd": "workday",
+				},
+				ExpressionAttributeValues: map[string]any{
+					":ot": "1800",
+					":wd": workday.Mon | workday.Fri,
+				},
+			},
+		},
 	}
 
-	update := BuildMetadataUpdate("chat-id-dev", settings)
-
-	assert.Equal(t, "chat-id-dev", update.TableName)
-	assert.Equal(t, map[string]any{"chatId": int64(123)}, update.Key)
-	assert.Equal(t, "SET #ct = :ct, #dc = :dc, #ttl = :ttl", update.UpdateExpression)
-	assert.Equal(t, map[string]string{"#ct": "chatTitle", "#dc": "dateCreated", "#ttl": "ttl"}, update.ExpressionAttributeNames)
-	assert.Equal(t, map[string]any{":ct": "title", ":dc": "2019-04-01T10:38:24+08:00", ":ttl": int64(1554691104)}, update.ExpressionAttributeValues)
-}
-
-func TestBuildAllJungUpdatePreservesContractShape(t *testing.T) {
-	update := BuildAllJungUpdate("chat-id-dev", 123, false)
-
-	assert.Equal(t, "chat-id-dev", update.TableName)
-	assert.Equal(t, map[string]any{"chatId": int64(123)}, update.Key)
-	assert.Equal(t, "SET #eaj = :eaj", update.UpdateExpression)
-	assert.Equal(t, map[string]string{"#eaj": "enableAllJung"}, update.ExpressionAttributeNames)
-	assert.Equal(t, map[string]any{":eaj": false}, update.ExpressionAttributeValues)
-}
-
-func TestBuildOffWorkUpdatePreservesContractShape(t *testing.T) {
-	update := BuildOffWorkUpdate("chat-id-dev", 123, "1800", workday.Workdays(workday.Mon|workday.Fri))
-
-	assert.Equal(t, "chat-id-dev", update.TableName)
-	assert.Equal(t, map[string]any{"chatId": int64(123)}, update.Key)
-	assert.Equal(t, "SET #ot = :ot, #wd = :wd", update.UpdateExpression)
-	assert.Equal(t, map[string]string{"#ot": "offTime", "#wd": "workday"}, update.ExpressionAttributeNames)
-	assert.Equal(t, map[string]any{":ot": "1800", ":wd": workday.Mon | workday.Fri}, update.ExpressionAttributeValues)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert.Equal(t, test.want, test.update)
+		})
+	}
 }
 
 func TestFilterDuePreservesContractDefaults(t *testing.T) {
-	rows := []Settings{
+	rows := []ChatSetting{
 		{ChatID: 1},
 		{ChatID: 2, OffTime: "1000", HasOffTime: true, Workday: workday.Workdays(workday.Mon), HasWorkday: true},
 		{ChatID: 3, OffTime: "1000", HasOffTime: true, Workday: workday.Workdays(workday.Tue), HasWorkday: true},
@@ -140,19 +178,26 @@ func TestFilterDuePreservesContractDefaults(t *testing.T) {
 
 	due := FilterDue(rows, "1000", "MON")
 
-	assert.Equal(t, []Settings{rows[0], rows[1]}, due)
+	assert.Equal(t, []ChatSetting{rows[0], rows[1]}, due)
 }
 
-func TestFilterDueRejectsContractDefaultOutsideWeekday(t *testing.T) {
-	due := FilterDue([]Settings{{ChatID: 1}}, "1000", "SAT")
+func TestFilterDueRejectsMissingSettingsOutsideContractDefault(t *testing.T) {
+	tests := []struct {
+		name    string
+		offTime string
+		day     string
+	}{
+		{name: "default off time on non-weekday", offTime: "1000", day: "SAT"},
+		{name: "non-default off time", offTime: "1800", day: "MON"},
+	}
 
-	assert.Empty(t, due)
-}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			due := FilterDue([]ChatSetting{{ChatID: 1}}, test.offTime, test.day)
 
-func TestFilterDueRejectsNonDefaultOffTimeForMissingSettings(t *testing.T) {
-	due := FilterDue([]Settings{{ChatID: 1}}, "1800", "MON")
-
-	assert.Empty(t, due)
+			assert.Empty(t, due)
+		})
+	}
 }
 
 func mustParseTime(t *testing.T, raw string) time.Time {
