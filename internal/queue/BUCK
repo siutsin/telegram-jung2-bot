@@ -2,6 +2,11 @@ go_library(
     name = "queue",
     srcs = glob(["*.go"], exclude = ["*_test.go"]),
     package_name = "github.com/siutsin/telegram-jung2-bot/internal/queue",
+    deps = [
+        "//vendor/github.com/aws/aws-sdk-go-v2/aws:aws",
+        "//vendor/github.com/aws/aws-sdk-go-v2/service/sqs:sqs",
+        "//vendor/github.com/aws/aws-sdk-go-v2/service/sqs/types:types",
+    ],
     visibility = ["PUBLIC"],
 )
 
@@ -9,6 +14,9 @@ go_test(
     name = "queue_test",
     srcs = glob(["*.go"]),
     deps = [
+        "//vendor/github.com/aws/aws-sdk-go-v2/aws:aws",
+        "//vendor/github.com/aws/aws-sdk-go-v2/service/sqs:sqs",
+        "//vendor/github.com/aws/aws-sdk-go-v2/service/sqs/types:types",
         "//vendor/github.com/stretchr/testify/assert:assert",
         "//vendor/github.com/stretchr/testify/require:require",
         ":queue",

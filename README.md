@@ -9,6 +9,8 @@ Telegram group chat statistics bot. Tracks message counts, produces rankings, an
 - Migration-only reference material is temporary and must be removed before the
   project is considered a standalone Go service.
 - The service executable lives under `cmd/`; private Go packages live under `internal/`.
+- Startup wiring lives in `cmd/main.go`; production adapters are split across
+  focused internal packages instead of a single runtime package.
 - Buck2 targets control build visibility.
 - Buck2 builds and tests the service. Vendoring is refreshed explicitly.
 
@@ -29,6 +31,7 @@ Telegram group chat statistics bot. Tracks message counts, produces rankings, an
 │   ├── message/
 │   ├── queue/
 │   ├── schedule/
+│   ├── service/
 │   ├── statistics/
 │   ├── telegram/
 │   ├── worker/

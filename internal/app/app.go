@@ -36,7 +36,8 @@ type Options struct {
 
 // Dependencies contains the runtime collaborators the app needs.
 type Dependencies struct {
-	Store      httpserver.Store
+	Chats      httpserver.ChatStore
+	Messages   httpserver.MessageStore
 	Sender     queue.Sender
 	Receiver   queue.Receiver
 	Deleter    worker.Deleter
@@ -127,13 +128,12 @@ func shutdownTimeout(config config.Config, options Options) time.Duration {
 // newHTTPServer builds the app HTTP server.
 func newHTTPServer(config config.Config, dependencies Dependencies) (HTTPServer, error) {
 	httpDependencies := httpserver.Dependencies{
-		MessageTable: config.MessageTable,
-		ChatTable:    config.ChatIDTable,
-		Store:        dependencies.Store,
-		Enqueuer:     queue.Producer{QueueURL: config.EventQueueURL, Sender: dependencies.Sender},
-		Messenger:    dependencies.Messenger,
-		ScaleUpper:   dependencies.ScaleUpper,
-		Now:          dependencies.Now,
+		Chats:      dependencies.Chats,
+		Messages:   dependencies.Messages,
+		Enqueuer:   queue.Producer{QueueURL: config.EventQueueURL, Sender: dependencies.Sender},
+		Messenger:  dependencies.Messenger,
+		ScaleUpper: dependencies.ScaleUpper,
+		Now:        dependencies.Now,
 	}
 	if err := httpserver.Validate(httpDependencies); err != nil {
 		return nil, fmt.Errorf("validate HTTP dependencies: %w", err)

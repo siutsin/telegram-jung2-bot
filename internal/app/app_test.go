@@ -65,7 +65,7 @@ func TestNewRejectsInvalidHTTPDependencies(t *testing.T) {
 	_, err := New(runtimeConfig(), Dependencies{}, Options{})
 
 	require.Error(t, err)
-	assert.EqualError(t, err, "create HTTP server: validate HTTP dependencies: store is required")
+	assert.EqualError(t, err, "create HTTP server: validate HTTP dependencies: message store is required")
 }
 
 func TestNewBuildsScaleUpRoute(t *testing.T) {
@@ -104,7 +104,8 @@ func TestNewQueueWorkerRequiresDependencies(t *testing.T) {
 		{
 			name: "missing receiver",
 			dependencies: Dependencies{
-				Store:     &runtimeStore{},
+				Chats:     &runtimeChatStore{},
+				Messages:  &runtimeMessageStore{},
 				Sender:    &runtimeSender{},
 				Deleter:   &runtimeDeleter{},
 				Messenger: &runtimeMessenger{},
@@ -114,7 +115,8 @@ func TestNewQueueWorkerRequiresDependencies(t *testing.T) {
 		{
 			name: "missing deleter",
 			dependencies: Dependencies{
-				Store:     &runtimeStore{},
+				Chats:     &runtimeChatStore{},
+				Messages:  &runtimeMessageStore{},
 				Sender:    &runtimeSender{},
 				Receiver:  &runtimeReceiver{},
 				Messenger: &runtimeMessenger{},
@@ -283,7 +285,8 @@ func runtimeConfig() config.Config {
 
 func runtimeDependencies() Dependencies {
 	return Dependencies{
-		Store:     &runtimeStore{},
+		Chats:     &runtimeChatStore{},
+		Messages:  &runtimeMessageStore{},
 		Sender:    &runtimeSender{},
 		Receiver:  &runtimeReceiver{},
 		Deleter:   &runtimeDeleter{},
@@ -368,13 +371,15 @@ func (worker *fakeQueueWorker) Run(ctx context.Context) error {
 	return nil
 }
 
-type runtimeStore struct{}
+type runtimeMessageStore struct{}
 
-func (store *runtimeStore) SaveMessage(ctx context.Context, request message.UpdateExpression) error {
+func (store *runtimeMessageStore) Save(ctx context.Context, row message.Message) error {
 	return nil
 }
 
-func (store *runtimeStore) SaveChat(ctx context.Context, request chat.UpdateExpression) error {
+type runtimeChatStore struct{}
+
+func (store *runtimeChatStore) Save(ctx context.Context, settings chat.Settings) error {
 	return nil
 }
 

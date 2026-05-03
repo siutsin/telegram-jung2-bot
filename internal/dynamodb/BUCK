@@ -3,7 +3,13 @@ go_library(
     srcs = glob(["*.go"], exclude = ["*_test.go"]),
     package_name = "github.com/siutsin/telegram-jung2-bot/internal/dynamodb",
     deps = [
+        "//internal/chat:chat",
         "//internal/message:message",
+        "//internal/schedule:schedule",
+        "//internal/workday:workday",
+        "//vendor/github.com/aws/aws-sdk-go-v2/aws:aws",
+        "//vendor/github.com/aws/aws-sdk-go-v2/service/dynamodb:dynamodb",
+        "//vendor/github.com/aws/aws-sdk-go-v2/service/dynamodb/types:types",
     ],
     visibility = ["PUBLIC"],
 )
@@ -12,7 +18,13 @@ go_test(
     name = "dynamodb_test",
     srcs = glob(["*.go"]),
     deps = [
+        "//internal/chat:chat",
         "//internal/message:message",
+        "//internal/schedule:schedule",
+        "//internal/workday:workday",
+        "//vendor/github.com/aws/aws-sdk-go-v2/aws:aws",
+        "//vendor/github.com/aws/aws-sdk-go-v2/service/dynamodb:dynamodb",
+        "//vendor/github.com/aws/aws-sdk-go-v2/service/dynamodb/types:types",
         "//vendor/github.com/stretchr/testify/assert:assert",
         "//vendor/github.com/stretchr/testify/require:require",
         ":dynamodb",

@@ -24,9 +24,12 @@ type Response struct {
 	Message    string
 }
 
-type Store interface {
-	SaveMessage(ctx context.Context, request message.UpdateExpression) error
-	SaveChat(ctx context.Context, request chat.UpdateExpression) error
+type MessageStore interface {
+	Save(ctx context.Context, message message.Message) error
+}
+
+type ChatStore interface {
+	Save(ctx context.Context, settings chat.Settings) error
 }
 
 type Enqueuer interface {
@@ -42,13 +45,12 @@ type ScaleUpper interface {
 }
 
 type Dependencies struct {
-	MessageTable string
-	ChatTable    string
-	Store        Store
-	Enqueuer     Enqueuer
-	Messenger    Messenger
-	ScaleUpper   ScaleUpper
-	Now          func() time.Time
+	Messages   MessageStore
+	Chats      ChatStore
+	Enqueuer   Enqueuer
+	Messenger  Messenger
+	ScaleUpper ScaleUpper
+	Now        func() time.Time
 }
 
 type ServerDeps struct {
@@ -226,13 +228,13 @@ func saveWebhookState(ctx context.Context, telegramMessage telegram.Message, now
 // saveWebhookMessage persists a Telegram message row.
 func saveWebhookMessage(ctx context.Context, telegramMessage telegram.Message, now time.Time, dependencies Dependencies) error {
 	storedMessage := message.FromTelegram(telegramMessage, now)
-	return dependencies.Store.SaveMessage(ctx, message.BuildSaveUpdate(dependencies.MessageTable, storedMessage))
+	return dependencies.Messages.Save(ctx, storedMessage)
 }
 
 // saveWebhookChat persists Telegram chat metadata.
 func saveWebhookChat(ctx context.Context, telegramMessage telegram.Message, now time.Time, dependencies Dependencies) error {
 	storedChat := chat.FromTelegram(telegramMessage, now)
-	return dependencies.Store.SaveChat(ctx, chat.BuildMetadataUpdate(dependencies.ChatTable, storedChat))
+	return dependencies.Chats.Save(ctx, storedChat)
 }
 
 // enqueueWebhookCommands converts and enqueues supported Telegram commands.
@@ -317,14 +319,11 @@ func parseCommands(message telegram.Message) []command.Command {
 
 // Validate checks required HTTP dependencies.
 func Validate(dependencies Dependencies) error {
-	if dependencies.MessageTable == "" {
-		return fmt.Errorf("message table is required")
+	if dependencies.Messages == nil {
+		return fmt.Errorf("message store is required")
 	}
-	if dependencies.ChatTable == "" {
-		return fmt.Errorf("chat table is required")
-	}
-	if dependencies.Store == nil {
-		return fmt.Errorf("store is required")
+	if dependencies.Chats == nil {
+		return fmt.Errorf("chat store is required")
 	}
 	if dependencies.Enqueuer == nil {
 		return fmt.Errorf("enqueuer is required")
