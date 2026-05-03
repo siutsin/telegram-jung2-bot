@@ -418,7 +418,7 @@ func TestValidate(t *testing.T) {
 	require.EqualError(t, Validate(Dependencies{Messages: &fakeMessageStore{}, Chats: &fakeChatStore{}, Enqueuer: &fakeEnqueuer{}}), "messenger is required")
 }
 
-func testDependencies(messages MessageStore, chats ChatStore, enqueuer Enqueuer, messenger Messenger) Dependencies {
+func testDependencies(messages MessageSaver, chats ChatSaver, enqueuer Enqueuer, messenger Messenger) Dependencies {
 	if messenger == nil {
 		messenger = &fakeMessenger{}
 	}

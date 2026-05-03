@@ -49,14 +49,14 @@ type QueryRequest struct {
 	Descending bool
 }
 
-type RepositoryClient interface {
+type repositoryUpdaterQuerier interface {
 	Update(ctx context.Context, request UpdateExpression) error
 	QueryByChat(ctx context.Context, request QueryRequest) ([]Message, error)
 }
 
 type Repository struct {
 	TableName string
-	Client    RepositoryClient
+	Client    repositoryUpdaterQuerier
 	Now       func() time.Time
 }
 
@@ -108,6 +108,8 @@ func (repository Repository) now() time.Time {
 }
 
 // FromTelegram converts a Telegram message into the stored message model.
+// For example, a Telegram chat ID 42 becomes Message{ChatID: 42} with
+// DateCreated stored in UTC+8 format.
 func FromTelegram(input telegram.Message, now time.Time) Message {
 	message := Message{
 		ChatID:      input.Chat.ID,
@@ -127,11 +129,14 @@ func FromTelegram(input telegram.Message, now time.Time) Message {
 }
 
 // FormatDateCreated formats the DynamoDB sort key in the contract UTC+8 format.
+// For example, midnight UTC becomes "2006-01-02T08:00:00+08:00".
 func FormatDateCreated(timestamp time.Time) string {
 	return timestamp.In(storageLocation).Format(time.RFC3339)
 }
 
 // ParseDateCreated parses existing DynamoDB dateCreated strings.
+// For example, "2006-01-02T08:00:00+08:00" becomes the same instant as a
+// time.Time.
 func ParseDateCreated(raw string) (time.Time, error) {
 	parsed, err := time.Parse(time.RFC3339, raw)
 	if err != nil {
@@ -142,11 +147,14 @@ func ParseDateCreated(raw string) (time.Time, error) {
 }
 
 // TTL returns the Unix timestamp used by the contract ttl attribute.
+// For example, now plus seven days becomes the Unix expiry stored in ttl.
 func TTL(now time.Time, retention time.Duration) int64 {
 	return now.Add(retention).Unix()
 }
 
 // BuildSaveUpdate builds the contract DynamoDB update shape for a message row.
+// For example, a message with username and firstName adds only those non-empty
+// fields to the SET clause.
 func BuildSaveUpdate(tableName string, message Message) UpdateExpression {
 	attributeNames := map[string]string{
 		"#ttl": "ttl",
@@ -175,6 +183,7 @@ func BuildSaveUpdate(tableName string, message Message) UpdateExpression {
 }
 
 // addStringAttribute adds a non-empty string attribute to an update.
+// For example, "username", "alice" appends "#username = :username".
 func addStringAttribute(
 	assignments []string,
 	names map[string]string,
@@ -194,6 +203,7 @@ func addStringAttribute(
 }
 
 // addIntAttribute adds a non-zero integer attribute to an update.
+// For example, "userId", 42 appends "#userId = :userId".
 func addIntAttribute(
 	assignments []string,
 	names map[string]string,
@@ -213,6 +223,7 @@ func addIntAttribute(
 }
 
 // joinAssignments joins update assignments with commas.
+// For example, ["#a = :a", "#b = :b"] becomes "#a = :a, #b = :b".
 func joinAssignments(assignments []string) string {
 	var result strings.Builder
 	result.WriteString(assignments[0])

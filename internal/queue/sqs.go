@@ -10,8 +10,8 @@ import (
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
 
-// API is the SQS SDK surface used by the queue adapter.
-type API interface {
+// queueRequester is the SQS SDK surface used by the queue adapter.
+type queueRequester interface {
 	DeleteMessage(ctx context.Context, params *awssqs.DeleteMessageInput, optFns ...func(*awssqs.Options)) (*awssqs.DeleteMessageOutput, error)
 	ReceiveMessage(ctx context.Context, params *awssqs.ReceiveMessageInput, optFns ...func(*awssqs.Options)) (*awssqs.ReceiveMessageOutput, error)
 	SendMessage(ctx context.Context, params *awssqs.SendMessageInput, optFns ...func(*awssqs.Options)) (*awssqs.SendMessageOutput, error)
@@ -19,7 +19,7 @@ type API interface {
 
 // Client adapts the AWS SQS SDK to the queue package contracts.
 type Client struct {
-	Queue API
+	Queue queueRequester
 }
 
 // Delete removes a consumed SQS message.
@@ -36,6 +36,8 @@ func (client Client) Delete(ctx context.Context, request DeleteMessageRequest) e
 }
 
 // ReceiveMessage polls one SQS batch.
+// For example, one AWS message becomes one RawMessage with JSON body text and
+// decoded attributes.
 func (client Client) ReceiveMessage(ctx context.Context, request ReceiveMessageRequest) (ReceiveMessageResponse, error) {
 	maxMessages, err := toInt32(request.MaxNumberOfMessages, "maxNumberOfMessages")
 	if err != nil {
@@ -87,6 +89,8 @@ func (client Client) SendMessage(ctx context.Context, request SendMessageRequest
 }
 
 // encodeQueueAttributes converts queue attributes for SQS.
+// For example, StringValue "42" becomes an AWS MessageAttributeValue with
+// StringValue "42".
 func encodeQueueAttributes(attributes map[string]SendMessageAttribute) map[string]sqstypes.MessageAttributeValue {
 	encoded := make(map[string]sqstypes.MessageAttributeValue, len(attributes))
 	for name, attribute := range attributes {
@@ -100,6 +104,8 @@ func encodeQueueAttributes(attributes map[string]SendMessageAttribute) map[strin
 }
 
 // decodeQueueAttributes converts queue attributes from SQS.
+// For example, an AWS StringValue "42" becomes MessageAttribute{StringValue:
+// "42"}.
 func decodeQueueAttributes(attributes map[string]sqstypes.MessageAttributeValue) map[string]MessageAttribute {
 	decoded := make(map[string]MessageAttribute, len(attributes))
 	for name, attribute := range attributes {
@@ -110,6 +116,8 @@ func decodeQueueAttributes(attributes map[string]sqstypes.MessageAttributeValue)
 }
 
 // toInt32 converts an int to int32 with bounds checking for AWS SDK inputs.
+// For example, 10 becomes int32(10), while values outside int32 range are
+// rejected.
 func toInt32(value int, field string) (int32, error) {
 	if value < -2_147_483_648 || value > 2_147_483_647 {
 		return 0, fmt.Errorf("%s out of int32 range", field)

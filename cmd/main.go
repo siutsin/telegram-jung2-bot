@@ -68,7 +68,7 @@ func main() {
 	chatRepository := chat.Repository{TableName: loadedConfig.ChatIDTable, Client: chatClient}
 	queueAdapter := queue.Client{Queue: queueClient}
 	actions := service.Service{
-		ChatStore:         chatClient,
+		ChatMaintainer:    chatClient,
 		ChatTable:         loadedConfig.ChatIDTable,
 		MessageRepository: messageRepository,
 		Messenger:         telegramClient,

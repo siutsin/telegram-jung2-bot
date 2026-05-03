@@ -35,6 +35,8 @@ type SendMessageOptions struct {
 type ClientOption func(*Client)
 
 // WithBaseURL overrides the Telegram API base URL for tests or local proxies.
+// For example, "https://api.example.com/" becomes baseURL
+// "https://api.example.com".
 func WithBaseURL(baseURL string) ClientOption {
 	return func(client *Client) {
 		client.baseURL = strings.TrimRight(baseURL, "/")
@@ -51,6 +53,8 @@ func WithHTTPClient(httpClient *http.Client) ClientOption {
 }
 
 // NewClient creates a Telegram Bot API client.
+// For example, NewClient("token", WithBaseURL("https://api.example.com/"))
+// stores the trimmed custom base URL.
 func NewClient(botToken string, options ...ClientOption) Client {
 	client := Client{
 		baseURL:    defaultAPIBaseURL,
@@ -108,7 +112,8 @@ func (client Client) SendMessage(ctx context.Context, chatID int64, text string)
 }
 
 // SendMessageWithOptions sends text to a Telegram chat with optional Telegram
-// API sendMessage fields.
+// API sendMessage fields. For example, ParseMode "Markdown" adds
+// parse_mode="Markdown" to the request body.
 func (client Client) SendMessageWithOptions(ctx context.Context, chatID int64, text string, options SendMessageOptions) (err error) {
 	requestBody := map[string]any{
 		"chat_id": chatID,
@@ -185,6 +190,8 @@ func (client Client) IsAdmin(ctx context.Context, chatID int64, userID int64) (b
 }
 
 // ParseUpdate decodes a Telegram webhook update.
+// For example, {"message":{"text":"/topTen"}} becomes Update with Message.Text
+// set to "/topTen".
 func ParseUpdate(payload []byte) (Update, error) {
 	if strings.TrimSpace(string(payload)) == "" {
 		return Update{}, fmt.Errorf("telegram update payload is empty")
@@ -200,7 +207,7 @@ func ParseUpdate(payload []byte) (Update, error) {
 }
 
 // TruncateReport trims text to the project report limit without splitting UTF-8
-// runes.
+// runes. For example, a 4000-rune string becomes the first 3800 runes.
 func TruncateReport(text string) string {
 	if utf8.RuneCountInString(text) <= ReportLimit {
 		return text
@@ -240,6 +247,7 @@ func (client Client) do(
 }
 
 // telegramAPIError converts non-2xx responses into errors.
+// For example, HTTP 429 becomes error "telegram API returned HTTP 429".
 func telegramAPIError(response *http.Response) error {
 	if response.StatusCode >= http.StatusOK && response.StatusCode < http.StatusMultipleChoices {
 		return nil

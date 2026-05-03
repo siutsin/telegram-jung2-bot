@@ -53,6 +53,7 @@ type Ranking struct {
 }
 
 // NormaliseRows groups rows by user and counts messages.
+// For example, two rows from the same user become one ranking with Count 2.
 func NormaliseRows(rows []message.Message, reverse bool) NormalisedRows {
 	tally := make(map[int64]int)
 	firstSeen := make([]Ranking, 0, len(rows))
@@ -92,6 +93,8 @@ func NormaliseRows(rows []message.Message, reverse bool) NormalisedRows {
 }
 
 // GenerateReport builds a statistics report summary.
+// For example, a top-ten option set becomes Summary{Report, UserCount,
+// MessageCount}.
 func GenerateReport(rows []message.Message, options Options) (Summary, error) {
 	if len(rows) == 0 {
 		return Summary{}, fmt.Errorf("statistics rows are empty")
@@ -120,6 +123,7 @@ func GenerateReport(rows []message.Message, options Options) (Summary, error) {
 }
 
 // TopTen builds a top-ten report request.
+// For example, 20 messages become Report{Options: Options{Limit: 10}}.
 func TopTen(messages []message.Message) Report {
 	return Report{
 		Rows:    messages,
@@ -128,6 +132,7 @@ func TopTen(messages []message.Message) Report {
 }
 
 // TopDiver builds a top-diver report request.
+// For example, messages become a reverse-ranked report with Limit 10.
 func TopDiver(messages []message.Message, participants []telegram.User) Report {
 	return Report{
 		Rows:    messages,
@@ -136,11 +141,13 @@ func TopDiver(messages []message.Message, participants []telegram.User) Report {
 }
 
 // AllJung builds an all-users report request.
+// For example, messages become a report with the zero-value Options.
 func AllJung(messages []message.Message) Report {
 	return Report{Rows: messages}
 }
 
 // Render renders a report to text.
+// For example, a TopTen report becomes the final Telegram message text.
 func Render(report Report) string {
 	summary, err := GenerateReport(report.Rows, report.Options)
 	if err != nil {
@@ -151,6 +158,7 @@ func Render(report Report) string {
 }
 
 // BuildHeader builds the report header text.
+// For example, limit 10 becomes a header starting with "Top 10".
 func BuildHeader(normalisedRows NormalisedRows, options Options) string {
 	chatTitle := normalisedRows.Rankings[0].ChatTitle
 	limitText := "All"
@@ -169,11 +177,14 @@ func BuildHeader(normalisedRows NormalisedRows, options Options) string {
 }
 
 // BuildBody builds the report body text.
+// For example, a normal ranking becomes numbered lines like "1. Name 50.00%".
 func BuildBody(normalisedRows NormalisedRows, options Options) string {
 	return BuildBodyWithLimit(normalisedRows, options, telegram.ReportLimit)
 }
 
 // BuildBodyWithLimit builds the report body within limit.
+// For example, a small limit truncates the body to "...\n...\n" once it would
+// exceed the rune budget.
 func BuildBodyWithLimit(normalisedRows NormalisedRows, options Options, limit int) string {
 	if limit < 0 {
 		limit = 0
@@ -212,6 +223,8 @@ func BuildBodyWithLimit(normalisedRows NormalisedRows, options Options, limit in
 }
 
 // BuildDiverBody builds the reverse-ranking detail section.
+// For example, reverse rankings become lines ordered by oldest DateCreated
+// first.
 func BuildDiverBody(normalisedRows NormalisedRows, options Options) string {
 	rankings := append([]Ranking(nil), normalisedRows.Rankings...)
 	sort.SliceStable(rankings, func(left int, right int) bool {
@@ -238,6 +251,8 @@ func BuildDiverBody(normalisedRows NormalisedRows, options Options) string {
 }
 
 // BuildFooter builds the report footer text.
+// For example, TotalMessage 20 becomes a footer starting with
+// "Total messages: 20".
 func BuildFooter(normalisedRows NormalisedRows, options Options) string {
 	footer := fmt.Sprintf("\nTotal messages: %d\n\n", normalisedRows.TotalMessage)
 	if options.Reverse {
@@ -248,6 +263,7 @@ func BuildFooter(normalisedRows NormalisedRows, options Options) string {
 }
 
 // HelpMessage returns the bot help message.
+// For example, chat title "Ops" is inserted into the contract help template.
 func HelpMessage(chatTitle string) string {
 	return fmt.Sprintf(`
 圍爐區: %s
@@ -275,11 +291,13 @@ May your 冗 power powerful
 }
 
 // displayName returns the preferred ranking display name.
+// For example, FirstName "Ada" and LastName "Lovelace" become "Ada Lovelace".
 func displayName(row message.Message) string {
 	return strings.Join([]string{row.FirstName, row.LastName}, " ")
 }
 
 // timeAgo formats a relative timestamp.
+// For example, a timestamp two hours ago becomes "2 hours ago".
 func timeAgo(dateCreated time.Time, now time.Time) string {
 	duration := max(now.Sub(dateCreated), 0)
 
@@ -310,6 +328,7 @@ func timeAgo(dateCreated time.Time, now time.Time) string {
 }
 
 // plural formats a pluralised relative time string.
+// For example, plural(2, "day") becomes "2 days ago".
 func plural(value int, unit string) string {
 	if value == 1 {
 		if unit == "hour" {

@@ -13,7 +13,7 @@ import (
 	"github.com/siutsin/telegram-jung2-bot/internal/worker"
 )
 
-type HTTPServer interface {
+type HTTPRunner interface {
 	ListenAndServe() error
 	Shutdown(ctx context.Context) error
 }
@@ -24,7 +24,7 @@ type QueueWorker interface {
 
 // App wraps the configured application processes and dependencies.
 type App struct {
-	httpServer      HTTPServer
+	httpServer      HTTPRunner
 	queueWorker     QueueWorker
 	shutdownTimeout time.Duration
 }
@@ -36,8 +36,8 @@ type Options struct {
 
 // Dependencies contains the collaborators the app needs.
 type Dependencies struct {
-	Chats      httpserver.ChatStore
-	Messages   httpserver.MessageStore
+	Chats      httpserver.ChatSaver
+	Messages   httpserver.MessageSaver
 	Sender     queue.Sender
 	Receiver   queue.Receiver
 	Deleter    worker.Deleter
@@ -103,7 +103,7 @@ func (app *App) Run(ctx context.Context) error {
 }
 
 // shutdownHTTP stops the HTTP server with a timeout.
-func shutdownHTTP(httpServer HTTPServer, timeout time.Duration) error {
+func shutdownHTTP(httpServer HTTPRunner, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
@@ -128,7 +128,7 @@ func shutdownTimeout(config config.Config, options Options) time.Duration {
 }
 
 // newHTTPServer builds the app HTTP server.
-func newHTTPServer(config config.Config, dependencies Dependencies) (HTTPServer, error) {
+func newHTTPServer(config config.Config, dependencies Dependencies) (HTTPRunner, error) {
 	httpDependencies := httpserver.Dependencies{
 		Chats:      dependencies.Chats,
 		Messages:   dependencies.Messages,

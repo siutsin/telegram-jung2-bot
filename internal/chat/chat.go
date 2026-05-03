@@ -3,6 +3,7 @@ package chat
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -13,6 +14,11 @@ import (
 
 const defaultOffTime = "1000"
 const scheduleWorkdayMask = workday.Sun | workday.Mon | workday.Tue | workday.Wed | workday.Thu | workday.Fri | workday.Sat
+
+const (
+	errRepositoryClientRequired = "chat repository client is required"
+	keyChatID                   = "chatId"
+)
 
 // Settings is the persisted chat settings model.
 type Settings struct {
@@ -48,7 +54,7 @@ type UpdateExpression struct {
 	ExpressionAttributeValues map[string]any
 }
 
-type RepositoryClient interface {
+type repositoryUpdaterQuerier interface {
 	Get(ctx context.Context, tableName string, chatID int64) (Row, bool, error)
 	Update(ctx context.Context, request UpdateExpression) error
 	ListEnabled(ctx context.Context, tableName string) ([]Row, error)
@@ -56,13 +62,13 @@ type RepositoryClient interface {
 
 type Repository struct {
 	TableName string
-	Client    RepositoryClient
+	Client    repositoryUpdaterQuerier
 }
 
 // Get loads chat settings by chat ID.
 func (repository Repository) Get(ctx context.Context, chatID int64) (Settings, error) {
 	if repository.Client == nil {
-		return Settings{}, fmt.Errorf("chat repository client is required")
+		return Settings{}, errors.New(errRepositoryClientRequired)
 	}
 	row, ok, err := repository.Client.Get(ctx, repository.TableName, chatID)
 	if err != nil {
@@ -82,7 +88,7 @@ func (repository Repository) Get(ctx context.Context, chatID int64) (Settings, e
 // Save stores chat settings.
 func (repository Repository) Save(ctx context.Context, settings Settings) error {
 	if repository.Client == nil {
-		return fmt.Errorf("chat repository client is required")
+		return errors.New(errRepositoryClientRequired)
 	}
 	err := repository.Client.Update(ctx, BuildMetadataUpdate(repository.TableName, settings))
 	if err != nil {
@@ -95,7 +101,7 @@ func (repository Repository) Save(ctx context.Context, settings Settings) error 
 // ListEnabled loads chats with scheduling enabled.
 func (repository Repository) ListEnabled(ctx context.Context) ([]Settings, error) {
 	if repository.Client == nil {
-		return nil, fmt.Errorf("chat repository client is required")
+		return nil, errors.New(errRepositoryClientRequired)
 	}
 	rows, err := repository.Client.ListEnabled(ctx, repository.TableName)
 	if err != nil {
@@ -110,6 +116,8 @@ func (repository Repository) ListEnabled(ctx context.Context) ([]Settings, error
 }
 
 // FromTelegram converts a Telegram chat into persisted chat settings metadata.
+// For example, a group chat with ID 42 becomes Settings{ChatID: 42,
+// EnableAllJung: true}.
 func FromTelegram(input telegram.Message, now time.Time) Settings {
 	return Settings{
 		ChatID:        input.Chat.ID,
@@ -121,6 +129,7 @@ func FromTelegram(input telegram.Message, now time.Time) Settings {
 }
 
 // FromRow applies contract defaults to a stored chat row.
+// For example, a row without enableAllJung becomes Settings{EnableAllJung: true}.
 func FromRow(row Row) (Settings, error) {
 	enableAllJung := true
 	if row.EnableAllJung != nil {
@@ -157,10 +166,12 @@ func FromRow(row Row) (Settings, error) {
 }
 
 // BuildMetadataUpdate builds the contract chat metadata update request.
+// For example, it turns Settings{ChatID: 42, ChatTitle: "Ops"} into an update
+// keyed by chatId 42 with chatTitle, dateCreated, and ttl assignments.
 func BuildMetadataUpdate(tableName string, settings Settings) UpdateExpression {
 	return UpdateExpression{
 		TableName:        tableName,
-		Key:              map[string]any{"chatId": settings.ChatID},
+		Key:              map[string]any{keyChatID: settings.ChatID},
 		UpdateExpression: "SET #ct = :ct, #dc = :dc, #ttl = :ttl",
 		ExpressionAttributeNames: map[string]string{
 			"#ct":  "chatTitle",
@@ -176,10 +187,12 @@ func BuildMetadataUpdate(tableName string, settings Settings) UpdateExpression {
 }
 
 // BuildAllJungUpdate builds the contract enableAllJung update request.
+// For example, chatID 42 and enabled false becomes "SET #eaj = :eaj" with
+// :eaj=false.
 func BuildAllJungUpdate(tableName string, chatID int64, enabled bool) UpdateExpression {
 	return UpdateExpression{
 		TableName:        tableName,
-		Key:              map[string]any{"chatId": chatID},
+		Key:              map[string]any{keyChatID: chatID},
 		UpdateExpression: "SET #eaj = :eaj",
 		ExpressionAttributeNames: map[string]string{
 			"#eaj": "enableAllJung",
@@ -191,10 +204,12 @@ func BuildAllJungUpdate(tableName string, chatID int64, enabled bool) UpdateExpr
 }
 
 // BuildOffWorkUpdate builds the contract off-work setting update request.
+// For example, chatID 42, offTime "1830", and MON|TUE becomes an update with
+// offTime "1830" and workday 6.
 func BuildOffWorkUpdate(tableName string, chatID int64, offTime string, workdays workday.Workdays) UpdateExpression {
 	return UpdateExpression{
 		TableName:        tableName,
-		Key:              map[string]any{"chatId": chatID},
+		Key:              map[string]any{keyChatID: chatID},
 		UpdateExpression: "SET #ot = :ot, #wd = :wd",
 		ExpressionAttributeNames: map[string]string{
 			"#ot": "offTime",
@@ -208,6 +223,8 @@ func BuildOffWorkUpdate(tableName string, chatID int64, offTime string, workdays
 }
 
 // FilterDue returns chats due for a scheduled off-work report.
+// For example, filtering by offTime "1830" and day "MON" keeps only chats due
+// at 18:30 on Monday.
 func FilterDue(rows []Settings, offTime string, day string) []Settings {
 	due := make([]Settings, 0, len(rows))
 	for _, row := range rows {
@@ -220,6 +237,8 @@ func FilterDue(rows []Settings, offTime string, day string) []Settings {
 }
 
 // isDue reports whether settings match the given schedule window.
+// For example, settings with OffTime "1830" and Workday MON match
+// offTime="1830", day="MON".
 func isDue(settings Settings, offTime string, day string) bool {
 	if !settings.HasOffTime && !settings.HasWorkday {
 		return offTime == defaultOffTime && workday.MatchesDay(day, workday.Workdays(workday.Mon|workday.Tue|workday.Wed|workday.Thu|workday.Fri))
@@ -232,6 +251,8 @@ func isDue(settings Settings, offTime string, day string) bool {
 }
 
 // scheduleSettingsFromRow loads only the fields used by scheduled fan-out.
+// For example, it masks row.Workday down to the stored weekday bits before
+// assigning Settings.Workday.
 func scheduleSettingsFromRow(row Row) Settings {
 	enableAllJung := true
 	if row.EnableAllJung != nil {

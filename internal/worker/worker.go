@@ -64,6 +64,7 @@ func (worker PollingWorker) Run(ctx context.Context) error {
 }
 
 // Dispatch routes an action to its handler.
+// For example, Action{Name: "topTen"} is sent to handlers.TopTen.
 func Dispatch(ctx context.Context, action queue.Action, handlers Handlers) error {
 	dispatcher, ok := actionDispatchers(handlers)[action.Name]
 	if !ok {
@@ -74,6 +75,8 @@ func Dispatch(ctx context.Context, action queue.Action, handlers Handlers) error
 }
 
 // ProcessMessage decodes, dispatches, and deletes a queue message.
+// For example, one raw SQS message becomes queue.DecodeMessage(raw), one handler
+// call, and one delete request.
 func ProcessMessage(ctx context.Context, queueURL string, raw queue.RawMessage, handlers Handlers, deleter Deleter) error {
 	action, err := queue.DecodeMessage(raw)
 	if err != nil {
@@ -92,6 +95,7 @@ func ProcessMessage(ctx context.Context, queueURL string, raw queue.RawMessage, 
 }
 
 // actionDispatchers returns the queue action dispatch table.
+// For example, "jungHelp" maps to the dispatcher built by withChatIDAndTitle.
 func actionDispatchers(handlers Handlers) map[string]actionDispatcher {
 	return map[string]actionDispatcher{
 		queue.ActionJungHelp:       withChatIDAndTitle(handlers.JungHelp, queue.ActionJungHelp),
@@ -107,6 +111,7 @@ func actionDispatchers(handlers Handlers) map[string]actionDispatcher {
 }
 
 // withChatID builds a dispatcher for actions that only need a chat ID.
+// For example, Attributes["chatId"]="42" becomes handler(ctx, 42).
 func withChatID(handler func(ctx context.Context, chatID int64) error, actionName string) actionDispatcher {
 	return func(ctx context.Context, action queue.Action) error {
 		requiredHandler, err := requireHandler(handler, actionName)
@@ -119,6 +124,7 @@ func withChatID(handler func(ctx context.Context, chatID int64) error, actionNam
 }
 
 // withChatIDAndTitle builds a dispatcher for actions that need chat metadata.
+// For example, chatId "42" and chatTitle "Ops" become handler(ctx, 42, "Ops").
 func withChatIDAndTitle(handler func(ctx context.Context, chatID int64, chatTitle string) error, actionName string) actionDispatcher {
 	return func(ctx context.Context, action queue.Action) error {
 		requiredHandler, err := requireHandler(handler, actionName)
@@ -131,6 +137,8 @@ func withChatIDAndTitle(handler func(ctx context.Context, chatID int64, chatTitl
 }
 
 // withAdminFields builds a dispatcher for admin-gated chat actions.
+// For example, chatId "42", chatTitle "Ops", and userId "7" become
+// handler(ctx, 42, "Ops", 7).
 func withAdminFields(handler func(ctx context.Context, chatID int64, chatTitle string, userID int64) error, actionName string) actionDispatcher {
 	return func(ctx context.Context, action queue.Action) error {
 		requiredHandler, err := requireHandler(handler, actionName)
@@ -143,6 +151,8 @@ func withAdminFields(handler func(ctx context.Context, chatID int64, chatTitle s
 }
 
 // withSetOffInput builds a dispatcher for off-work schedule updates.
+// For example, action attributes become SetOffInput{ChatID, ChatTitle, UserID,
+// OffTime, Workday}.
 func withSetOffInput(handler func(ctx context.Context, input SetOffInput) error, actionName string) actionDispatcher {
 	return func(ctx context.Context, action queue.Action) error {
 		requiredHandler, err := requireHandler(handler, actionName)
@@ -161,6 +171,8 @@ func withSetOffInput(handler func(ctx context.Context, input SetOffInput) error,
 }
 
 // withTimeString builds a dispatcher for scheduled off-work fan-out.
+// For example, Attributes["timeString"]="2025-01-06T18:30:00Z" is passed
+// straight to the handler.
 func withTimeString(handler func(ctx context.Context, timeString string) error, actionName string) actionDispatcher {
 	return func(ctx context.Context, action queue.Action) error {
 		requiredHandler, err := requireHandler(handler, actionName)
@@ -173,16 +185,19 @@ func withTimeString(handler func(ctx context.Context, timeString string) error, 
 }
 
 // chatID parses the chat ID from action attributes.
+// For example, Attributes["chatId"]="42" becomes 42.
 func chatID(action queue.Action) int64 {
 	return parseInt(action.Attributes["chatId"])
 }
 
 // userID parses the user ID from action attributes.
+// For example, Attributes["userId"]="7" becomes 7.
 func userID(action queue.Action) int64 {
 	return parseInt(action.Attributes["userId"])
 }
 
 // parseInt parses a decimal int64 and falls back to zero.
+// For example, "42" becomes 42, while "bad" becomes 0.
 func parseInt(raw string) int64 {
 	value, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil {
