@@ -5,7 +5,10 @@ go_library(
     deps = [
         "//internal/queue:queue",
     ],
-    visibility = ["PUBLIC"],
+    visibility = [
+        "//cmd:",
+        "//internal/...",
+    ],
 )
 
 go_test(

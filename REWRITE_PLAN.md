@@ -171,10 +171,10 @@ complete. It must be removed before the final cleanup gate.
 
 ### Test And Coverage Gate
 
-- [ ] Raise total Go statement coverage from the current `87.5%` to the
+- [ ] Raise total Go statement coverage from the current `83.8%` to the
   required `100.0%` for `internal/` packages so `make coverage` passes.
-- [ ] Add coverage for the remaining uncovered startup and AWS adapter paths in
-  `cmd/main.go`, `internal/dynamodb/store.go`, `internal/queue/sqs.go`, and
+- [ ] Add coverage for the remaining uncovered adapter and service paths in
+  `internal/dynamodb/store.go`, `internal/queue/sqs.go`, and
   `internal/service/service.go`.
 - [ ] Add coverage for the remaining uncovered HTTP edge paths in
   `internal/httpserver/httpserver.go`.

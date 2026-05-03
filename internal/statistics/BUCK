@@ -6,7 +6,10 @@ go_library(
         "//internal/message:message",
         "//internal/telegram:telegram",
     ],
-    visibility = ["PUBLIC"],
+    visibility = [
+        "//cmd:",
+        "//internal/...",
+    ],
 )
 
 go_test(

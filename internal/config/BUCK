@@ -5,7 +5,10 @@ go_library(
     deps = [
         "//vendor/github.com/caarlos0/env/v11:v11",
     ],
-    visibility = ["PUBLIC"],
+    visibility = [
+        "//cmd:",
+        "//internal/...",
+    ],
 )
 
 go_test(

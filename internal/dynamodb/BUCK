@@ -11,7 +11,10 @@ go_library(
         "//vendor/github.com/aws/aws-sdk-go-v2/service/dynamodb:dynamodb",
         "//vendor/github.com/aws/aws-sdk-go-v2/service/dynamodb/types:types",
     ],
-    visibility = ["PUBLIC"],
+    visibility = [
+        "//cmd:",
+        "//internal/...",
+    ],
 )
 
 go_test(
