@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strconv"
 	"time"
+
+	caarlosenv "github.com/caarlos0/env/v11"
 )
 
 var dynamoDBTableNamePattern = regexp.MustCompile(`^[A-Za-z0-9_.-]{3,255}$`)
@@ -28,19 +30,41 @@ type Config struct {
 	ScaleUpReadCapacity int
 }
 
+type rawConfig struct {
+	AWSRegion              string `env:"AWS_REGION" envDefault:"eu-west-1"`
+	TelegramBotToken       string `env:"TELEGRAM_BOT_TOKEN"`
+	MessageTable           string `env:"MESSAGE_TABLE"`
+	ChatIDTable            string `env:"CHATID_TABLE"`
+	EventQueueURL          string `env:"EVENT_QUEUE_URL"`
+	AWSEndpointURL         string `env:"AWS_ENDPOINT_URL"`
+	TelegramAPIBaseURL     string `env:"TELEGRAM_API_BASE_URL" envDefault:"https://api.telegram.org"`
+	LogLevel               string `env:"LOG_LEVEL" envDefault:"info"`
+	Stage                  string `env:"STAGE" envDefault:"dev"`
+	ServerAddress          string `env:"SERVER_ADDRESS"`
+	Docker                 string `env:"DOCKER"`
+	HTTPTimeoutSeconds     string `env:"HTTP_TIMEOUT_SECONDS"`
+	ShutdownTimeoutSeconds string `env:"SHUTDOWN_TIMEOUT_SECONDS"`
+	ScaleUpReadCapacity    string `env:"SCALE_UP_READ_CAPACITY"`
+}
+
 // Load validates configuration from an environment map.
 func Load(env map[string]string) (Config, error) {
+	raw, err := caarlosenv.ParseAsWithOptions[rawConfig](caarlosenv.Options{Environment: env})
+	if err != nil {
+		return Config{}, fmt.Errorf("parse environment: %w", err)
+	}
+
 	config := Config{
-		AWSRegion:           valueOrDefault(env, "AWS_REGION", "eu-west-1"),
-		LogLevel:            valueOrDefault(env, "LOG_LEVEL", "info"),
-		Stage:               valueOrDefault(env, "STAGE", "dev"),
-		ServerAddress:       serverAddress(env),
-		TelegramAPIBaseURL:  valueOrDefault(env, "TELEGRAM_API_BASE_URL", "https://api.telegram.org"),
-		TelegramBotToken:    env["TELEGRAM_BOT_TOKEN"],
-		MessageTable:        env["MESSAGE_TABLE"],
-		ChatIDTable:         env["CHATID_TABLE"],
-		EventQueueURL:       env["EVENT_QUEUE_URL"],
-		AWSEndpointURL:      env["AWS_ENDPOINT_URL"],
+		AWSRegion:           raw.AWSRegion,
+		LogLevel:            raw.LogLevel,
+		Stage:               raw.Stage,
+		ServerAddress:       serverAddress(raw.ServerAddress, raw.Docker),
+		TelegramAPIBaseURL:  raw.TelegramAPIBaseURL,
+		TelegramBotToken:    raw.TelegramBotToken,
+		MessageTable:        raw.MessageTable,
+		ChatIDTable:         raw.ChatIDTable,
+		EventQueueURL:       raw.EventQueueURL,
+		AWSEndpointURL:      raw.AWSEndpointURL,
 		HTTPTimeout:         10 * time.Second,
 		ShutdownTimeout:     10 * time.Second,
 		ScaleUpReadCapacity: 0,
@@ -65,21 +89,21 @@ func Load(env map[string]string) (Config, error) {
 		return Config{}, err
 	}
 
-	if raw := env["SCALE_UP_READ_CAPACITY"]; raw != "" {
-		value, err := strconv.Atoi(raw)
+	if raw.ScaleUpReadCapacity != "" {
+		value, err := strconv.Atoi(raw.ScaleUpReadCapacity)
 		if err == nil && value > 0 {
 			config.ScaleUpReadCapacity = value
 		}
 	}
-	if raw := env["HTTP_TIMEOUT_SECONDS"]; raw != "" {
-		timeout, err := parsePositiveSeconds("HTTP_TIMEOUT_SECONDS", raw)
+	if raw.HTTPTimeoutSeconds != "" {
+		timeout, err := parsePositiveSeconds("HTTP_TIMEOUT_SECONDS", raw.HTTPTimeoutSeconds)
 		if err != nil {
 			return Config{}, err
 		}
 		config.HTTPTimeout = timeout
 	}
-	if raw := env["SHUTDOWN_TIMEOUT_SECONDS"]; raw != "" {
-		timeout, err := parsePositiveSeconds("SHUTDOWN_TIMEOUT_SECONDS", raw)
+	if raw.ShutdownTimeoutSeconds != "" {
+		timeout, err := parsePositiveSeconds("SHUTDOWN_TIMEOUT_SECONDS", raw.ShutdownTimeoutSeconds)
 		if err != nil {
 			return Config{}, err
 		}
@@ -89,21 +113,17 @@ func Load(env map[string]string) (Config, error) {
 	return config, nil
 }
 
-// valueOrDefault returns fallback when env[key] is empty.
-func valueOrDefault(env map[string]string, key string, fallback string) string {
-	if env[key] == "" {
-		return fallback
-	}
-
-	return env[key]
+// LoadEnviron validates configuration from process-style environment entries.
+func LoadEnviron(environ []string) (Config, error) {
+	return Load(caarlosenv.ToMap(environ))
 }
 
 // serverAddress returns the default bind address for the current environment.
-func serverAddress(env map[string]string) string {
-	if env["SERVER_ADDRESS"] != "" {
-		return env["SERVER_ADDRESS"]
+func serverAddress(value string, docker string) string {
+	if value != "" {
+		return value
 	}
-	if env["DOCKER"] != "" {
+	if docker != "" {
 		return "0.0.0.0:3000"
 	}
 

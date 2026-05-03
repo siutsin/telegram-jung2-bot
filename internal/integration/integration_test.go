@@ -138,10 +138,12 @@ func TestApplicationWiringSlice(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	factory := &sliceFactory{httpServer: newSliceHTTPServer(), queueWorker: &sliceQueueWorker{}}
+	application, err := app.New(context.Background(), config.Config{ShutdownTimeout: time.Millisecond}, app.Options{Factory: factory})
+	require.NoError(t, err)
 	done := make(chan error, 1)
 
 	go func() {
-		done <- app.RunWith(ctx, config.Config{ShutdownTimeout: time.Millisecond}, app.Options{Factory: factory})
+		done <- application.Run(ctx)
 	}()
 
 	<-factory.httpServer.started
@@ -155,7 +157,9 @@ func TestApplicationWiringSlice(t *testing.T) {
 func TestApplicationWiringSliceReturnsDependencyErrors(t *testing.T) {
 	t.Parallel()
 
-	err := app.RunWith(context.Background(), config.Config{}, app.Options{Factory: &sliceFactory{err: errors.New("boom")}})
+	application, err := app.New(context.Background(), config.Config{}, app.Options{Factory: &sliceFactory{err: errors.New("boom")}})
+	require.NoError(t, err)
+	err = application.Run(context.Background())
 
 	require.Error(t, err)
 	assert.EqualError(t, err, "create HTTP server: boom")

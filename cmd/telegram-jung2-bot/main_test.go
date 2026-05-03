@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"testing"
 
+	"github.com/siutsin/telegram-jung2-bot/internal/app"
 	"github.com/siutsin/telegram-jung2-bot/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,17 +30,17 @@ func TestMainExitsNonZeroOnStartupError(t *testing.T) {
 // This guards the handoff from environment parsing into app startup so missing
 // config changes fail here instead of silently shifting runtime wiring tests.
 func TestRunLoadsEnvironment(t *testing.T) {
-	original := runApp
-	t.Cleanup(func() { runApp = original })
+	original := newApp
+	t.Cleanup(func() { newApp = original })
 	sentinel := errors.New("sentinel")
 	called := false
-	runApp = func(ctx context.Context, loaded config.Config) error {
+	newApp = func(ctx context.Context, loaded config.Config) (*app.App, error) {
 		called = true
 		assert.Equal(t, "token", loaded.TelegramBotToken)
 		assert.Equal(t, "messages", loaded.MessageTable)
 		assert.Equal(t, "chats", loaded.ChatIDTable)
 		assert.Equal(t, "https://sqs.eu-west-1.amazonaws.com/123/events", loaded.EventQueueURL)
-		return sentinel
+		return nil, sentinel
 	}
 
 	err := run(context.Background(), []string{
@@ -50,7 +51,7 @@ func TestRunLoadsEnvironment(t *testing.T) {
 	})
 
 	require.Error(t, err)
-	assert.ErrorIs(t, err, sentinel)
+	assert.EqualError(t, err, "sentinel")
 	assert.True(t, called)
 }
 
@@ -59,9 +60,4 @@ func TestRunReturnsConfigError(t *testing.T) {
 
 	require.Error(t, err)
 	assert.EqualError(t, err, "TELEGRAM_BOT_TOKEN is required")
-}
-
-// This keeps malformed environment entries from polluting config lookup.
-func TestEnvMapIgnoresMalformedEntries(t *testing.T) {
-	assert.Equal(t, map[string]string{"A": "B=C"}, envMap([]string{"A=B=C", "NOPE"}))
 }

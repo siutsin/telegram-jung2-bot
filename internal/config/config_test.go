@@ -161,6 +161,20 @@ func TestLoadRejectsInvalidTimeouts(t *testing.T) {
 	}
 }
 
+// This keeps malformed environment entries from polluting process boot config.
+func TestLoadEnvironIgnoresMalformedEntries(t *testing.T) {
+	config, err := LoadEnviron([]string{
+		"TELEGRAM_BOT_TOKEN=token",
+		"MESSAGE_TABLE=messages-dev",
+		"CHATID_TABLE=chat-id-dev",
+		"EVENT_QUEUE_URL=https://sqs.eu-west-1.amazonaws.com/123/events",
+		"NOPE",
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, "token", config.TelegramBotToken)
+}
+
 func validEnv() map[string]string {
 	return map[string]string{
 		"TELEGRAM_BOT_TOKEN": "token",
