@@ -91,7 +91,8 @@ func (app *App) Run(ctx context.Context) error {
 		return shutdownHTTP(app.httpServer, app.shutdownTimeout)
 	case err := <-errs:
 		cancel()
-		if shutdownErr := shutdownHTTP(app.httpServer, app.shutdownTimeout); shutdownErr != nil {
+		shutdownErr := shutdownHTTP(app.httpServer, app.shutdownTimeout)
+		if shutdownErr != nil {
 			return shutdownErr
 		}
 		if err != nil {
@@ -106,7 +107,8 @@ func shutdownHTTP(httpServer HTTPServer, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	if err := httpServer.Shutdown(ctx); err != nil {
+	err := httpServer.Shutdown(ctx)
+	if err != nil {
 		return fmt.Errorf("shutdown HTTP server: %w", err)
 	}
 
@@ -135,7 +137,8 @@ func newHTTPServer(config config.Config, dependencies Dependencies) (HTTPServer,
 		ScaleUpper: dependencies.ScaleUpper,
 		Now:        dependencies.Now,
 	}
-	if err := httpserver.Validate(httpDependencies); err != nil {
+	err := httpserver.Validate(httpDependencies)
+	if err != nil {
 		return nil, fmt.Errorf("validate HTTP dependencies: %w", err)
 	}
 

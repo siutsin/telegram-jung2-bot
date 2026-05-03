@@ -13,6 +13,11 @@ import (
 
 var dynamoDBTableNamePattern = regexp.MustCompile(`^[A-Za-z0-9_.-]{3,255}$`)
 
+const (
+	defaultHTTPTimeout     = 10 * time.Second
+	defaultShutdownTimeout = 10 * time.Second
+)
+
 // Config contains validated startup configuration.
 type Config struct {
 	AWSRegion           string
@@ -32,10 +37,10 @@ type Config struct {
 
 type rawConfig struct {
 	AWSRegion              string `env:"AWS_REGION" envDefault:"eu-west-1"`
-	TelegramBotToken       string `env:"TELEGRAM_BOT_TOKEN"`
-	MessageTable           string `env:"MESSAGE_TABLE"`
-	ChatIDTable            string `env:"CHATID_TABLE"`
-	EventQueueURL          string `env:"EVENT_QUEUE_URL"`
+	TelegramBotToken       string `env:"TELEGRAM_BOT_TOKEN,required"`
+	MessageTable           string `env:"MESSAGE_TABLE,required"`
+	ChatIDTable            string `env:"CHATID_TABLE,required"`
+	EventQueueURL          string `env:"EVENT_QUEUE_URL,required"`
 	AWSEndpointURL         string `env:"AWS_ENDPOINT_URL"`
 	TelegramAPIBaseURL     string `env:"TELEGRAM_API_BASE_URL" envDefault:"https://api.telegram.org"`
 	LogLevel               string `env:"LOG_LEVEL" envDefault:"info"`
@@ -54,12 +59,12 @@ func Load(env map[string]string) (Config, error) {
 		return Config{}, err
 	}
 
-	config := configFromRaw(raw)
-	if err := validateConfig(config); err != nil {
+	config, err := configFromRaw(raw)
+	if err != nil {
 		return Config{}, err
 	}
-	applyScaleUpReadCapacity(&config, raw.ScaleUpReadCapacity)
-	if err := applyTimeouts(&config, raw); err != nil {
+	err = validateConfig(config)
+	if err != nil {
 		return Config{}, err
 	}
 
@@ -73,7 +78,9 @@ func LoadEnviron(environ []string) (Config, error) {
 
 // parseRawConfig decodes environment variables into the raw config shape.
 func parseRawConfig(env map[string]string) (rawConfig, error) {
-	raw, err := caarlosenv.ParseAsWithOptions[rawConfig](caarlosenv.Options{Environment: env})
+	raw, err := caarlosenv.ParseAsWithOptions[rawConfig](caarlosenv.Options{
+		Environment: env,
+	})
 	if err != nil {
 		return rawConfig{}, fmt.Errorf("parse environment: %w", err)
 	}
@@ -82,7 +89,31 @@ func parseRawConfig(env map[string]string) (rawConfig, error) {
 }
 
 // configFromRaw builds defaulted runtime config from raw environment values.
-func configFromRaw(raw rawConfig) Config {
+func configFromRaw(raw rawConfig) (Config, error) {
+	httpTimeout := defaultHTTPTimeout
+	if raw.HTTPTimeoutSeconds != "" {
+		parsedTimeout, err := parsePositiveSeconds("HTTP_TIMEOUT_SECONDS", raw.HTTPTimeoutSeconds)
+		if err != nil {
+			return Config{}, err
+		}
+		httpTimeout = parsedTimeout
+	}
+
+	shutdownTimeout := defaultShutdownTimeout
+	if raw.ShutdownTimeoutSeconds != "" {
+		parsedTimeout, err := parsePositiveSeconds("SHUTDOWN_TIMEOUT_SECONDS", raw.ShutdownTimeoutSeconds)
+		if err != nil {
+			return Config{}, err
+		}
+		shutdownTimeout = parsedTimeout
+	}
+
+	scaleUpReadCapacity := 0
+	parsedScaleUpReadCapacity, err := strconv.Atoi(raw.ScaleUpReadCapacity)
+	if err == nil && parsedScaleUpReadCapacity > 0 {
+		scaleUpReadCapacity = parsedScaleUpReadCapacity
+	}
+
 	return Config{
 		AWSRegion:           raw.AWSRegion,
 		LogLevel:            raw.LogLevel,
@@ -94,71 +125,36 @@ func configFromRaw(raw rawConfig) Config {
 		ChatIDTable:         raw.ChatIDTable,
 		EventQueueURL:       raw.EventQueueURL,
 		AWSEndpointURL:      raw.AWSEndpointURL,
-		HTTPTimeout:         10 * time.Second,
-		ShutdownTimeout:     10 * time.Second,
-		ScaleUpReadCapacity: 0,
-	}
+		HTTPTimeout:         httpTimeout,
+		ShutdownTimeout:     shutdownTimeout,
+		ScaleUpReadCapacity: scaleUpReadCapacity,
+	}, nil
 }
 
 // validateConfig checks required startup settings before clients are built.
 func validateConfig(config Config) error {
-	if config.TelegramBotToken == "" {
-		return fmt.Errorf("TELEGRAM_BOT_TOKEN is required")
-	}
-	if err := validateTableName("MESSAGE_TABLE", config.MessageTable); err != nil {
-		return err
-	}
-	if err := validateTableName("CHATID_TABLE", config.ChatIDTable); err != nil {
-		return err
-	}
-	if err := validateURL("EVENT_QUEUE_URL", config.EventQueueURL); err != nil {
-		return err
-	}
-	if err := validateOptionalURL("AWS_ENDPOINT_URL", config.AWSEndpointURL); err != nil {
-		return err
-	}
-	if err := validateURL("TELEGRAM_API_BASE_URL", config.TelegramAPIBaseURL); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// applyScaleUpReadCapacity keeps invalid scale-up values at the default.
-func applyScaleUpReadCapacity(config *Config, raw string) {
-	if raw == "" {
-		return
-	}
-
-	value, err := strconv.Atoi(raw)
-	if err == nil && value > 0 {
-		config.ScaleUpReadCapacity = value
-	}
-}
-
-// applyTimeouts overrides default timeouts from validated raw values.
-func applyTimeouts(config *Config, raw rawConfig) error {
-	if err := applyTimeout(&config.HTTPTimeout, "HTTP_TIMEOUT_SECONDS", raw.HTTPTimeoutSeconds); err != nil {
-		return err
-	}
-	if err := applyTimeout(&config.ShutdownTimeout, "SHUTDOWN_TIMEOUT_SECONDS", raw.ShutdownTimeoutSeconds); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// applyTimeout replaces a default timeout when the raw value is set.
-func applyTimeout(target *time.Duration, key string, raw string) error {
-	if raw == "" {
-		return nil
-	}
-
-	timeout, err := parsePositiveSeconds(key, raw)
+	err := validateTableName("MESSAGE_TABLE", config.MessageTable)
 	if err != nil {
 		return err
 	}
-	*target = timeout
+	err = validateTableName("CHATID_TABLE", config.ChatIDTable)
+	if err != nil {
+		return err
+	}
+	err = validateURL("EVENT_QUEUE_URL", config.EventQueueURL)
+	if err != nil {
+		return err
+	}
+	if config.AWSEndpointURL != "" {
+		err = validateURL("AWS_ENDPOINT_URL", config.AWSEndpointURL)
+		if err != nil {
+			return err
+		}
+	}
+	err = validateURL("TELEGRAM_API_BASE_URL", config.TelegramAPIBaseURL)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -177,9 +173,6 @@ func serverAddress(value string, docker string) string {
 
 // validateTableName checks a DynamoDB table name.
 func validateTableName(key string, value string) error {
-	if value == "" {
-		return fmt.Errorf("%s is required", key)
-	}
 	if !dynamoDBTableNamePattern.MatchString(value) {
 		return fmt.Errorf("%s is not a valid DynamoDB table name", key)
 	}
@@ -189,25 +182,12 @@ func validateTableName(key string, value string) error {
 
 // validateURL checks that value is an absolute URL.
 func validateURL(key string, value string) error {
-	if value == "" {
-		return fmt.Errorf("%s is required", key)
-	}
-
 	parsed, err := url.Parse(value)
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
 		return fmt.Errorf("%s must be an absolute URL", key)
 	}
 
 	return nil
-}
-
-// validateOptionalURL checks an optional absolute URL.
-func validateOptionalURL(key string, value string) error {
-	if value == "" {
-		return nil
-	}
-
-	return validateURL(key, value)
 }
 
 // parsePositiveSeconds parses a positive timeout in seconds.

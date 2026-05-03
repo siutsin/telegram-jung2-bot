@@ -133,7 +133,8 @@ func (client Client) SendMessageWithOptions(ctx context.Context, chatID int64, t
 		err = errors.Join(err, closeResponseBody(response.Body, "sendMessage"))
 	}()
 
-	if err := telegramAPIError(response); err != nil {
+	err = telegramAPIError(response)
+	if err != nil {
 		return err
 	}
 
@@ -151,14 +152,16 @@ func (client Client) GetChatAdministrators(ctx context.Context, chatID int64) (a
 		err = errors.Join(err, closeResponseBody(response.Body, "getChatAdministrators"))
 	}()
 
-	if err := telegramAPIError(response); err != nil {
+	err = telegramAPIError(response)
+	if err != nil {
 		return nil, err
 	}
 
 	var result struct {
 		Result []Administrator `json:"result"`
 	}
-	if err := json.NewDecoder(response.Body).Decode(&result); err != nil {
+	err = json.NewDecoder(response.Body).Decode(&result)
+	if err != nil {
 		return nil, fmt.Errorf("decode getChatAdministrators response: %w", err)
 	}
 
@@ -188,7 +191,8 @@ func ParseUpdate(payload []byte) (Update, error) {
 	}
 
 	var update Update
-	if err := json.Unmarshal(payload, &update); err != nil {
+	err := json.Unmarshal(payload, &update)
+	if err != nil {
 		return Update{}, fmt.Errorf("decode telegram update: %w", err)
 	}
 
@@ -242,7 +246,8 @@ func telegramAPIError(response *http.Response) error {
 	}
 
 	statusErr := fmt.Errorf("telegram API returned HTTP %d", response.StatusCode)
-	if _, err := io.Copy(io.Discard, response.Body); err != nil {
+	_, err := io.Copy(io.Discard, response.Body)
+	if err != nil {
 		return errors.Join(statusErr, fmt.Errorf("drain telegram API error response: %w", err))
 	}
 
@@ -251,7 +256,8 @@ func telegramAPIError(response *http.Response) error {
 
 // closeResponseBody closes a Telegram HTTP response body with context.
 func closeResponseBody(body io.Closer, endpoint string) error {
-	if err := body.Close(); err != nil {
+	err := body.Close()
+	if err != nil {
 		return fmt.Errorf("close Telegram %s response body: %w", endpoint, err)
 	}
 

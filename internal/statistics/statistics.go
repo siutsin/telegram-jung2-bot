@@ -4,6 +4,7 @@ package statistics
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -222,13 +223,18 @@ func BuildDiverBody(normalisedRows NormalisedRows, options Options) string {
 		loopLimit = options.Limit
 	}
 
-	body := ""
+	var body strings.Builder
 	for index := range loopLimit {
 		ranking := rankings[index]
-		body += fmt.Sprintf("%d. %s - %s\n", index+1, ranking.FullName, timeAgo(ranking.DateCreated, options.Now))
+		body.WriteString(strconv.Itoa(index + 1))
+		body.WriteString(". ")
+		body.WriteString(ranking.FullName)
+		body.WriteString(" - ")
+		body.WriteString(timeAgo(ranking.DateCreated, options.Now))
+		body.WriteByte('\n')
 	}
 
-	return body
+	return body.String()
 }
 
 // BuildFooter builds the report footer text.
@@ -275,10 +281,7 @@ func displayName(row message.Message) string {
 
 // timeAgo formats a relative timestamp.
 func timeAgo(dateCreated time.Time, now time.Time) string {
-	duration := now.Sub(dateCreated)
-	if duration < 0 {
-		duration = 0
-	}
+	duration := max(now.Sub(dateCreated), 0)
 
 	switch {
 	case duration < 45*time.Second:

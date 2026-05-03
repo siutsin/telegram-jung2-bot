@@ -4,6 +4,7 @@ package message
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/siutsin/telegram-jung2-bot/internal/telegram"
@@ -70,7 +71,8 @@ func (repository Repository) Save(ctx context.Context, message Message) error {
 	if message.TTL == 0 {
 		message.TTL = TTL(repository.now(), DefaultTTL)
 	}
-	if err := repository.Client.Update(ctx, BuildSaveUpdate(repository.TableName, message)); err != nil {
+	err := repository.Client.Update(ctx, BuildSaveUpdate(repository.TableName, message))
+	if err != nil {
 		return fmt.Errorf("save message: %w", err)
 	}
 
@@ -212,10 +214,11 @@ func addIntAttribute(
 
 // joinAssignments joins update assignments with commas.
 func joinAssignments(assignments []string) string {
-	result := assignments[0]
+	var result strings.Builder
+	result.WriteString(assignments[0])
 	for _, assignment := range assignments[1:] {
-		result += ", " + assignment
+		result.WriteString(", " + assignment)
 	}
 
-	return result
+	return result.String()
 }

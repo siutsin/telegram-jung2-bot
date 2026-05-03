@@ -17,7 +17,9 @@ linters:
     - gosec         # Flag common security-sensitive code patterns and dangerous APIs.
     - loggercheck   # Validate structured logging key/value usage.
     - misspell      # Catch common spelling mistakes using UK English.
+    - modernize     # Prefer current Go language and standard-library idioms where they improve clarity.
     - noctx         # Require context-aware APIs in non-test code paths.
+    - noinlineerr   # Keep error handling out of inline declarations for clearer control flow.
     - nilerr        # Reject error branches that accidentally return nil.
     - nilnil        # Reject returning both a nil error and an invalid nil value combination.
     - nilnesserr    # Catch mismatched nil return values in error-handling branches.
@@ -26,7 +28,6 @@ linters:
     - testifylint   # Catch misuse of testify assertions in tests.
     - unconvert     # Remove unnecessary type conversions.
     - unparam       # Find parameters that are never used by callees.
-    - usestdlibvars # Prefer standard-library constants and variables over duplicated literals.
   settings:
     errcheck:
       # Surface intentionally ignored writes and unsafe type assertions.
@@ -69,10 +70,6 @@ linters:
           - dupl
           - goconst
           - lll
-          - noctx
-      # Integration tests intentionally use simple background contexts to keep the slices readable.
-      - path: ^internal/integration/
-        linters:
           - noctx
 formatters:
   enable:

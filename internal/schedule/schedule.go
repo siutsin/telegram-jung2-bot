@@ -46,7 +46,8 @@ func (service Service) SyncChat(ctx context.Context, settings chat.Settings) err
 	if service.Scheduler == nil {
 		return fmt.Errorf("scheduler is required")
 	}
-	if err := service.Scheduler.Sync(ctx, settings); err != nil {
+	err := service.Scheduler.Sync(ctx, settings)
+	if err != nil {
 		return fmt.Errorf("sync chat schedule: %w", err)
 	}
 
@@ -66,7 +67,8 @@ func (service Service) HandleDueReport(ctx context.Context, timestamp time.Time)
 		return fmt.Errorf("list due chats: %w", err)
 	}
 	for _, chatID := range DueChatIDs(rows, timestamp) {
-		if err := service.Enqueuer.Enqueue(ctx, BuildOffFromWorkAction(chatID)); err != nil {
+		err = service.Enqueuer.Enqueue(ctx, BuildOffFromWorkAction(chatID))
+		if err != nil {
 			return fmt.Errorf("enqueue due off-work report: %w", err)
 		}
 	}

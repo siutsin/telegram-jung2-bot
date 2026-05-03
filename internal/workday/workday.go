@@ -49,7 +49,7 @@ func ParseList(raw string) (Workdays, error) {
 	}
 
 	var mask int
-	for _, day := range strings.Split(raw, ",") {
+	for day := range strings.SplitSeq(raw, ",") {
 		bit, ok := dayBits[day]
 		if !ok {
 			return 0, fmt.Errorf("invalid workday %q", day)
