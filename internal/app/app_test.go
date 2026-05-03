@@ -3,8 +3,6 @@ package app
 import (
 	"context"
 	"errors"
-	"net/http"
-	"net/http/httptest"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -12,23 +10,15 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/siutsin/telegram-jung2-bot/internal/chat"
-	"github.com/siutsin/telegram-jung2-bot/internal/config"
-	"github.com/siutsin/telegram-jung2-bot/internal/message"
-	"github.com/siutsin/telegram-jung2-bot/internal/queue"
-	"github.com/siutsin/telegram-jung2-bot/internal/worker"
 )
 
-func TestNewBuildsAndStartsRuntime(t *testing.T) {
+func TestRunStartsProcessesAndCancelsWorker(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	httpServer := newBlockingHTTPServer()
 	queueWorker := &fakeQueueWorker{}
-	application := &App{
-		httpServer:      httpServer,
-		queueWorker:     queueWorker,
-		shutdownTimeout: time.Second,
-	}
+	application := New(httpServer, queueWorker, Options{ShutdownTimeout: time.Second})
 	done := make(chan error, 1)
 
 	go func() {
@@ -43,99 +33,19 @@ func TestNewBuildsAndStartsRuntime(t *testing.T) {
 	require.Eventually(t, queueWorker.cancelled.Load, time.Second, time.Millisecond)
 }
 
-func TestNewBuildsHTTPServer(t *testing.T) {
+func TestNewSetsDependencies(t *testing.T) {
 	t.Parallel()
 
-	application, err := New(runtimeConfig(), runtimeDependencies(), Options{})
+	httpServer := &fakeHTTPServer{}
+	queueWorker := &fakeQueueWorker{}
+	application := New(httpServer, queueWorker, Options{ShutdownTimeout: time.Second})
 
-	require.NoError(t, err)
-	httpServer, ok := application.httpServer.(*http.Server)
-	require.True(t, ok)
-	assert.Equal(t, ":3000", httpServer.Addr)
-	assert.Equal(t, 5*time.Second, httpServer.ReadTimeout)
-
-	response := httptest.NewRecorder()
-	httpServer.Handler.ServeHTTP(response, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/health", nil))
-	assert.Equal(t, http.StatusOK, response.Code)
+	assert.Same(t, httpServer, application.httpServer)
+	assert.Same(t, queueWorker, application.queueWorker)
+	assert.Equal(t, time.Second, application.shutdownTimeout)
 }
 
-func TestNewRejectsInvalidHTTPDependencies(t *testing.T) {
-	t.Parallel()
-
-	_, err := New(runtimeConfig(), Dependencies{}, Options{})
-
-	require.Error(t, err)
-	assert.EqualError(t, err, "create HTTP server: validate HTTP dependencies: message store is required")
-}
-
-func TestNewBuildsScaleUpRoute(t *testing.T) {
-	t.Parallel()
-
-	dependencies := runtimeDependencies()
-	dependencies.ScaleUpper = &runtimeScaleUpper{}
-	application, err := New(runtimeConfig(), dependencies, Options{})
-
-	require.NoError(t, err)
-	httpServer, ok := application.httpServer.(*http.Server)
-	require.True(t, ok)
-	response := httptest.NewRecorder()
-	httpServer.Handler.ServeHTTP(response, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/jung2bot/dev/onScaleUp", nil))
-	assert.Equal(t, http.StatusOK, response.Code)
-}
-
-func TestNewBuildsQueueWorker(t *testing.T) {
-	t.Parallel()
-
-	application, err := New(runtimeConfig(), runtimeDependencies(), Options{})
-
-	require.NoError(t, err)
-	_, ok := application.queueWorker.(worker.PollingWorker)
-	assert.True(t, ok)
-}
-
-func TestNewQueueWorkerRequiresDependencies(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name         string
-		dependencies Dependencies
-		wantErr      string
-	}{
-		{
-			name: "missing receiver",
-			dependencies: Dependencies{
-				Chats:     &runtimeChatStore{},
-				Messages:  &runtimeMessageStore{},
-				Sender:    &runtimeSender{},
-				Deleter:   &runtimeDeleter{},
-				Messenger: &runtimeMessenger{},
-			},
-			wantErr: "create queue worker: queue receiver is required",
-		},
-		{
-			name: "missing deleter",
-			dependencies: Dependencies{
-				Chats:     &runtimeChatStore{},
-				Messages:  &runtimeMessageStore{},
-				Sender:    &runtimeSender{},
-				Receiver:  &runtimeReceiver{},
-				Messenger: &runtimeMessenger{},
-			},
-			wantErr: "create queue worker: queue deleter is required",
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			_, err := New(runtimeConfig(), test.dependencies, Options{})
-
-			require.Error(t, err)
-			assert.EqualError(t, err, test.wantErr)
-		})
-	}
-}
-
-func TestRunWithSetupErrors(t *testing.T) {
+func TestRunRequiresProcesses(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -268,30 +178,7 @@ func TestRunReturnsShutdownError(t *testing.T) {
 func TestShutdownTimeoutUsesFallback(t *testing.T) {
 	t.Parallel()
 
-	assert.Equal(t, 10*time.Second, shutdownTimeout(config.Config{}, Options{}))
-}
-
-func runtimeConfig() config.Config {
-	return config.Config{
-		MessageTable:    "messages",
-		ChatIDTable:     "chats",
-		EventQueueURL:   "queue-url",
-		Stage:           "dev",
-		ServerAddress:   ":3000",
-		HTTPTimeout:     5 * time.Second,
-		ShutdownTimeout: time.Second,
-	}
-}
-
-func runtimeDependencies() Dependencies {
-	return Dependencies{
-		Chats:     &runtimeChatStore{},
-		Messages:  &runtimeMessageStore{},
-		Sender:    &runtimeSender{},
-		Receiver:  &runtimeReceiver{},
-		Deleter:   &runtimeDeleter{},
-		Messenger: &runtimeMessenger{},
-	}
+	assert.Equal(t, 10*time.Second, shutdownTimeout(Options{}))
 }
 
 type fakeHTTPServer struct {
@@ -368,47 +255,5 @@ func (worker *fakeQueueWorker) Run(ctx context.Context) error {
 	}
 	<-ctx.Done()
 	worker.cancelled.Store(true)
-	return nil
-}
-
-type runtimeMessageStore struct{}
-
-func (store *runtimeMessageStore) Save(ctx context.Context, tableName string, row message.Message) error {
-	return nil
-}
-
-type runtimeChatStore struct{}
-
-func (store *runtimeChatStore) Save(ctx context.Context, tableName string, settings chat.ChatSetting) error {
-	return nil
-}
-
-type runtimeSender struct{}
-
-func (sender *runtimeSender) SendMessage(ctx context.Context, request queue.SendMessageRequest) error {
-	return nil
-}
-
-type runtimeReceiver struct{}
-
-func (receiver *runtimeReceiver) ReceiveMessage(ctx context.Context, request queue.ReceiveMessageRequest) (queue.ReceiveMessageResponse, error) {
-	return queue.ReceiveMessageResponse{}, nil
-}
-
-type runtimeDeleter struct{}
-
-func (deleter *runtimeDeleter) Delete(ctx context.Context, request queue.DeleteMessageRequest) error {
-	return nil
-}
-
-type runtimeMessenger struct{}
-
-func (messenger *runtimeMessenger) SendMessage(ctx context.Context, chatID int64, text string) error {
-	return nil
-}
-
-type runtimeScaleUpper struct{}
-
-func (scaleUpper *runtimeScaleUpper) ScaleUp(ctx context.Context) error {
 	return nil
 }

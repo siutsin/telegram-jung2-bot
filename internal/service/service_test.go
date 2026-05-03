@@ -35,6 +35,36 @@ func TestJungHelpSendsMarkdownHelp(t *testing.T) {
 	}, messenger.options)
 }
 
+func TestNewBuildsService(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 5, 2, 12, 0, 0, 0, time.UTC)
+	chatStore := &fakeChatStore{}
+	messageClient := &fakeMessageClient{}
+	messenger := &fakeMessenger{}
+	sender := &fakeSender{}
+
+	service := New(
+		chatStore,
+		"chats",
+		messageClient,
+		"messages",
+		messenger,
+		func() time.Time { return now },
+		"queue-url",
+		sender,
+	)
+
+	assert.Equal(t, chatStore, service.ChatMaintainer)
+	assert.Equal(t, "chats", service.ChatTable)
+	assert.Equal(t, messageClient, service.MessageQuerier)
+	assert.Equal(t, "messages", service.MessageTable)
+	assert.Equal(t, messenger, service.Messenger)
+	assert.Equal(t, now, service.Now())
+	assert.Equal(t, "queue-url", service.QueueURL)
+	assert.Equal(t, sender, service.Sender)
+}
+
 func TestOnOffFromWorkEnqueuesDueChats(t *testing.T) {
 	t.Parallel()
 

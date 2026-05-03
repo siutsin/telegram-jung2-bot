@@ -141,7 +141,7 @@ complete. It must be removed before the final cleanup gate.
 
 - [x] Package: `app`.
 - [x] Covered: fakeable HTTP server and queue worker lifecycle, cancellation,
-  shutdown timeout, dependency-construction errors, and test coverage.
+  shutdown timeout, and test coverage.
 
 ### Startup And Adapters
 
@@ -164,8 +164,8 @@ complete. It must be removed before the final cleanup gate.
   dependencies initialised there and passed into `internal/app`.
 - [x] Environment loading now uses `github.com/caarlos0/env/v11` through
   `internal/config`.
-- [x] The application is wrapped by `app.App`, so dependencies can be injected
-  into a concrete application object and run via `(*App).Run`.
+- [x] The application is wrapped by `app.App`, so the concrete HTTP server and
+  queue worker can be passed in and run via `(*App).Run`.
 
 ## Remaining Work
 
@@ -291,9 +291,9 @@ complete. It must be removed before the final cleanup gate.
 
 ### `app`
 
-- Owns the concrete application wrapper, HTTP/worker assembly from explicit
-  dependencies, startup, and graceful shutdown.
-- Public API: `New(config, dependencies, options) (*App, error)` and `(*App).Run(ctx)`.
+- Owns the concrete application wrapper, process lifecycle, and graceful
+  shutdown.
+- Public API: `New(httpServer, queueWorker, options) *App` and `(*App).Run(ctx)`.
 
 ## Quality Gates
 

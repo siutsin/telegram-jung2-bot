@@ -54,7 +54,7 @@ This package owns:
 - Telegram command parsing
 - set-off-from-work arg parsing
 - command to action mapping
-- set-off-from-work command validation
+- set-off-from-work arg validation
 
 ## Validation
 

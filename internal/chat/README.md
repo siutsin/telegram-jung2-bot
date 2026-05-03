@@ -2,11 +2,11 @@
 
 ## Purpose
 
-This package parses stored chat settings, builds chat update shapes, and filters scheduled chats.
+This package parses stored chat rows, builds chat update shapes, and filters scheduled chats.
 
 It:
 
-- parses stored chat setting rows
+- parses stored chat rows
 - builds chat update requests
 - applies stored chat defaults
 - filters chats for scheduled reports
@@ -45,7 +45,7 @@ flowchart TD
     parseRow --> validatedSettings[Validated ChatSetting]
 ```
 
-- `ParseRow` is the strict path for full stored rows.
+- `ParseRow` is the strict path for full stored chat rows.
 - It applies defaults, including `enableAllJung=true` when the stored value is missing.
 - It parses `dateCreated` and validates `workday`.
 - This path returns an error when stored data is malformed.

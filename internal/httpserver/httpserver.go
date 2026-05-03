@@ -61,6 +61,26 @@ type ServerDeps struct {
 	Stage        string
 }
 
+// NewServer builds the production HTTP server from validated runtime values.
+func NewServer(address string, timeout time.Duration, stage string, dependencies Dependencies) (*http.Server, error) {
+	err := Validate(dependencies)
+	if err != nil {
+		return nil, fmt.Errorf("validate HTTP dependencies: %w", err)
+	}
+
+	return &http.Server{
+		Addr: address,
+		Handler: New(ServerDeps{
+			Dependencies: dependencies,
+			Stage:        stage,
+		}),
+		ReadHeaderTimeout: timeout,
+		ReadTimeout:       timeout,
+		WriteTimeout:      timeout,
+		IdleTimeout:       timeout,
+	}, nil
+}
+
 // New builds the HTTP handler for service routes.
 func New(dependencies ServerDeps) http.Handler {
 	mux := http.NewServeMux()

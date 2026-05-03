@@ -4,13 +4,7 @@ package app
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"time"
-
-	"github.com/siutsin/telegram-jung2-bot/internal/config"
-	"github.com/siutsin/telegram-jung2-bot/internal/httpserver"
-	"github.com/siutsin/telegram-jung2-bot/internal/queue"
-	"github.com/siutsin/telegram-jung2-bot/internal/worker"
 )
 
 type HTTPRunner interface {
@@ -22,47 +16,25 @@ type QueueWorker interface {
 	Run(ctx context.Context) error
 }
 
-// App wraps the configured application processes and dependencies.
+// App wraps the configured application processes.
 type App struct {
 	httpServer      HTTPRunner
 	queueWorker     QueueWorker
 	shutdownTimeout time.Duration
 }
 
-// Options configures how an application instance is assembled.
+// Options configures application runtime behaviour.
 type Options struct {
 	ShutdownTimeout time.Duration
 }
 
-// Dependencies contains the collaborators the app needs.
-type Dependencies struct {
-	Chats      httpserver.ChatSaver
-	Messages   httpserver.MessageSaver
-	Sender     queue.Sender
-	Receiver   queue.Receiver
-	Deleter    worker.Deleter
-	Messenger  httpserver.Messenger
-	ScaleUpper httpserver.ScaleUpper
-	Handlers   worker.Handlers
-	Now        func() time.Time
-}
-
-// New constructs an application with the provided dependencies and options.
-func New(config config.Config, dependencies Dependencies, options Options) (*App, error) {
-	httpServer, err := newHTTPServer(config, dependencies)
-	if err != nil {
-		return nil, fmt.Errorf("create HTTP server: %w", err)
-	}
-	queueWorker, err := newQueueWorker(config, dependencies)
-	if err != nil {
-		return nil, fmt.Errorf("create queue worker: %w", err)
-	}
-
+// New constructs an application with the provided processes and options.
+func New(httpServer HTTPRunner, queueWorker QueueWorker, options Options) *App {
 	return &App{
 		httpServer:      httpServer,
 		queueWorker:     queueWorker,
-		shutdownTimeout: shutdownTimeout(config, options),
-	}, nil
+		shutdownTimeout: shutdownTimeout(options),
+	}
 }
 
 // Run starts the configured application.
@@ -116,57 +88,10 @@ func shutdownHTTP(httpServer HTTPRunner, timeout time.Duration) error {
 }
 
 // shutdownTimeout returns the configured shutdown timeout.
-func shutdownTimeout(config config.Config, options Options) time.Duration {
+func shutdownTimeout(options Options) time.Duration {
 	if options.ShutdownTimeout > 0 {
 		return options.ShutdownTimeout
 	}
-	if config.ShutdownTimeout > 0 {
-		return config.ShutdownTimeout
-	}
 
 	return 10 * time.Second
-}
-
-// newHTTPServer builds the app HTTP server.
-func newHTTPServer(config config.Config, dependencies Dependencies) (HTTPRunner, error) {
-	httpDependencies := httpserver.Dependencies{
-		ChatTable:    config.ChatIDTable,
-		MessageTable: config.MessageTable,
-		Chats:        dependencies.Chats,
-		Messages:     dependencies.Messages,
-		Enqueuer:     queue.Producer{QueueURL: config.EventQueueURL, Sender: dependencies.Sender},
-		Messenger:    dependencies.Messenger,
-		ScaleUpper:   dependencies.ScaleUpper,
-		Now:          dependencies.Now,
-	}
-	err := httpserver.Validate(httpDependencies)
-	if err != nil {
-		return nil, fmt.Errorf("validate HTTP dependencies: %w", err)
-	}
-
-	return &http.Server{
-		Addr:              config.ServerAddress,
-		Handler:           httpserver.New(httpserver.ServerDeps{Dependencies: httpDependencies, Stage: config.Stage}),
-		ReadHeaderTimeout: config.HTTPTimeout,
-		ReadTimeout:       config.HTTPTimeout,
-		WriteTimeout:      config.HTTPTimeout,
-		IdleTimeout:       config.HTTPTimeout,
-	}, nil
-}
-
-// newQueueWorker builds the app queue worker.
-func newQueueWorker(config config.Config, dependencies Dependencies) (QueueWorker, error) {
-	if dependencies.Receiver == nil {
-		return nil, fmt.Errorf("queue receiver is required")
-	}
-	if dependencies.Deleter == nil {
-		return nil, fmt.Errorf("queue deleter is required")
-	}
-
-	return worker.PollingWorker{
-		Consumer: queue.Consumer{QueueURL: config.EventQueueURL, Receiver: dependencies.Receiver},
-		QueueURL: config.EventQueueURL,
-		Handlers: dependencies.Handlers,
-		Deleter:  dependencies.Deleter,
-	}, nil
 }

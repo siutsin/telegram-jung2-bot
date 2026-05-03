@@ -43,6 +43,23 @@ type PollingWorker struct {
 
 type actionDispatcher func(ctx context.Context, action queue.Action) error
 
+// NewPollingWorker builds a queue worker from the configured queue contracts.
+func NewPollingWorker(queueURL string, receiver queue.Receiver, deleter Deleter, handlers Handlers) (PollingWorker, error) {
+	if receiver == nil {
+		return PollingWorker{}, fmt.Errorf("queue receiver is required")
+	}
+	if deleter == nil {
+		return PollingWorker{}, fmt.Errorf("queue deleter is required")
+	}
+
+	return PollingWorker{
+		Consumer: queue.Consumer{QueueURL: queueURL, Receiver: receiver},
+		QueueURL: queueURL,
+		Handlers: handlers,
+		Deleter:  deleter,
+	}, nil
+}
+
 // Run polls the queue until the context is cancelled.
 func (worker PollingWorker) Run(ctx context.Context) error {
 	if worker.Deleter == nil {

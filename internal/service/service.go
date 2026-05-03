@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/siutsin/telegram-jung2-bot/internal/chat"
-	contractdynamodb "github.com/siutsin/telegram-jung2-bot/internal/dynamodb"
+	"github.com/siutsin/telegram-jung2-bot/internal/dynamodb"
 	"github.com/siutsin/telegram-jung2-bot/internal/message"
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
 	"github.com/siutsin/telegram-jung2-bot/internal/schedule"
@@ -46,6 +46,29 @@ type Service struct {
 	Now            func() time.Time
 	QueueURL       string
 	Sender         queue.Sender
+}
+
+// New builds the action service from simple runtime parameters.
+func New(
+	chatMaintainer ChatMaintainer,
+	chatTable string,
+	messageQuerier MessageQuerier,
+	messageTable string,
+	messenger Messenger,
+	now func() time.Time,
+	queueURL string,
+	sender queue.Sender,
+) Service {
+	return Service{
+		ChatMaintainer: chatMaintainer,
+		ChatTable:      chatTable,
+		MessageQuerier: messageQuerier,
+		MessageTable:   messageTable,
+		Messenger:      messenger,
+		Now:            now,
+		QueueURL:       queueURL,
+		Sender:         sender,
+	}
 }
 
 // AllJung sends the full report when enabled for the chat.
@@ -246,4 +269,4 @@ func isTelegramStatusError(err error) bool {
 		strings.Contains(err.Error(), "telegram API returned HTTP 5")
 }
 
-var _ ChatMaintainer = contractdynamodb.ChatClient{}
+var _ ChatMaintainer = dynamodb.ChatClient{}

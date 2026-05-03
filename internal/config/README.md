@@ -9,11 +9,11 @@ It:
 - reads env vars
 - applies defaults
 - validates required values
-- returns `config.Config`
+- returns `Config`
 
 It does not build clients or start the app.
 
-## Dependency
+## Dependencies
 
 This package depends on `github.com/caarlos0/env/v11`.
 
@@ -59,5 +59,5 @@ Startup fails when:
 
 These do not fail startup:
 
-- bad process-style env entries passed to `LoadEnviron`
+- malformed process-style env entries passed to `LoadEnviron`
 - invalid `SCALE_UP_READ_CAPACITY`, which falls back to `0`

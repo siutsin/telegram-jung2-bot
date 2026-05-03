@@ -34,6 +34,35 @@ func TestNewRoutesHealth(t *testing.T) {
 	assert.Equal(t, "ok", response.Body.String())
 }
 
+func TestNewServerBuildsConfiguredHTTPServer(t *testing.T) {
+	t.Parallel()
+
+	server, err := NewServer(
+		":3000",
+		5*time.Second,
+		"dev",
+		testDependencies(&fakeMessageStore{}, &fakeChatStore{}, &fakeEnqueuer{}, nil),
+	)
+
+	require.NoError(t, err)
+	assert.Equal(t, ":3000", server.Addr)
+	assert.Equal(t, 5*time.Second, server.ReadTimeout)
+	assert.Equal(t, 5*time.Second, server.WriteTimeout)
+
+	response := httptest.NewRecorder()
+	server.Handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/jung2bot/dev/ping", nil))
+	assert.Equal(t, http.StatusOK, response.Code)
+}
+
+func TestNewServerRejectsInvalidDependencies(t *testing.T) {
+	t.Parallel()
+
+	_, err := NewServer(":3000", 5*time.Second, "dev", Dependencies{})
+
+	require.Error(t, err)
+	assert.EqualError(t, err, "validate HTTP dependencies: message store is required")
+}
+
 func TestNewRejectsUnsupportedHealthMethod(t *testing.T) {
 	t.Parallel()
 
