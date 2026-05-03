@@ -373,13 +373,13 @@ func (worker *fakeQueueWorker) Run(ctx context.Context) error {
 
 type runtimeMessageStore struct{}
 
-func (store *runtimeMessageStore) Save(ctx context.Context, row message.Message) error {
+func (store *runtimeMessageStore) Save(ctx context.Context, tableName string, row message.Message) error {
 	return nil
 }
 
 type runtimeChatStore struct{}
 
-func (store *runtimeChatStore) Save(ctx context.Context, settings chat.Settings) error {
+func (store *runtimeChatStore) Save(ctx context.Context, tableName string, settings chat.Settings) error {
 	return nil
 }
 

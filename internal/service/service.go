@@ -20,9 +20,13 @@ import (
 // ChatMaintainer is the chat persistence surface the service actions need.
 type ChatMaintainer interface {
 	DueChatIDs(ctx context.Context, tableName string, timestamp time.Time) ([]int64, error)
-	Get(ctx context.Context, tableName string, chatID int64) (chat.Row, bool, error)
+	Get(ctx context.Context, tableName string, chatID int64) (chat.Settings, bool, error)
 	SaveStatistics(ctx context.Context, tableName string, chatID int64, userCount int, messageCount int, now time.Time) error
 	Update(ctx context.Context, request chat.UpdateExpression) error
+}
+
+type MessageQuerier interface {
+	QueryByChat(ctx context.Context, tableName string, chatID int64, since time.Time, until time.Time) ([]message.Message, error)
 }
 
 // Messenger is the Telegram surface the service actions need.
@@ -34,13 +38,14 @@ type Messenger interface {
 
 // Service owns the application behaviour behind worker actions.
 type Service struct {
-	ChatMaintainer    ChatMaintainer
-	ChatTable         string
-	MessageRepository message.Repository
-	Messenger         Messenger
-	Now               func() time.Time
-	QueueURL          string
-	Sender            queue.Sender
+	ChatMaintainer ChatMaintainer
+	ChatTable      string
+	MessageQuerier MessageQuerier
+	MessageTable   string
+	Messenger      Messenger
+	Now            func() time.Time
+	QueueURL       string
+	Sender         queue.Sender
 }
 
 // AllJung sends the full report when enabled for the chat.
@@ -49,7 +54,7 @@ func (service Service) AllJung(ctx context.Context, chatID int64) error {
 	if err != nil {
 		return err
 	}
-	if ok && row.EnableAllJung != nil && !*row.EnableAllJung {
+	if ok && !row.EnableAllJung {
 		return nil
 	}
 
@@ -204,7 +209,7 @@ func (service Service) sendStatistics(ctx context.Context, chatID int64, options
 	now := service.now()
 	options.Now = now
 
-	rows, err := service.MessageRepository.QueryByChat(ctx, chatID, now.AddDate(0, 0, -7), now)
+	rows, err := service.MessageQuerier.QueryByChat(ctx, service.MessageTable, chatID, now.AddDate(0, 0, -7), now)
 	if err != nil {
 		return err
 	}

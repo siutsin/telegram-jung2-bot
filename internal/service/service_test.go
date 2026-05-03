@@ -68,18 +68,15 @@ func TestTopTenIgnoresTelegramStatusErrors(t *testing.T) {
 	chatStore := &fakeChatStore{}
 	service := testService()
 	service.ChatMaintainer = chatStore
-	service.MessageRepository = message.Repository{
-		TableName: "messages",
-		Client: &fakeMessageClient{
-			rows: []message.Message{
-				{
-					ChatID:      123,
-					ChatTitle:   "Group",
-					DateCreated: time.Date(2026, 5, 2, 20, 0, 0, 0, time.FixedZone("UTC+8", 8*60*60)),
-					FirstName:   "Ada",
-					TTL:         1,
-					UserID:      1,
-				},
+	service.MessageQuerier = &fakeMessageClient{
+		rows: []message.Message{
+			{
+				ChatID:      123,
+				ChatTitle:   "Group",
+				DateCreated: time.Date(2026, 5, 2, 20, 0, 0, 0, time.FixedZone("UTC+8", 8*60*60)),
+				FirstName:   "Ada",
+				TTL:         1,
+				UserID:      1,
 			},
 		},
 	}
@@ -138,11 +135,9 @@ func testService() Service {
 	return Service{
 		ChatMaintainer: &fakeChatStore{},
 		ChatTable:      "chats",
-		MessageRepository: message.Repository{
-			TableName: "messages",
-			Client:    &fakeMessageClient{},
-		},
-		Messenger: &fakeMessenger{},
+		MessageQuerier: &fakeMessageClient{},
+		MessageTable:   "messages",
+		Messenger:      &fakeMessenger{},
 		Now: func() time.Time {
 			return time.Date(2026, 5, 2, 12, 0, 0, 0, time.UTC)
 		},
@@ -162,12 +157,12 @@ func (store *fakeChatStore) DueChatIDs(ctx context.Context, tableName string, ti
 	return append([]int64(nil), store.dueChatIDs...), nil
 }
 
-func (store *fakeChatStore) Get(ctx context.Context, tableName string, chatID int64) (chat.Row, bool, error) {
+func (store *fakeChatStore) Get(ctx context.Context, tableName string, chatID int64) (chat.Settings, bool, error) {
 	if store.enabled == nil {
-		return chat.Row{}, false, nil
+		return chat.Settings{}, false, nil
 	}
 
-	return chat.Row{EnableAllJung: store.enabled}, true, nil
+	return chat.Settings{EnableAllJung: *store.enabled}, true, nil
 }
 
 func (store *fakeChatStore) SaveStatistics(ctx context.Context, tableName string, chatID int64, userCount int, messageCount int, now time.Time) error {
@@ -188,12 +183,8 @@ type fakeMessageClient struct {
 	rows []message.Message
 }
 
-func (client *fakeMessageClient) QueryByChat(ctx context.Context, request message.QueryRequest) ([]message.Message, error) {
+func (client *fakeMessageClient) QueryByChat(ctx context.Context, tableName string, chatID int64, since time.Time, until time.Time) ([]message.Message, error) {
 	return append([]message.Message(nil), client.rows...), nil
-}
-
-func (client *fakeMessageClient) Update(ctx context.Context, request message.UpdateExpression) error {
-	return nil
 }
 
 type fakeMessenger struct {

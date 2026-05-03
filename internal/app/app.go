@@ -130,12 +130,14 @@ func shutdownTimeout(config config.Config, options Options) time.Duration {
 // newHTTPServer builds the app HTTP server.
 func newHTTPServer(config config.Config, dependencies Dependencies) (HTTPRunner, error) {
 	httpDependencies := httpserver.Dependencies{
-		Chats:      dependencies.Chats,
-		Messages:   dependencies.Messages,
-		Enqueuer:   queue.Producer{QueueURL: config.EventQueueURL, Sender: dependencies.Sender},
-		Messenger:  dependencies.Messenger,
-		ScaleUpper: dependencies.ScaleUpper,
-		Now:        dependencies.Now,
+		ChatTable:    config.ChatIDTable,
+		MessageTable: config.MessageTable,
+		Chats:        dependencies.Chats,
+		Messages:     dependencies.Messages,
+		Enqueuer:     queue.Producer{QueueURL: config.EventQueueURL, Sender: dependencies.Sender},
+		Messenger:    dependencies.Messenger,
+		ScaleUpper:   dependencies.ScaleUpper,
+		Now:          dependencies.Now,
 	}
 	err := httpserver.Validate(httpDependencies)
 	if err != nil {

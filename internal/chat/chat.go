@@ -2,9 +2,6 @@
 package chat
 
 import (
-	"context"
-	"errors"
-	"fmt"
 	"time"
 
 	"github.com/siutsin/telegram-jung2-bot/internal/message"
@@ -15,10 +12,7 @@ import (
 const defaultOffTime = "1000"
 const scheduleWorkdayMask = workday.Sun | workday.Mon | workday.Tue | workday.Wed | workday.Thu | workday.Fri | workday.Sat
 
-const (
-	errRepositoryClientRequired = "chat repository client is required"
-	keyChatID                   = "chatId"
-)
+const keyChatID = "chatId"
 
 // Settings is the persisted chat settings model.
 type Settings struct {
@@ -52,67 +46,6 @@ type UpdateExpression struct {
 	UpdateExpression          string
 	ExpressionAttributeNames  map[string]string
 	ExpressionAttributeValues map[string]any
-}
-
-type repositoryUpdaterQuerier interface {
-	Get(ctx context.Context, tableName string, chatID int64) (Row, bool, error)
-	Update(ctx context.Context, request UpdateExpression) error
-	ListEnabled(ctx context.Context, tableName string) ([]Row, error)
-}
-
-type Repository struct {
-	TableName string
-	Client    repositoryUpdaterQuerier
-}
-
-// Get loads chat settings by chat ID.
-func (repository Repository) Get(ctx context.Context, chatID int64) (Settings, error) {
-	if repository.Client == nil {
-		return Settings{}, errors.New(errRepositoryClientRequired)
-	}
-	row, ok, err := repository.Client.Get(ctx, repository.TableName, chatID)
-	if err != nil {
-		return Settings{}, fmt.Errorf("get chat settings: %w", err)
-	}
-	if !ok {
-		row = Row{ChatID: chatID}
-	}
-	settings, err := FromRow(row)
-	if err != nil {
-		return Settings{}, fmt.Errorf("parse chat settings: %w", err)
-	}
-
-	return settings, nil
-}
-
-// Save stores chat settings.
-func (repository Repository) Save(ctx context.Context, settings Settings) error {
-	if repository.Client == nil {
-		return errors.New(errRepositoryClientRequired)
-	}
-	err := repository.Client.Update(ctx, BuildMetadataUpdate(repository.TableName, settings))
-	if err != nil {
-		return fmt.Errorf("save chat settings: %w", err)
-	}
-
-	return nil
-}
-
-// ListEnabled loads chats with scheduling enabled.
-func (repository Repository) ListEnabled(ctx context.Context) ([]Settings, error) {
-	if repository.Client == nil {
-		return nil, errors.New(errRepositoryClientRequired)
-	}
-	rows, err := repository.Client.ListEnabled(ctx, repository.TableName)
-	if err != nil {
-		return nil, fmt.Errorf("list enabled chats: %w", err)
-	}
-	settings := make([]Settings, 0, len(rows))
-	for _, row := range rows {
-		settings = append(settings, scheduleSettingsFromRow(row))
-	}
-
-	return settings, nil
 }
 
 // FromTelegram converts a Telegram chat into persisted chat settings metadata.
@@ -250,10 +183,10 @@ func isDue(settings Settings, offTime string, day string) bool {
 	return workday.MatchesDay(day, settings.Workday)
 }
 
-// scheduleSettingsFromRow loads only the fields used by scheduled fan-out.
+// FromScheduleRow loads only the fields used by scheduled fan-out.
 // For example, it masks row.Workday down to the stored weekday bits before
 // assigning Settings.Workday.
-func scheduleSettingsFromRow(row Row) Settings {
+func FromScheduleRow(row Row) Settings {
 	enableAllJung := true
 	if row.EnableAllJung != nil {
 		enableAllJung = *row.EnableAllJung

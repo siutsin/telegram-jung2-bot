@@ -1,8 +1,6 @@
 package message
 
 import (
-	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -12,79 +10,8 @@ import (
 	"github.com/siutsin/telegram-jung2-bot/internal/telegram"
 )
 
-func TestRepositorySaveBuildsContractUpdate(t *testing.T) {
-	client := &fakeMessageClient{}
-	repository := Repository{TableName: "messages-dev", Client: client}
-	stored := Message{ChatID: 123, DateCreated: mustParseTime(t, "2019-04-01T02:38:24Z"), TTL: 1554691104}
-
-	err := repository.Save(context.Background(), stored)
-
-	require.NoError(t, err)
-	require.Len(t, client.updates, 1)
-	assert.Equal(t, BuildSaveUpdate("messages-dev", stored), client.updates[0])
-}
-
-func TestRepositorySaveDefaultsTimeAndTTL(t *testing.T) {
-	client := &fakeMessageClient{}
-	now := mustParseTime(t, "2019-04-01T02:38:24Z")
-	repository := Repository{
-		TableName: "messages-dev",
-		Client:    client,
-		Now: func() time.Time {
-			return now
-		},
-	}
-
-	err := repository.Save(context.Background(), Message{ChatID: 123})
-
-	require.NoError(t, err)
-	assert.Equal(t, "2019-04-01T10:38:24+08:00", client.updates[0].Key["dateCreated"])
-	assert.Equal(t, int64(1554691104), client.updates[0].ExpressionAttributeValues[":ttl"])
-}
-
-func TestRepositorySaveRequiresClient(t *testing.T) {
-	err := (Repository{}).Save(context.Background(), Message{})
-
-	require.Error(t, err)
-	assert.EqualError(t, err, "message repository client is required")
-}
-
-func TestRepositorySaveWrapsClientError(t *testing.T) {
-	err := (Repository{Client: &fakeMessageClient{err: errors.New("boom")}}).Save(context.Background(), Message{})
-
-	require.Error(t, err)
-	assert.EqualError(t, err, "save message: boom")
-}
-
-func TestRepositoryQueryByChatBuildsRequest(t *testing.T) {
-	rows := []Message{{ChatID: 123}}
-	client := &fakeMessageClient{rows: rows}
-	since := mustParseTime(t, "2019-04-01T00:00:00Z")
-	until := mustParseTime(t, "2019-04-02T00:00:00Z")
-
-	got, err := (Repository{TableName: "messages-dev", Client: client}).QueryByChat(context.Background(), 123, since, until)
-
-	require.NoError(t, err)
-	assert.Equal(t, rows, got)
-	assert.Equal(t, QueryRequest{TableName: "messages-dev", ChatID: 123, Since: since, Until: until, Descending: true}, client.query)
-}
-
-func TestRepositoryQueryByChatRequiresClient(t *testing.T) {
-	_, err := (Repository{}).QueryByChat(context.Background(), 123, time.Time{}, time.Time{})
-
-	require.Error(t, err)
-	assert.EqualError(t, err, "message repository client is required")
-}
-
-func TestRepositoryQueryByChatWrapsClientError(t *testing.T) {
-	_, err := (Repository{Client: &fakeMessageClient{err: errors.New("boom")}}).QueryByChat(context.Background(), 123, time.Time{}, time.Time{})
-
-	require.Error(t, err)
-	assert.EqualError(t, err, "query messages by chat: boom")
-}
-
 func TestFromTelegramBuildsStoredMessage(t *testing.T) {
-	now := mustParseTime(t, "2019-04-01T02:38:24Z")
+	now := mustParseTime(t)
 
 	stored := FromTelegram(telegram.Message{
 		Chat: telegram.Chat{ID: 123, Title: "title"},
@@ -102,7 +29,7 @@ func TestFromTelegramBuildsStoredMessage(t *testing.T) {
 }
 
 func TestFromTelegramHandlesMissingOptionalUser(t *testing.T) {
-	now := mustParseTime(t, "2019-04-01T02:38:24Z")
+	now := mustParseTime(t)
 
 	stored := FromTelegram(telegram.Message{Chat: telegram.Chat{ID: 123}}, now)
 
@@ -128,7 +55,7 @@ func TestParseDateCreatedRejectsInvalidValue(t *testing.T) {
 }
 
 func TestTTLUsesContractSevenDayRetention(t *testing.T) {
-	now := mustParseTime(t, "2019-04-01T02:38:24Z")
+	now := mustParseTime(t)
 
 	assert.Equal(t, int64(1554691104), TTL(now, DefaultTTL))
 }
@@ -136,7 +63,7 @@ func TestTTLUsesContractSevenDayRetention(t *testing.T) {
 func TestBuildSaveUpdatePreservesContractDynamoDBShape(t *testing.T) {
 	stored := Message{
 		ChatID:      123,
-		DateCreated: mustParseTime(t, "2019-04-01T02:38:24Z"),
+		DateCreated: mustParseTime(t),
 		ChatTitle:   "title",
 		UserID:      234,
 		Username:    "username",
@@ -174,7 +101,7 @@ func TestBuildSaveUpdatePreservesContractDynamoDBShape(t *testing.T) {
 func TestBuildSaveUpdateOmitsMissingOptionalAttributes(t *testing.T) {
 	stored := Message{
 		ChatID:      123,
-		DateCreated: mustParseTime(t, "2019-04-01T02:38:24Z"),
+		DateCreated: mustParseTime(t),
 		TTL:         1554691104,
 	}
 
@@ -189,28 +116,11 @@ func TestJoinAssignmentsHandlesSingleAssignment(t *testing.T) {
 	assert.Equal(t, "#ttl = :ttl", joinAssignments([]string{"#ttl = :ttl"}))
 }
 
-func mustParseTime(t *testing.T, raw string) time.Time {
+func mustParseTime(t *testing.T) time.Time {
 	t.Helper()
 
-	parsed, err := time.Parse(time.RFC3339, raw)
+	parsed, err := time.Parse(time.RFC3339, "2019-04-01T02:38:24Z")
 	require.NoError(t, err)
 
 	return parsed
-}
-
-type fakeMessageClient struct {
-	updates []UpdateExpression
-	query   QueryRequest
-	rows    []Message
-	err     error
-}
-
-func (client *fakeMessageClient) Update(ctx context.Context, request UpdateExpression) error {
-	client.updates = append(client.updates, request)
-	return client.err
-}
-
-func (client *fakeMessageClient) QueryByChat(ctx context.Context, request QueryRequest) ([]Message, error) {
-	client.query = request
-	return client.rows, client.err
 }
