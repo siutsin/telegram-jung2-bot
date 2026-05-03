@@ -2,7 +2,9 @@ go_binary(
     name = "app",
     srcs = ["main.go"],
     deps = [
-        "//internal/bootstrap:bootstrap",
+        "//internal/app:app",
+        "//internal/config:config",
+        "//internal/runtime:runtime",
     ],
     visibility = ["PUBLIC"],
 )
