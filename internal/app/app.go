@@ -10,7 +10,6 @@ import (
 	"github.com/siutsin/telegram-jung2-bot/internal/config"
 	"github.com/siutsin/telegram-jung2-bot/internal/httpserver"
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
-	"github.com/siutsin/telegram-jung2-bot/internal/runtime"
 	"github.com/siutsin/telegram-jung2-bot/internal/worker"
 )
 
@@ -23,29 +22,20 @@ type QueueWorker interface {
 	Run(ctx context.Context) error
 }
 
-type Factory interface {
-	NewHTTPServer(config config.Config) (HTTPServer, error)
-	NewQueueWorker(config config.Config) (QueueWorker, error)
-}
-
-// FactoryBuilder constructs a runtime factory for one configured app instance.
-type FactoryBuilder func(ctx context.Context, config config.Config) (Factory, error)
-
 // App wraps the configured application runtime and its dependencies.
 type App struct {
-	config          config.Config
-	factory         Factory
+	httpServer      HTTPServer
+	queueWorker     QueueWorker
 	shutdownTimeout time.Duration
 }
 
 // Options configures how an application instance is assembled.
 type Options struct {
-	Factory         Factory
-	FactoryBuilder  FactoryBuilder
 	ShutdownTimeout time.Duration
 }
 
-type RuntimeFactory struct {
+// Dependencies contains the runtime collaborators the app needs.
+type Dependencies struct {
 	Store      httpserver.Store
 	Sender     queue.Sender
 	Receiver   queue.Receiver
@@ -57,32 +47,30 @@ type RuntimeFactory struct {
 }
 
 // New constructs an application with the provided runtime options.
-func New(ctx context.Context, config config.Config, options Options) (*App, error) {
-	factory, err := appFactory(ctx, config, options)
+func New(config config.Config, dependencies Dependencies, options Options) (*App, error) {
+	httpServer, err := newHTTPServer(config, dependencies)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create HTTP server: %w", err)
+	}
+	queueWorker, err := newQueueWorker(config, dependencies)
+	if err != nil {
+		return nil, fmt.Errorf("create queue worker: %w", err)
 	}
 
 	return &App{
-		config:          config,
-		factory:         factory,
+		httpServer:      httpServer,
+		queueWorker:     queueWorker,
 		shutdownTimeout: shutdownTimeout(config, options),
 	}, nil
 }
 
 // Run starts the configured application.
 func (app *App) Run(ctx context.Context) error {
-	if app == nil || app.factory == nil {
-		return fmt.Errorf("factory is required")
+	if app == nil || app.httpServer == nil {
+		return fmt.Errorf("http server is required")
 	}
-
-	httpServer, err := app.factory.NewHTTPServer(app.config)
-	if err != nil {
-		return fmt.Errorf("create HTTP server: %w", err)
-	}
-	queueWorker, err := app.factory.NewQueueWorker(app.config)
-	if err != nil {
-		return fmt.Errorf("create queue worker: %w", err)
+	if app.queueWorker == nil {
+		return fmt.Errorf("queue worker is required")
 	}
 
 	runCtx, cancel := context.WithCancel(ctx)
@@ -90,19 +78,19 @@ func (app *App) Run(ctx context.Context) error {
 
 	errs := make(chan error, 2)
 	go func() {
-		errs <- httpServer.ListenAndServe()
+		errs <- app.httpServer.ListenAndServe()
 	}()
 	go func() {
-		errs <- queueWorker.Run(runCtx)
+		errs <- app.queueWorker.Run(runCtx)
 	}()
 
 	select {
 	case <-ctx.Done():
 		cancel()
-		return shutdownHTTP(httpServer, app.shutdownTimeout)
+		return shutdownHTTP(app.httpServer, app.shutdownTimeout)
 	case err := <-errs:
 		cancel()
-		if shutdownErr := shutdownHTTP(httpServer, app.shutdownTimeout); shutdownErr != nil {
+		if shutdownErr := shutdownHTTP(app.httpServer, app.shutdownTimeout); shutdownErr != nil {
 			return shutdownErr
 		}
 		if err != nil {
@@ -110,25 +98,6 @@ func (app *App) Run(ctx context.Context) error {
 		}
 		return nil
 	}
-}
-
-// appFactory resolves the factory to use for a configured application.
-func appFactory(ctx context.Context, config config.Config, options Options) (Factory, error) {
-	if options.Factory != nil {
-		return options.Factory, nil
-	}
-
-	builder := options.FactoryBuilder
-	if builder == nil {
-		builder = buildRuntimeFactory
-	}
-
-	factory, err := builder(ctx, config)
-	if err != nil {
-		return nil, fmt.Errorf("build runtime factory: %w", err)
-	}
-
-	return factory, nil
 }
 
 // shutdownHTTP stops the HTTP server with a timeout.
@@ -155,24 +124,24 @@ func shutdownTimeout(config config.Config, options Options) time.Duration {
 	return 10 * time.Second
 }
 
-// NewHTTPServer builds the app HTTP server.
-func (factory RuntimeFactory) NewHTTPServer(config config.Config) (HTTPServer, error) {
-	dependencies := httpserver.Dependencies{
+// newHTTPServer builds the app HTTP server.
+func newHTTPServer(config config.Config, dependencies Dependencies) (HTTPServer, error) {
+	httpDependencies := httpserver.Dependencies{
 		MessageTable: config.MessageTable,
 		ChatTable:    config.ChatIDTable,
-		Store:        factory.Store,
-		Enqueuer:     queue.Producer{QueueURL: config.EventQueueURL, Sender: factory.Sender},
-		Messenger:    factory.Messenger,
-		ScaleUpper:   factory.ScaleUpper,
-		Now:          factory.Now,
+		Store:        dependencies.Store,
+		Enqueuer:     queue.Producer{QueueURL: config.EventQueueURL, Sender: dependencies.Sender},
+		Messenger:    dependencies.Messenger,
+		ScaleUpper:   dependencies.ScaleUpper,
+		Now:          dependencies.Now,
 	}
-	if err := httpserver.Validate(dependencies); err != nil {
+	if err := httpserver.Validate(httpDependencies); err != nil {
 		return nil, fmt.Errorf("validate HTTP dependencies: %w", err)
 	}
 
 	return &http.Server{
 		Addr:              config.ServerAddress,
-		Handler:           httpserver.New(httpserver.ServerDeps{Dependencies: dependencies, Stage: config.Stage}),
+		Handler:           httpserver.New(httpserver.ServerDeps{Dependencies: httpDependencies, Stage: config.Stage}),
 		ReadHeaderTimeout: config.HTTPTimeout,
 		ReadTimeout:       config.HTTPTimeout,
 		WriteTimeout:      config.HTTPTimeout,
@@ -180,38 +149,19 @@ func (factory RuntimeFactory) NewHTTPServer(config config.Config) (HTTPServer, e
 	}, nil
 }
 
-// NewQueueWorker builds the app queue worker.
-func (factory RuntimeFactory) NewQueueWorker(config config.Config) (QueueWorker, error) {
-	if factory.Receiver == nil {
+// newQueueWorker builds the app queue worker.
+func newQueueWorker(config config.Config, dependencies Dependencies) (QueueWorker, error) {
+	if dependencies.Receiver == nil {
 		return nil, fmt.Errorf("queue receiver is required")
 	}
-	if factory.Deleter == nil {
+	if dependencies.Deleter == nil {
 		return nil, fmt.Errorf("queue deleter is required")
 	}
 
 	return worker.PollingWorker{
-		Consumer: queue.Consumer{QueueURL: config.EventQueueURL, Receiver: factory.Receiver},
+		Consumer: queue.Consumer{QueueURL: config.EventQueueURL, Receiver: dependencies.Receiver},
 		QueueURL: config.EventQueueURL,
-		Handlers: factory.Handlers,
-		Deleter:  factory.Deleter,
-	}, nil
-}
-
-// buildRuntimeFactory assembles the production runtime factory.
-func buildRuntimeFactory(ctx context.Context, config config.Config) (Factory, error) {
-	components, err := runtime.NewComponents(ctx, config)
-	if err != nil {
-		return nil, err
-	}
-
-	return RuntimeFactory{
-		Store:      components.Store,
-		Sender:     components.Sender,
-		Receiver:   components.Receiver,
-		Deleter:    components.Deleter,
-		Messenger:  components.Messenger,
-		ScaleUpper: components.ScaleUpper,
-		Handlers:   components.Handlers,
-		Now:        components.Now,
+		Handlers: dependencies.Handlers,
+		Deleter:  dependencies.Deleter,
 	}, nil
 }

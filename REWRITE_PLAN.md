@@ -69,7 +69,6 @@ complete. It must be removed before the final cleanup gate.
 │   └── main.go
 ├── internal/
 │   ├── app/
-│   ├── bootstrap/
 │   ├── chat/
 │   ├── command/
 │   ├── config/
@@ -160,7 +159,7 @@ complete. It must be removed before the final cleanup gate.
 ### Bootstrap
 
 - [x] `cmd/main.go` contains only `main()`.
-- [x] Process startup composition lives under `internal/bootstrap`.
+- [x] Process startup composition lives in `cmd/main.go`, with production dependencies initialised there and passed into `internal/app`.
 - [x] Environment loading now uses `github.com/caarlos0/env/v11` through
   `internal/config`.
 - [x] The application is wrapped by `app.App`, so dependencies can be injected
@@ -279,9 +278,9 @@ complete. It must be removed before the final cleanup gate.
 
 ### `app`
 
-- Owns the concrete application wrapper, dependency construction, worker
-  lifecycle, startup, and graceful shutdown.
-- Public API: `New(ctx, config, options) (*App, error)` and `(*App).Run(ctx)`.
+- Owns the concrete application wrapper, HTTP/worker assembly from explicit
+  dependencies, startup, and graceful shutdown.
+- Public API: `New(config, dependencies, options) (*App, error)` and `(*App).Run(ctx)`.
 
 ## Quality Gates
 

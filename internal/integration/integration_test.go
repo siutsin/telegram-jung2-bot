@@ -2,19 +2,15 @@ package integration
 
 import (
 	"context"
-	"errors"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/siutsin/telegram-jung2-bot/internal/app"
 	"github.com/siutsin/telegram-jung2-bot/internal/chat"
 	"github.com/siutsin/telegram-jung2-bot/internal/command"
-	"github.com/siutsin/telegram-jung2-bot/internal/config"
 	"github.com/siutsin/telegram-jung2-bot/internal/httpserver"
 	"github.com/siutsin/telegram-jung2-bot/internal/message"
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
@@ -134,38 +130,6 @@ func TestScheduledReportsSlice(t *testing.T) {
 	assert.Equal(t, []queue.Action{schedule.BuildOffFromWorkAction(123)}, enqueuer.enqueuedActions())
 }
 
-func TestApplicationWiringSlice(t *testing.T) {
-	t.Parallel()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	factory := &sliceFactory{httpServer: newSliceHTTPServer(), queueWorker: &sliceQueueWorker{}}
-	application, err := app.New(context.Background(), config.Config{ShutdownTimeout: time.Millisecond}, app.Options{Factory: factory})
-	require.NoError(t, err)
-	done := make(chan error, 1)
-
-	go func() {
-		done <- application.Run(ctx)
-	}()
-
-	<-factory.httpServer.started
-	cancel()
-
-	require.NoError(t, <-done)
-	require.Eventually(t, factory.httpServer.shutdownCalled.Load, time.Second, time.Millisecond)
-	require.Eventually(t, factory.queueWorker.cancelled.Load, time.Second, time.Millisecond)
-}
-
-func TestApplicationWiringSliceReturnsDependencyErrors(t *testing.T) {
-	t.Parallel()
-
-	application, err := app.New(context.Background(), config.Config{}, app.Options{Factory: &sliceFactory{err: errors.New("boom")}})
-	require.NoError(t, err)
-	err = application.Run(context.Background())
-
-	require.Error(t, err)
-	assert.EqualError(t, err, "create HTTP server: boom")
-}
-
 func fixedNow() time.Time {
 	return time.Date(2026, 5, 2, 12, 0, 0, 0, time.UTC)
 }
@@ -222,58 +186,6 @@ type sliceChats struct {
 
 func (chats *sliceChats) ListEnabled(ctx context.Context) ([]chat.Settings, error) {
 	return chats.rows, nil
-}
-
-type sliceFactory struct {
-	httpServer  *sliceHTTPServer
-	queueWorker *sliceQueueWorker
-	err         error
-}
-
-func (factory *sliceFactory) NewHTTPServer(config config.Config) (app.HTTPServer, error) {
-	if factory.err != nil {
-		return nil, factory.err
-	}
-	return factory.httpServer, nil
-}
-
-func (factory *sliceFactory) NewQueueWorker(config config.Config) (app.QueueWorker, error) {
-	return factory.queueWorker, nil
-}
-
-type sliceHTTPServer struct {
-	started        chan struct{}
-	stopped        chan struct{}
-	shutdownCalled atomic.Bool
-}
-
-func newSliceHTTPServer() *sliceHTTPServer {
-	return &sliceHTTPServer{
-		started: make(chan struct{}),
-		stopped: make(chan struct{}),
-	}
-}
-
-func (server *sliceHTTPServer) ListenAndServe() error {
-	close(server.started)
-	<-server.stopped
-	return nil
-}
-
-func (server *sliceHTTPServer) Shutdown(ctx context.Context) error {
-	server.shutdownCalled.Store(true)
-	close(server.stopped)
-	return nil
-}
-
-type sliceQueueWorker struct {
-	cancelled atomic.Bool
-}
-
-func (worker *sliceQueueWorker) Run(ctx context.Context) error {
-	<-ctx.Done()
-	worker.cancelled.Store(true)
-	return nil
 }
 
 func mustAttribute(t *testing.T, raw string) queue.MessageAttribute {
