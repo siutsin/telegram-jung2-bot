@@ -20,7 +20,7 @@ import (
 // ChatMaintainer is the chat persistence surface the service actions need.
 type ChatMaintainer interface {
 	DueChatIDs(ctx context.Context, tableName string, timestamp time.Time) ([]int64, error)
-	Get(ctx context.Context, tableName string, chatID int64) (chat.Settings, bool, error)
+	Get(ctx context.Context, tableName string, chatID int64) (chat.ChatSetting, bool, error)
 	SaveStatistics(ctx context.Context, tableName string, chatID int64, userCount int, messageCount int, now time.Time) error
 	Update(ctx context.Context, request chat.UpdateExpression) error
 }

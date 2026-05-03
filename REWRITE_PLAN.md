@@ -253,18 +253,20 @@ complete. It must be removed before the final cleanup gate.
 
 - Owns supported Telegram commands, validation, argument parsing, and conversion
   to queue actions.
-- Public API: `Parse`, `ParseAll`, and `ActionFor`.
-
-### `message`
-
-- Owns stored message model, TTL calculation, timestamp formatting/parsing,
-  message repository, and statistics query windows.
+- Public API: `ParseAll` and `ActionFor`.
 
 ### `chat`
 
-- Owns chat settings model, repository, defaults, malformed row handling, and
-  due-chat listing. `enableAllJung` must not filter scheduled off-work
-  eligibility.
+- Owns the persisted `ChatSetting` model, stored row parsing, update request
+  shapes, chat defaulting, and due-chat filtering.
+- Public API: `FromTelegram`, `ParseRow`, `FromScheduleRow`,
+  `BuildMetadataUpdate`, `BuildAllJungUpdate`, `BuildOffWorkUpdate`, and
+  `FilterDue`.
+
+### `message`
+
+- Owns the stored message model, TTL calculation, timestamp formatting/parsing,
+  save/query request shapes, and statistics query windows.
 
 ### `statistics`
 

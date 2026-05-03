@@ -1,4 +1,4 @@
-// Package chat owns persisted chat settings models and contract helpers.
+// Package chat owns persisted chat setting models and contract helpers.
 package chat
 
 import (
@@ -11,11 +11,12 @@ import (
 
 const defaultOffTime = "1000"
 const scheduleWorkdayMask = workday.Sun | workday.Mon | workday.Tue | workday.Wed | workday.Thu | workday.Fri | workday.Sat
+const defaultDueWorkdays = workday.Workdays(workday.Mon | workday.Tue | workday.Wed | workday.Thu | workday.Fri)
 
 const keyChatID = "chatId"
 
-// Settings is the persisted chat settings model.
-type Settings struct {
+// ChatSetting is the persisted chat-level setting record.
+type ChatSetting struct {
 	ChatID        int64
 	ChatTitle     string
 	DateCreated   time.Time
@@ -49,10 +50,10 @@ type UpdateExpression struct {
 }
 
 // FromTelegram converts a Telegram chat into persisted chat settings metadata.
-// For example, a group chat with ID 42 becomes Settings{ChatID: 42,
+// For example, a group chat with ID 42 becomes ChatSetting{ChatID: 42,
 // EnableAllJung: true}.
-func FromTelegram(input telegram.Message, now time.Time) Settings {
-	return Settings{
+func FromTelegram(input telegram.Message, now time.Time) ChatSetting {
+	return ChatSetting{
 		ChatID:        input.Chat.ID,
 		ChatTitle:     input.Chat.Title,
 		DateCreated:   now,
@@ -61,27 +62,15 @@ func FromTelegram(input telegram.Message, now time.Time) Settings {
 	}
 }
 
-// FromRow applies contract defaults to a stored chat row.
-// For example, a row without enableAllJung becomes Settings{EnableAllJung: true}.
-func FromRow(row Row) (Settings, error) {
-	enableAllJung := true
-	if row.EnableAllJung != nil {
-		enableAllJung = *row.EnableAllJung
-	}
-
-	settings := Settings{
-		ChatID:        row.ChatID,
-		ChatTitle:     row.ChatTitle,
-		TTL:           row.TTL,
-		EnableAllJung: enableAllJung,
-		OffTime:       row.OffTime,
-		HasOffTime:    row.OffTime != "",
-	}
+// ParseRow applies contract defaults and strict parsing to a stored chat row.
+// For example, a row without enableAllJung becomes ChatSetting{EnableAllJung: true}.
+func ParseRow(row Row) (ChatSetting, error) {
+	settings := baseSettings(row)
 
 	if row.DateCreated != "" {
 		dateCreated, err := message.ParseDateCreated(row.DateCreated)
 		if err != nil {
-			return Settings{}, err
+			return ChatSetting{}, err
 		}
 		settings.DateCreated = dateCreated
 	}
@@ -89,7 +78,7 @@ func FromRow(row Row) (Settings, error) {
 	if row.Workday != nil {
 		parsed, err := workday.Parse(*row.Workday)
 		if err != nil {
-			return Settings{}, err
+			return ChatSetting{}, err
 		}
 		settings.Workday = parsed
 		settings.HasWorkday = true
@@ -99,9 +88,9 @@ func FromRow(row Row) (Settings, error) {
 }
 
 // BuildMetadataUpdate builds the contract chat metadata update request.
-// For example, it turns Settings{ChatID: 42, ChatTitle: "Ops"} into an update
+// For example, it turns ChatSetting{ChatID: 42, ChatTitle: "Ops"} into an update
 // keyed by chatId 42 with chatTitle, dateCreated, and ttl assignments.
-func BuildMetadataUpdate(tableName string, settings Settings) UpdateExpression {
+func BuildMetadataUpdate(tableName string, settings ChatSetting) UpdateExpression {
 	return UpdateExpression{
 		TableName:        tableName,
 		Key:              map[string]any{keyChatID: settings.ChatID},
@@ -158,8 +147,8 @@ func BuildOffWorkUpdate(tableName string, chatID int64, offTime string, workdays
 // FilterDue returns chats due for a scheduled off-work report.
 // For example, filtering by offTime "1830" and day "MON" keeps only chats due
 // at 18:30 on Monday.
-func FilterDue(rows []Settings, offTime string, day string) []Settings {
-	due := make([]Settings, 0, len(rows))
+func FilterDue(rows []ChatSetting, offTime string, day string) []ChatSetting {
+	due := make([]ChatSetting, 0, len(rows))
 	for _, row := range rows {
 		if isDue(row, offTime, day) {
 			due = append(due, row)
@@ -172,9 +161,9 @@ func FilterDue(rows []Settings, offTime string, day string) []Settings {
 // isDue reports whether settings match the given schedule window.
 // For example, settings with OffTime "1830" and Workday MON match
 // offTime="1830", day="MON".
-func isDue(settings Settings, offTime string, day string) bool {
+func isDue(settings ChatSetting, offTime string, day string) bool {
 	if !settings.HasOffTime && !settings.HasWorkday {
-		return offTime == defaultOffTime && workday.MatchesDay(day, workday.Workdays(workday.Mon|workday.Tue|workday.Wed|workday.Thu|workday.Fri))
+		return offTime == defaultOffTime && workday.MatchesDay(day, defaultDueWorkdays)
 	}
 	if settings.OffTime != offTime || !settings.HasWorkday {
 		return false
@@ -185,25 +174,33 @@ func isDue(settings Settings, offTime string, day string) bool {
 
 // FromScheduleRow loads only the fields used by scheduled fan-out.
 // For example, it masks row.Workday down to the stored weekday bits before
-// assigning Settings.Workday.
-func FromScheduleRow(row Row) Settings {
+// assigning ChatSetting.Workday.
+func FromScheduleRow(row Row) ChatSetting {
+	settings := baseSettings(row)
+	if row.Workday != nil {
+		settings.Workday = workday.Workdays(*row.Workday & scheduleWorkdayMask)
+		settings.HasWorkday = true
+	}
+
+	return settings
+}
+
+// baseSettings applies the shared stored chat defaults before any specialised
+// row parsing.
+// For example, a row without enableAllJung becomes ChatSetting{EnableAllJung: true}.
+func baseSettings(row Row) ChatSetting {
 	enableAllJung := true
 	if row.EnableAllJung != nil {
 		enableAllJung = *row.EnableAllJung
 	}
 
-	settings := Settings{
+	settings := ChatSetting{
 		ChatID:        row.ChatID,
 		ChatTitle:     row.ChatTitle,
 		TTL:           row.TTL,
 		EnableAllJung: enableAllJung,
 		OffTime:       row.OffTime,
 		HasOffTime:    row.OffTime != "",
-	}
-
-	if row.Workday != nil {
-		settings.Workday = workday.Workdays(*row.Workday & scheduleWorkdayMask)
-		settings.HasWorkday = true
 	}
 
 	return settings

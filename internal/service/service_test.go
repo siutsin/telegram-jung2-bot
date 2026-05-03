@@ -157,12 +157,12 @@ func (store *fakeChatStore) DueChatIDs(ctx context.Context, tableName string, ti
 	return append([]int64(nil), store.dueChatIDs...), nil
 }
 
-func (store *fakeChatStore) Get(ctx context.Context, tableName string, chatID int64) (chat.Settings, bool, error) {
+func (store *fakeChatStore) Get(ctx context.Context, tableName string, chatID int64) (chat.ChatSetting, bool, error) {
 	if store.enabled == nil {
-		return chat.Settings{}, false, nil
+		return chat.ChatSetting{}, false, nil
 	}
 
-	return chat.Settings{EnableAllJung: *store.enabled}, true, nil
+	return chat.ChatSetting{EnableAllJung: *store.enabled}, true, nil
 }
 
 func (store *fakeChatStore) SaveStatistics(ctx context.Context, tableName string, chatID int64, userCount int, messageCount int, now time.Time) error {

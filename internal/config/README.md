@@ -17,10 +17,24 @@ It does not build clients or start the app.
 
 This package depends on `github.com/caarlos0/env/v11`.
 
-## API
+## Flow
 
-- `Load(env map[string]string) (Config, error)`
-- `LoadEnviron(environ []string) (Config, error)`
+### Environment loading flow
+
+```mermaid
+flowchart TD
+    environ[Process env or env map] --> parse[parseRawConfig]
+    parse --> raw[Raw config]
+    raw --> build[configFromRaw]
+    build --> built[Built config]
+    built --> validate[validateConfig]
+    validate --> config[Config]
+```
+
+- `LoadEnviron` converts process-style env entries and calls `Load`.
+- `parseRawConfig` reads env values into the raw config shape.
+- `configFromRaw` applies defaults and parses timeout overrides.
+- `validateConfig` checks table names and URLs before startup continues.
 
 ## Scope
 

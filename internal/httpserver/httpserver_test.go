@@ -445,11 +445,11 @@ func (store *fakeMessageStore) Save(ctx context.Context, tableName string, row m
 }
 
 type fakeChatStore struct {
-	chats   []chat.Settings
+	chats   []chat.ChatSetting
 	saveErr error
 }
 
-func (store *fakeChatStore) Save(ctx context.Context, tableName string, settings chat.Settings) error {
+func (store *fakeChatStore) Save(ctx context.Context, tableName string, settings chat.ChatSetting) error {
 	store.chats = append(store.chats, settings)
 	return store.saveErr
 }
