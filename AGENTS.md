@@ -54,8 +54,12 @@ used to verify behaviour until production adapter parity is complete.
 - Wrap errors with useful context using `%w`.
 - Use `log/slog` for structured logs.
 - Avoid global mutable state except for startup configuration.
+- Keep identifiers unexported unless they are needed outside their own
+  package.
 - Keep package APIs small and stable before depending on them from other
   packages.
+- When a function transforms, normalises, validates, or derives data, add a
+  short docstring example that shows the input and output shape.
 
 ## Build, Test, And Lint
 
