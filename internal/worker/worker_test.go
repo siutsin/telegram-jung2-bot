@@ -42,6 +42,46 @@ func TestDispatchRoutesActions(t *testing.T) {
 	}
 }
 
+func TestNewPollingWorkerBuildsWorker(t *testing.T) {
+	t.Parallel()
+
+	deleter := &fakeDeleter{}
+	receiver := &workerReceiver{}
+	handlers := Handlers{}
+
+	queueWorker, err := NewPollingWorker("queue-url", receiver, deleter, handlers)
+
+	require.NoError(t, err)
+	assert.Equal(t, "queue-url", queueWorker.QueueURL)
+	assert.Equal(t, "queue-url", queueWorker.Consumer.QueueURL)
+	assert.Equal(t, receiver, queueWorker.Consumer.Receiver)
+	assert.Equal(t, deleter, queueWorker.Deleter)
+	assert.Equal(t, handlers, queueWorker.Handlers)
+}
+
+func TestNewPollingWorkerRequiresQueueContracts(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		receiver queue.Receiver
+		deleter  Deleter
+		wantErr  string
+	}{
+		{name: "missing receiver", deleter: &fakeDeleter{}, wantErr: "queue receiver is required"},
+		{name: "missing deleter", receiver: &workerReceiver{}, wantErr: "queue deleter is required"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := NewPollingWorker("queue-url", test.receiver, test.deleter, Handlers{})
+
+			require.Error(t, err)
+			assert.EqualError(t, err, test.wantErr)
+		})
+	}
+}
+
 func TestPollingWorkerProcessesAndDeletesMessages(t *testing.T) {
 	t.Parallel()
 

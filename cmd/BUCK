@@ -3,10 +3,9 @@ go_binary(
     srcs = ["main.go"],
     deps = [
         "//internal/app:app",
-        "//internal/chat:chat",
         "//internal/config:config",
         "//internal/dynamodb:dynamodb",
-        "//internal/message:message",
+        "//internal/httpserver:httpserver",
         "//internal/queue:queue",
         "//internal/service:service",
         "//internal/telegram:telegram",
