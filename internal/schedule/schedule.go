@@ -24,7 +24,7 @@ type SettingChange struct {
 }
 
 type ChatLister interface {
-	ListEnabled(ctx context.Context) ([]chat.Settings, error)
+	ListEnabled(ctx context.Context, tableName string) ([]chat.Settings, error)
 }
 
 type Enqueuer interface {
@@ -36,6 +36,7 @@ type Scheduler interface {
 }
 
 type Service struct {
+	ChatTable string
 	Chats     ChatLister
 	Enqueuer  Enqueuer
 	Scheduler Scheduler
@@ -62,7 +63,7 @@ func (service Service) HandleDueReport(ctx context.Context, timestamp time.Time)
 	if service.Enqueuer == nil {
 		return fmt.Errorf("enqueuer is required")
 	}
-	rows, err := service.Chats.ListEnabled(ctx)
+	rows, err := service.Chats.ListEnabled(ctx, service.ChatTable)
 	if err != nil {
 		return fmt.Errorf("list due chats: %w", err)
 	}

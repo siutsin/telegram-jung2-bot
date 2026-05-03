@@ -439,7 +439,7 @@ type fakeMessageStore struct {
 	saveErr  error
 }
 
-func (store *fakeMessageStore) Save(ctx context.Context, row message.Message) error {
+func (store *fakeMessageStore) Save(ctx context.Context, tableName string, row message.Message) error {
 	store.messages = append(store.messages, row)
 	return store.saveErr
 }
@@ -449,7 +449,7 @@ type fakeChatStore struct {
 	saveErr error
 }
 
-func (store *fakeChatStore) Save(ctx context.Context, settings chat.Settings) error {
+func (store *fakeChatStore) Save(ctx context.Context, tableName string, settings chat.Settings) error {
 	store.chats = append(store.chats, settings)
 	return store.saveErr
 }

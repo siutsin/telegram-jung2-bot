@@ -45,8 +45,16 @@ type ScaleUpper struct {
 
 const allWorkdays = workday.Sun | workday.Mon | workday.Tue | workday.Wed | workday.Thu | workday.Fri | workday.Sat
 
-// Update stores a message row in DynamoDB.
-func (client MessageClient) Update(ctx context.Context, request message.UpdateExpression) error {
+// Save stores a message row in DynamoDB.
+func (client MessageClient) Save(ctx context.Context, tableName string, row message.Message) error {
+	if row.DateCreated.IsZero() {
+		row.DateCreated = time.Now()
+	}
+	if row.TTL == 0 {
+		row.TTL = message.TTL(row.DateCreated, message.DefaultTTL)
+	}
+
+	request := message.BuildSaveUpdate(tableName, row)
 	return updateItem(ctx, client.Dynamo, Request{
 		ExpressionAttributeNames:  request.ExpressionAttributeNames,
 		ExpressionAttributeValues: request.ExpressionAttributeValues,
@@ -57,19 +65,20 @@ func (client MessageClient) Update(ctx context.Context, request message.UpdateEx
 }
 
 // QueryByChat loads message rows for one chat.
-func (client MessageClient) QueryByChat(ctx context.Context, request message.QueryRequest) ([]message.Message, error) {
+func (client MessageClient) QueryByChat(ctx context.Context, tableName string, chatID int64, since time.Time, until time.Time) ([]message.Message, error) {
+	_ = until
 	rows := make([]message.Message, 0)
 	startKey := map[string]ddbtypes.AttributeValue(nil)
 
 	for {
 		output, err := client.Dynamo.Query(ctx, &awsdynamodb.QueryInput{
-			TableName:              awscore.String(request.TableName),
+			TableName:              awscore.String(tableName),
 			ExclusiveStartKey:      startKey,
 			KeyConditionExpression: awscore.String("chatId = :chat_id AND dateCreated > :date_created"),
-			ScanIndexForward:       awscore.Bool(!request.Descending),
+			ScanIndexForward:       awscore.Bool(false),
 			ExpressionAttributeValues: map[string]ddbtypes.AttributeValue{
-				":chat_id":      &ddbtypes.AttributeValueMemberN{Value: strconv.FormatInt(request.ChatID, 10)},
-				":date_created": &ddbtypes.AttributeValueMemberS{Value: message.FormatDateCreated(request.Since)},
+				":chat_id":      &ddbtypes.AttributeValueMemberN{Value: strconv.FormatInt(chatID, 10)},
+				":date_created": &ddbtypes.AttributeValueMemberS{Value: message.FormatDateCreated(since)},
 			},
 		})
 		if err != nil {
@@ -92,7 +101,7 @@ func (client MessageClient) QueryByChat(ctx context.Context, request message.Que
 }
 
 // Get loads one chat settings row.
-func (client ChatClient) Get(ctx context.Context, tableName string, chatID int64) (chat.Row, bool, error) {
+func (client ChatClient) Get(ctx context.Context, tableName string, chatID int64) (chat.Settings, bool, error) {
 	output, err := client.Dynamo.GetItem(ctx, &awsdynamodb.GetItemInput{
 		TableName: awscore.String(tableName),
 		Key: map[string]ddbtypes.AttributeValue{
@@ -100,16 +109,21 @@ func (client ChatClient) Get(ctx context.Context, tableName string, chatID int64
 		},
 	})
 	if err != nil {
-		return chat.Row{}, false, fmt.Errorf("get DynamoDB chat row: %w", err)
+		return chat.Settings{}, false, fmt.Errorf("get DynamoDB chat row: %w", err)
 	}
 	if len(output.Item) == 0 {
-		return chat.Row{}, false, nil
+		return chat.Settings{}, false, nil
 	}
 
-	return decodeChat(output.Item), true, nil
+	settings, err := chat.FromRow(decodeChat(output.Item))
+	if err != nil {
+		return chat.Settings{}, false, fmt.Errorf("parse DynamoDB chat row: %w", err)
+	}
+
+	return settings, true, nil
 }
 
-// Update stores a chat settings row.
+// Update stores a chat settings update expression.
 func (client ChatClient) Update(ctx context.Context, request chat.UpdateExpression) error {
 	return updateItem(ctx, client.Dynamo, Request{
 		ExpressionAttributeNames:  request.ExpressionAttributeNames,
@@ -120,9 +134,21 @@ func (client ChatClient) Update(ctx context.Context, request chat.UpdateExpressi
 	})
 }
 
+// Save stores a chat settings row.
+func (client ChatClient) Save(ctx context.Context, tableName string, settings chat.Settings) error {
+	request := chat.BuildMetadataUpdate(tableName, settings)
+	return updateItem(ctx, client.Dynamo, Request{
+		ExpressionAttributeNames:  request.ExpressionAttributeNames,
+		ExpressionAttributeValues: request.ExpressionAttributeValues,
+		Key:                       request.Key,
+		TableName:                 request.TableName,
+		UpdateExpression:          request.UpdateExpression,
+	})
+}
+
 // ListEnabled scans chat settings rows for scheduling.
-func (client ChatClient) ListEnabled(ctx context.Context, tableName string) ([]chat.Row, error) {
-	rows := make([]chat.Row, 0)
+func (client ChatClient) ListEnabled(ctx context.Context, tableName string) ([]chat.Settings, error) {
+	rows := make([]chat.Settings, 0)
 	startKey := map[string]ddbtypes.AttributeValue(nil)
 
 	for {
@@ -135,7 +161,7 @@ func (client ChatClient) ListEnabled(ctx context.Context, tableName string) ([]c
 		}
 
 		for _, item := range output.Items {
-			rows = append(rows, decodeChat(item))
+			rows = append(rows, chat.FromScheduleRow(decodeChat(item)))
 		}
 
 		if len(output.LastEvaluatedKey) == 0 {

@@ -2,7 +2,6 @@
 package message
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -39,72 +38,6 @@ type UpdateExpression struct {
 	UpdateExpression          string
 	ExpressionAttributeNames  map[string]string
 	ExpressionAttributeValues map[string]any
-}
-
-type QueryRequest struct {
-	TableName  string
-	ChatID     int64
-	Since      time.Time
-	Until      time.Time
-	Descending bool
-}
-
-type repositoryUpdaterQuerier interface {
-	Update(ctx context.Context, request UpdateExpression) error
-	QueryByChat(ctx context.Context, request QueryRequest) ([]Message, error)
-}
-
-type Repository struct {
-	TableName string
-	Client    repositoryUpdaterQuerier
-	Now       func() time.Time
-}
-
-// Save stores a Telegram message row.
-func (repository Repository) Save(ctx context.Context, message Message) error {
-	if repository.Client == nil {
-		return fmt.Errorf("message repository client is required")
-	}
-	if message.DateCreated.IsZero() {
-		message.DateCreated = repository.now()
-	}
-	if message.TTL == 0 {
-		message.TTL = TTL(repository.now(), DefaultTTL)
-	}
-	err := repository.Client.Update(ctx, BuildSaveUpdate(repository.TableName, message))
-	if err != nil {
-		return fmt.Errorf("save message: %w", err)
-	}
-
-	return nil
-}
-
-// QueryByChat loads messages for a chat in descending order.
-func (repository Repository) QueryByChat(ctx context.Context, chatID int64, since time.Time, until time.Time) ([]Message, error) {
-	if repository.Client == nil {
-		return nil, fmt.Errorf("message repository client is required")
-	}
-	rows, err := repository.Client.QueryByChat(ctx, QueryRequest{
-		TableName:  repository.TableName,
-		ChatID:     chatID,
-		Since:      since,
-		Until:      until,
-		Descending: true,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("query messages by chat: %w", err)
-	}
-
-	return rows, nil
-}
-
-// now returns the repository clock value.
-func (repository Repository) now() time.Time {
-	if repository.Now == nil {
-		return time.Now()
-	}
-
-	return repository.Now()
 }
 
 // FromTelegram converts a Telegram message into the stored message model.

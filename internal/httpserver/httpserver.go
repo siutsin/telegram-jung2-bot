@@ -25,11 +25,11 @@ type Response struct {
 }
 
 type MessageSaver interface {
-	Save(ctx context.Context, message message.Message) error
+	Save(ctx context.Context, tableName string, row message.Message) error
 }
 
 type ChatSaver interface {
-	Save(ctx context.Context, settings chat.Settings) error
+	Save(ctx context.Context, tableName string, settings chat.Settings) error
 }
 
 type Enqueuer interface {
@@ -45,12 +45,14 @@ type ScaleUpper interface {
 }
 
 type Dependencies struct {
-	Messages   MessageSaver
-	Chats      ChatSaver
-	Enqueuer   Enqueuer
-	Messenger  Messenger
-	ScaleUpper ScaleUpper
-	Now        func() time.Time
+	ChatTable    string
+	MessageTable string
+	Messages     MessageSaver
+	Chats        ChatSaver
+	Enqueuer     Enqueuer
+	Messenger    Messenger
+	ScaleUpper   ScaleUpper
+	Now          func() time.Time
 }
 
 type ServerDeps struct {
@@ -236,14 +238,14 @@ func saveWebhookState(ctx context.Context, telegramMessage telegram.Message, now
 // For example, a webhook message becomes message.FromTelegram(...) before save.
 func saveWebhookMessage(ctx context.Context, telegramMessage telegram.Message, now time.Time, dependencies Dependencies) error {
 	storedMessage := message.FromTelegram(telegramMessage, now)
-	return dependencies.Messages.Save(ctx, storedMessage)
+	return dependencies.Messages.Save(ctx, dependencies.MessageTable, storedMessage)
 }
 
 // saveWebhookChat persists Telegram chat metadata.
 // For example, a webhook message becomes chat.FromTelegram(...) before save.
 func saveWebhookChat(ctx context.Context, telegramMessage telegram.Message, now time.Time, dependencies Dependencies) error {
 	storedChat := chat.FromTelegram(telegramMessage, now)
-	return dependencies.Chats.Save(ctx, storedChat)
+	return dependencies.Chats.Save(ctx, dependencies.ChatTable, storedChat)
 }
 
 // enqueueWebhookCommands converts and enqueues supported Telegram commands.

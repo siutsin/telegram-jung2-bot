@@ -294,7 +294,7 @@ type fakeChatRepository struct {
 	err  error
 }
 
-func (repository *fakeChatRepository) ListEnabled(ctx context.Context) ([]chat.Settings, error) {
+func (repository *fakeChatRepository) ListEnabled(ctx context.Context, tableName string) ([]chat.Settings, error) {
 	return repository.rows, repository.err
 }
 

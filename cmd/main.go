@@ -15,10 +15,8 @@ import (
 	awssqs "github.com/aws/aws-sdk-go-v2/service/sqs"
 
 	"github.com/siutsin/telegram-jung2-bot/internal/app"
-	"github.com/siutsin/telegram-jung2-bot/internal/chat"
 	"github.com/siutsin/telegram-jung2-bot/internal/config"
 	contractdynamodb "github.com/siutsin/telegram-jung2-bot/internal/dynamodb"
-	"github.com/siutsin/telegram-jung2-bot/internal/message"
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
 	"github.com/siutsin/telegram-jung2-bot/internal/service"
 	"github.com/siutsin/telegram-jung2-bot/internal/telegram"
@@ -64,22 +62,21 @@ func main() {
 	)
 	messageClient := contractdynamodb.MessageClient{Dynamo: dynamoClient}
 	chatClient := contractdynamodb.ChatClient{Dynamo: dynamoClient}
-	messageRepository := message.Repository{TableName: loadedConfig.MessageTable, Client: messageClient}
-	chatRepository := chat.Repository{TableName: loadedConfig.ChatIDTable, Client: chatClient}
 	queueAdapter := queue.Client{Queue: queueClient}
 	actions := service.Service{
-		ChatMaintainer:    chatClient,
-		ChatTable:         loadedConfig.ChatIDTable,
-		MessageRepository: messageRepository,
-		Messenger:         telegramClient,
-		Now:               time.Now,
-		QueueURL:          loadedConfig.EventQueueURL,
-		Sender:            queueAdapter,
+		ChatMaintainer: chatClient,
+		ChatTable:      loadedConfig.ChatIDTable,
+		MessageQuerier: messageClient,
+		MessageTable:   loadedConfig.MessageTable,
+		Messenger:      telegramClient,
+		Now:            time.Now,
+		QueueURL:       loadedConfig.EventQueueURL,
+		Sender:         queueAdapter,
 	}
 
 	application, err := app.New(loadedConfig, app.Dependencies{
-		Chats:      chatRepository,
-		Messages:   messageRepository,
+		Chats:      chatClient,
+		Messages:   messageClient,
 		Sender:     queueAdapter,
 		Receiver:   queueAdapter,
 		Deleter:    queueAdapter,

@@ -24,11 +24,9 @@ This package depends on:
 
 ## API
 
-- `Repository.Get(ctx context.Context, chatID int64) (Settings, error)`
-- `Repository.Save(ctx context.Context, settings Settings) error`
-- `Repository.ListEnabled(ctx context.Context) ([]Settings, error)`
 - `FromTelegram(input telegram.Message, now time.Time) Settings`
 - `FromRow(row Row) (Settings, error)`
+- `FromScheduleRow(row Row) Settings`
 - `BuildMetadataUpdate(tableName string, settings Settings) UpdateExpression`
 - `BuildAllJungUpdate(tableName string, chatID int64, enabled bool) UpdateExpression`
 - `BuildOffWorkUpdate(tableName string, chatID int64, offTime string, workdays workday.Workdays) UpdateExpression`
