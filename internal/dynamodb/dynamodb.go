@@ -68,6 +68,7 @@ type Page[T any] struct {
 type FetchPage[T any] func(ctx context.Context, exclusiveStartKey map[string]any) (Page[T], error)
 
 // CollectPages accumulates paginated DynamoDB results.
+// For example, two pages [1,2] and [3] become one slice [1,2,3].
 func CollectPages[T any](ctx context.Context, fetch FetchPage[T]) ([]T, error) {
 	var rows []T
 	var startKey map[string]any
@@ -91,6 +92,8 @@ func CollectPages[T any](ctx context.Context, fetch FetchPage[T]) ([]T, error) {
 }
 
 // QueryMessagesRequest builds a message query request.
+// For example, chatID 42 becomes a query keyed by chatId 42 and dateCreated >
+// the requested cutoff.
 func QueryMessagesRequest(tableName string, chatID int64, now time.Time, days int, startKey map[string]any) Request {
 	return Request{
 		TableName:              tableName,
@@ -105,6 +108,7 @@ func QueryMessagesRequest(tableName string, chatID int64, now time.Time, days in
 }
 
 // QueryChatStatsRequest builds a chat statistics query request.
+// For example, chatID 42 becomes a query with :chat_id=42.
 func QueryChatStatsRequest(tableName string, chatID int64) Request {
 	return Request{
 		TableName:              tableName,
@@ -116,6 +120,8 @@ func QueryChatStatsRequest(tableName string, chatID int64) Request {
 }
 
 // ScanDueChatsRequest builds a due-chat scan request.
+// For example, offTime "1000" on "MON" also includes rows where offTime and
+// workday are both missing.
 func ScanDueChatsRequest(tableName string, offTime string, weekday string, startKey map[string]any) Request {
 	names := map[string]string{
 		"#ot": OffTimeAttribute,
@@ -138,6 +144,7 @@ func ScanDueChatsRequest(tableName string, offTime string, weekday string, start
 }
 
 // BuildChatCountUpdate builds a chat statistics update request.
+// For example, userCount 5 and messageCount 20 stores messagePerUser as 4.
 func BuildChatCountUpdate(tableName string, chatID int64, userCount int, messageCount int, now time.Time) Request {
 	return Request{
 		TableName:        tableName,
@@ -159,6 +166,7 @@ func BuildChatCountUpdate(tableName string, chatID int64, userCount int, message
 }
 
 // BuildScaleUpRequest builds a table throughput update request.
+// For example, desiredReadRaw "20" replaces the current read capacity with 20.
 func BuildScaleUpRequest(tableName string, currentRead int64, currentWrite int64, desiredReadRaw string) Request {
 	desiredRead := currentRead
 	parsed, err := parsePositiveInt64(desiredReadRaw)
@@ -188,6 +196,8 @@ func IsIgnoredScaleUpError(err error) bool {
 }
 
 // SanitisedLogFields returns request fields safe to log.
+// For example, a request with an ExclusiveStartKey only records
+// hasExclusiveStartKey=true instead of the full key contents.
 func SanitisedLogFields(request Request) map[string]any {
 	fields := map[string]any{
 		"tableName": request.TableName,
@@ -209,6 +219,7 @@ func SanitisedLogFields(request Request) map[string]any {
 }
 
 // isDefaultOffWorkScan reports whether a scan matches the contract defaults.
+// For example, offTime "1000" and weekday "MON" matches the default scan.
 func isDefaultOffWorkScan(offTime string, weekday string) bool {
 	if offTime != defaultOffTime {
 		return false
@@ -218,6 +229,7 @@ func isDefaultOffWorkScan(offTime string, weekday string) bool {
 }
 
 // parsePositiveInt64 parses a positive integer string.
+// For example, "20" becomes 20, while "0" and "abc" are rejected.
 func parsePositiveInt64(raw string) (int64, error) {
 	var result int64
 	for _, digit := range raw {

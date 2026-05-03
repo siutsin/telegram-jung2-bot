@@ -17,8 +17,8 @@ import (
 	"github.com/siutsin/telegram-jung2-bot/internal/worker"
 )
 
-// ChatStore is the chat persistence surface the service actions need.
-type ChatStore interface {
+// ChatMaintainer is the chat persistence surface the service actions need.
+type ChatMaintainer interface {
 	DueChatIDs(ctx context.Context, tableName string, timestamp time.Time) ([]int64, error)
 	Get(ctx context.Context, tableName string, chatID int64) (chat.Row, bool, error)
 	SaveStatistics(ctx context.Context, tableName string, chatID int64, userCount int, messageCount int, now time.Time) error
@@ -34,7 +34,7 @@ type Messenger interface {
 
 // Service owns the application behaviour behind worker actions.
 type Service struct {
-	ChatStore         ChatStore
+	ChatMaintainer    ChatMaintainer
 	ChatTable         string
 	MessageRepository message.Repository
 	Messenger         Messenger
@@ -45,7 +45,7 @@ type Service struct {
 
 // AllJung sends the full report when enabled for the chat.
 func (service Service) AllJung(ctx context.Context, chatID int64) error {
-	row, ok, err := service.ChatStore.Get(ctx, service.ChatTable, chatID)
+	row, ok, err := service.ChatMaintainer.Get(ctx, service.ChatTable, chatID)
 	if err != nil {
 		return err
 	}
@@ -98,7 +98,7 @@ func (service Service) OnOffFromWork(ctx context.Context, timeString string) err
 		return err
 	}
 
-	chatIDs, err := service.ChatStore.DueChatIDs(ctx, service.ChatTable, timestamp)
+	chatIDs, err := service.ChatMaintainer.DueChatIDs(ctx, service.ChatTable, timestamp)
 	if err != nil {
 		return err
 	}
@@ -151,7 +151,7 @@ func (service Service) applySettingChange(ctx context.Context, chatID int64, cha
 	if !change.Allowed {
 		return nil
 	}
-	err := service.ChatStore.Update(ctx, change.Update)
+	err := service.ChatMaintainer.Update(ctx, change.Update)
 	if err != nil {
 		return err
 	}
@@ -169,6 +169,7 @@ func (service Service) now() time.Time {
 }
 
 // parseScheduledTime parses the scheduler time string.
+// For example, "2025-01-06T18:30:00Z" becomes the matching time.Time.
 func parseScheduledTime(raw string) (time.Time, error) {
 	timestamp, err := time.Parse(time.RFC3339Nano, raw)
 	if err == nil {
@@ -197,6 +198,8 @@ func pauseFanOut(ctx context.Context, duration time.Duration) error {
 }
 
 // sendStatistics renders, stores counts, and sends one report.
+// For example, top-ten options become a rendered report, a saved chat count
+// update, and one Telegram send.
 func (service Service) sendStatistics(ctx context.Context, chatID int64, options statistics.Options) error {
 	now := service.now()
 	options.Now = now
@@ -210,7 +213,7 @@ func (service Service) sendStatistics(ctx context.Context, chatID int64, options
 	if err != nil {
 		return err
 	}
-	err = service.ChatStore.SaveStatistics(ctx, service.ChatTable, chatID, summary.UserCount, summary.MessageCount, now)
+	err = service.ChatMaintainer.SaveStatistics(ctx, service.ChatTable, chatID, summary.UserCount, summary.MessageCount, now)
 	if err != nil {
 		return err
 	}
@@ -227,6 +230,8 @@ func (service Service) sendStatistics(ctx context.Context, chatID int64, options
 }
 
 // isTelegramStatusError reports whether err is a Telegram API 4xx or 5xx error.
+// For example, "telegram API returned HTTP 429" matches, while "timeout" does
+// not.
 func isTelegramStatusError(err error) bool {
 	if err == nil {
 		return false
@@ -236,4 +241,4 @@ func isTelegramStatusError(err error) bool {
 		strings.Contains(err.Error(), "telegram API returned HTTP 5")
 }
 
-var _ ChatStore = contractdynamodb.ChatClient{}
+var _ ChatMaintainer = contractdynamodb.ChatClient{}

@@ -23,7 +23,7 @@ type SettingChange struct {
 	Update  chat.UpdateExpression
 }
 
-type ChatRepository interface {
+type ChatLister interface {
 	ListEnabled(ctx context.Context) ([]chat.Settings, error)
 }
 
@@ -36,7 +36,7 @@ type Scheduler interface {
 }
 
 type Service struct {
-	Chats     ChatRepository
+	Chats     ChatLister
 	Enqueuer  Enqueuer
 	Scheduler Scheduler
 }
@@ -77,6 +77,7 @@ func (service Service) HandleDueReport(ctx context.Context, timestamp time.Time)
 }
 
 // WindowFromTime converts a timestamp into a contract schedule window.
+// For example, 2025-01-06 18:30 UTC becomes OffTime "1830" and Weekday "MON".
 func WindowFromTime(timestamp time.Time) Window {
 	return Window{
 		OffTime: timestamp.Format("1504"),
@@ -85,6 +86,7 @@ func WindowFromTime(timestamp time.Time) Window {
 }
 
 // DueChatIDs returns chat IDs due for a scheduled report.
+// For example, chats due at Monday 18:30 become just their chat ID list.
 func DueChatIDs(rows []chat.Settings, timestamp time.Time) []int64 {
 	window := WindowFromTime(timestamp)
 	due := chat.FilterDue(rows, window.OffTime, window.Weekday)
@@ -97,6 +99,8 @@ func DueChatIDs(rows []chat.Settings, timestamp time.Time) []int64 {
 }
 
 // BuildOnOffFromWorkAction builds the scheduler fan-out action.
+// For example, "2025-01-06T18:30:00Z" becomes an action with timeString set to
+// that value.
 func BuildOnOffFromWorkAction(timeString string) queue.Action {
 	return queue.Action{
 		Name: queue.ActionOnOffFromWork,
@@ -109,6 +113,7 @@ func BuildOnOffFromWorkAction(timeString string) queue.Action {
 }
 
 // BuildOffFromWorkAction builds an off-work report action.
+// For example, chatID 42 becomes an action with Attributes["chatId"] == "42".
 func BuildOffFromWorkAction(chatID int64) queue.Action {
 	return queue.Action{
 		Name: queue.ActionOffFromWork,
@@ -121,6 +126,8 @@ func BuildOffFromWorkAction(chatID int64) queue.Action {
 }
 
 // EnableAllJung builds the enable-all-jung setting change.
+// For example, an admin request for chat 42 becomes an enableAllJung update and
+// reply text.
 func EnableAllJung(tableName string, chatID int64, chatTitle string, isAdmin bool) SettingChange {
 	if !isAdmin {
 		return SettingChange{}
@@ -134,6 +141,8 @@ func EnableAllJung(tableName string, chatID int64, chatTitle string, isAdmin boo
 }
 
 // DisableAllJung builds the disable-all-jung setting change.
+// For example, an admin request for chat 42 becomes a disableAllJung update and
+// reply text.
 func DisableAllJung(tableName string, chatID int64, chatTitle string, isAdmin bool) SettingChange {
 	if !isAdmin {
 		return SettingChange{}
@@ -147,6 +156,8 @@ func DisableAllJung(tableName string, chatID int64, chatTitle string, isAdmin bo
 }
 
 // SetOffFromWorkTimeUTC validates and builds the off-work update.
+// For example, offTime "1830" and workdayList "MON,TUE" becomes a settings
+// update with workday mask 6.
 func SetOffFromWorkTimeUTC(
 	tableName string,
 	chatID int64,
@@ -172,6 +183,8 @@ func SetOffFromWorkTimeUTC(
 }
 
 // InvalidSetOffFromWorkTimeUTCMessage returns the invalid-format reply.
+// For example, chat title "Ops" becomes the formatted contract help text for
+// invalid setOffFromWorkTimeUTC input.
 func InvalidSetOffFromWorkTimeUTCMessage(chatTitle string) string {
 	return fmt.Sprintf(`
 圍爐區: %s
@@ -186,6 +199,7 @@ E.g.:
 }
 
 // enabledMessage returns the enable-all-jung reply.
+// For example, chat title "Ops" becomes "圍爐區: Ops" plus the enabled notice.
 func enabledMessage(chatTitle string) string {
 	return fmt.Sprintf(`
 圍爐區: %s
@@ -194,6 +208,7 @@ Enabled AllJung command`, chatTitle)
 }
 
 // disabledMessage returns the disable-all-jung reply.
+// For example, chat title "Ops" becomes "圍爐區: Ops" plus the disabled notice.
 func disabledMessage(chatTitle string) string {
 	return fmt.Sprintf(`
 圍爐區: %s
@@ -202,6 +217,7 @@ Disabled AllJung command`, chatTitle)
 }
 
 // setOffMessage returns the off-work update reply.
+// For example, "Ops", "1830", "MON,TUE" becomes the formatted update reply.
 func setOffMessage(chatTitle string, offTime string, workdayList string) string {
 	return fmt.Sprintf(`
 圍爐區: %s
@@ -210,6 +226,7 @@ Updated setOffFromWorkTime in UTC: %s %s`, chatTitle, offTime, workdayList)
 }
 
 // weekdayToken converts a weekday to its contract token.
+// For example, time.Monday becomes "MON".
 func weekdayToken(weekday time.Weekday) string {
 	switch weekday {
 	case time.Sunday:

@@ -40,7 +40,7 @@ func TestOnOffFromWorkEnqueuesDueChats(t *testing.T) {
 
 	sender := &fakeSender{}
 	service := testService()
-	service.ChatStore = &fakeChatStore{dueChatIDs: []int64{123}}
+	service.ChatMaintainer = &fakeChatStore{dueChatIDs: []int64{123}}
 	service.Sender = sender
 
 	err := service.OnOffFromWork(context.Background(), "2026-05-01T18:00:00+01:00")
@@ -67,7 +67,7 @@ func TestTopTenIgnoresTelegramStatusErrors(t *testing.T) {
 	messenger := &fakeMessenger{err: errors.New("telegram API returned HTTP 403")}
 	chatStore := &fakeChatStore{}
 	service := testService()
-	service.ChatStore = chatStore
+	service.ChatMaintainer = chatStore
 	service.MessageRepository = message.Repository{
 		TableName: "messages",
 		Client: &fakeMessageClient{
@@ -98,7 +98,7 @@ func TestSetOffWorkTimeUsesWorkerInput(t *testing.T) {
 	messenger := &fakeMessenger{}
 	chatStore := &fakeChatStore{}
 	service := testService()
-	service.ChatStore = chatStore
+	service.ChatMaintainer = chatStore
 	service.Messenger = messenger
 
 	err := service.SetOffWorkTime(context.Background(), worker.SetOffInput{
@@ -136,8 +136,8 @@ func statisticsChatCountUpdate(now time.Time) chat.UpdateExpression {
 
 func testService() Service {
 	return Service{
-		ChatStore: &fakeChatStore{},
-		ChatTable: "chats",
+		ChatMaintainer: &fakeChatStore{},
+		ChatTable:      "chats",
 		MessageRepository: message.Repository{
 			TableName: "messages",
 			Client:    &fakeMessageClient{},

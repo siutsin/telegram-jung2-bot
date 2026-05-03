@@ -24,11 +24,11 @@ type Response struct {
 	Message    string
 }
 
-type MessageStore interface {
+type MessageSaver interface {
 	Save(ctx context.Context, message message.Message) error
 }
 
-type ChatStore interface {
+type ChatSaver interface {
 	Save(ctx context.Context, settings chat.Settings) error
 }
 
@@ -45,8 +45,8 @@ type ScaleUpper interface {
 }
 
 type Dependencies struct {
-	Messages   MessageStore
-	Chats      ChatStore
+	Messages   MessageSaver
+	Chats      ChatSaver
 	Enqueuer   Enqueuer
 	Messenger  Messenger
 	ScaleUpper ScaleUpper
@@ -203,6 +203,7 @@ func scaleUp(ctx context.Context, scaleUpper ScaleUpper) error {
 }
 
 // parseGroupMessage parses a Telegram webhook and keeps only group messages.
+// For example, a private-chat webhook is filtered out with a 204 response.
 func parseGroupMessage(payload []byte) (*telegram.Message, Response, bool) {
 	update, err := telegram.ParseUpdate(payload)
 	if err != nil {
@@ -216,6 +217,8 @@ func parseGroupMessage(payload []byte) (*telegram.Message, Response, bool) {
 }
 
 // saveWebhookState persists the message and chat records for a webhook update.
+// For example, one Telegram message becomes one saved message row plus one saved
+// chat metadata row.
 func saveWebhookState(ctx context.Context, telegramMessage telegram.Message, now time.Time, dependencies Dependencies) (Response, bool) {
 	err := saveWebhookMessage(ctx, telegramMessage, now, dependencies)
 	if err != nil {
@@ -230,18 +233,21 @@ func saveWebhookState(ctx context.Context, telegramMessage telegram.Message, now
 }
 
 // saveWebhookMessage persists a Telegram message row.
+// For example, a webhook message becomes message.FromTelegram(...) before save.
 func saveWebhookMessage(ctx context.Context, telegramMessage telegram.Message, now time.Time, dependencies Dependencies) error {
 	storedMessage := message.FromTelegram(telegramMessage, now)
 	return dependencies.Messages.Save(ctx, storedMessage)
 }
 
 // saveWebhookChat persists Telegram chat metadata.
+// For example, a webhook message becomes chat.FromTelegram(...) before save.
 func saveWebhookChat(ctx context.Context, telegramMessage telegram.Message, now time.Time, dependencies Dependencies) error {
 	storedChat := chat.FromTelegram(telegramMessage, now)
 	return dependencies.Chats.Save(ctx, storedChat)
 }
 
 // enqueueWebhookCommands converts and enqueues supported Telegram commands.
+// For example, "/topTen /allJung" is parsed and enqueued in the contract order.
 func enqueueWebhookCommands(ctx context.Context, telegramMessage telegram.Message, dependencies Dependencies) Response {
 	for _, parsedCommand := range parseCommands(telegramMessage) {
 		response, ok := enqueueWebhookCommand(ctx, telegramMessage, parsedCommand, dependencies)
@@ -254,6 +260,8 @@ func enqueueWebhookCommands(ctx context.Context, telegramMessage telegram.Messag
 }
 
 // enqueueWebhookCommand converts one parsed command into queue work.
+// For example, topTen becomes one queue action with chatId and chatTitle
+// attributes.
 func enqueueWebhookCommand(ctx context.Context, telegramMessage telegram.Message, parsedCommand command.Command, dependencies Dependencies) (Response, bool) {
 	action, err := command.ActionFor(parsedCommand, command.ChatContext{
 		ChatID:    telegramMessage.Chat.ID,
@@ -306,6 +314,7 @@ func currentTime(dependencies Dependencies) time.Time {
 }
 
 // userID returns the Telegram user ID or zero.
+// For example, a nil user becomes 0.
 func userID(user *telegram.User) int64 {
 	if user == nil {
 		return 0
@@ -315,6 +324,8 @@ func userID(user *telegram.User) int64 {
 }
 
 // parseCommands extracts supported bot commands from a message.
+// For example, a first entity of type bot_command allows command.ParseAll to run
+// over message.Text.
 func parseCommands(message telegram.Message) []command.Command {
 	if len(message.Entities) == 0 || message.Entities[0].Type != "bot_command" {
 		return nil
@@ -342,6 +353,7 @@ func Validate(dependencies Dependencies) error {
 }
 
 // maxBodyBytes returns the configured body size limit.
+// For example, 0 falls back to 1 MiB.
 func maxBodyBytes(dependencies ServerDeps) int64 {
 	if dependencies.MaxBodyBytes > 0 {
 		return dependencies.MaxBodyBytes
@@ -362,6 +374,8 @@ func writeResponse(writer http.ResponseWriter, response Response) {
 }
 
 // writeStageWebhookResponse writes the stage-compatible webhook response.
+// For example, Response{StatusCode: 200, Message: "ok"} becomes
+// {"statusCode":200,"message":"ok"}.
 func writeStageWebhookResponse(writer http.ResponseWriter, response Response) {
 	body := map[string]any{"statusCode": response.StatusCode}
 	if response.Message != "" && response.StatusCode < http.StatusInternalServerError {
@@ -371,6 +385,8 @@ func writeStageWebhookResponse(writer http.ResponseWriter, response Response) {
 }
 
 // writeJSONResponse writes a JSON response body.
+// For example, body map[string]string{"ping":"pong"} becomes a JSON object
+// response.
 func writeJSONResponse(writer http.ResponseWriter, statusCode int, body any) {
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(statusCode)
@@ -381,6 +397,7 @@ func writeJSONResponse(writer http.ResponseWriter, statusCode int, body any) {
 }
 
 // allowsResponseBody reports whether an HTTP status permits a response body.
+// For example, 204 returns false, while 200 returns true.
 func allowsResponseBody(statusCode int) bool {
 	return statusCode != http.StatusNoContent && statusCode != http.StatusNotModified
 }

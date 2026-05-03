@@ -160,7 +160,8 @@ type MessageAttribute struct {
 }
 
 // UnmarshalJSON supports both contract StringValue and lower-case stringValue
-// casings.
+// casings. For example, {"stringValue":"42"} and {"StringValue":"42"} both
+// produce the same MessageAttribute value.
 func (attribute *MessageAttribute) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		StringValue string `json:"StringValue"`
@@ -177,6 +178,7 @@ func (attribute *MessageAttribute) UnmarshalJSON(data []byte) error {
 }
 
 // value returns the message attribute value regardless of casing.
+// For example, a lower-case stringValue takes priority over StringValue.
 func (attribute MessageAttribute) value() string {
 	if attribute.stringValue != "" {
 		return attribute.stringValue
@@ -193,6 +195,7 @@ type RawMessage struct {
 }
 
 // DecodeMessage converts a raw SQS event message into an action.
+// For example, a raw action attribute "topTen" becomes Action{Name: "topTen"}.
 func DecodeMessage(message RawMessage) (Action, error) {
 	attribute, ok := message.MessageAttributes["action"]
 	if !ok || attribute.value() == "" {
@@ -213,7 +216,8 @@ func DecodeMessage(message RawMessage) (Action, error) {
 }
 
 // DecodeEvent converts the first record from a contract Lambda SQS event into an
-// action, matching contract SQS.onEvent behaviour.
+// action, matching contract SQS.onEvent behaviour. For example, an event with
+// one topTen record becomes the decoded topTen action.
 func DecodeEvent(event Event) (Action, error) {
 	if len(event.Records) == 0 {
 		return Action{}, fmt.Errorf("missing SQS event record")
@@ -223,6 +227,7 @@ func DecodeEvent(event Event) (Action, error) {
 }
 
 // messageBodyText returns the raw body as a plain string.
+// For example, JSON body "\"hello\"" becomes "hello".
 func messageBodyText(body json.RawMessage) string {
 	var value string
 	err := json.Unmarshal(body, &value)
@@ -234,6 +239,8 @@ func messageBodyText(body json.RawMessage) string {
 }
 
 // BuildSendMessageRequest converts an action into the contract SQS request shape.
+// For example, chatId "42" becomes a Number attribute, while action stays a
+// String attribute.
 func BuildSendMessageRequest(queueURL string, action Action) SendMessageRequest {
 	attributes := make(map[string]SendMessageAttribute, len(action.Attributes))
 	for name, value := range action.Attributes {
@@ -255,6 +262,8 @@ func BuildSendMessageRequest(queueURL string, action Action) SendMessageRequest 
 }
 
 // BuildDeleteMessageRequest converts a consumed raw message into delete params.
+// For example, receiptHandle "abc" becomes DeleteMessageRequest{ReceiptHandle:
+// "abc"}.
 func BuildDeleteMessageRequest(queueURL string, message RawMessage) DeleteMessageRequest {
 	return DeleteMessageRequest{
 		QueueURL:      queueURL,
@@ -263,6 +272,7 @@ func BuildDeleteMessageRequest(queueURL string, message RawMessage) DeleteMessag
 }
 
 // maxNumberOfMessages returns the receive batch size.
+// For example, 0 falls back to 10.
 func maxNumberOfMessages(value int) int {
 	if value > 0 {
 		return value
@@ -272,6 +282,7 @@ func maxNumberOfMessages(value int) int {
 }
 
 // waitTimeSeconds returns the long-poll duration.
+// For example, 0 falls back to 20.
 func waitTimeSeconds(value int) int {
 	if value > 0 {
 		return value

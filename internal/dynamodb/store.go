@@ -16,8 +16,8 @@ import (
 	"github.com/siutsin/telegram-jung2-bot/internal/workday"
 )
 
-// API is the DynamoDB SDK surface used by the store adapters.
-type API interface {
+// dynamoRequester is the DynamoDB SDK surface used by the store adapters.
+type dynamoRequester interface {
 	DescribeTable(ctx context.Context, params *awsdynamodb.DescribeTableInput, optFns ...func(*awsdynamodb.Options)) (*awsdynamodb.DescribeTableOutput, error)
 	GetItem(ctx context.Context, params *awsdynamodb.GetItemInput, optFns ...func(*awsdynamodb.Options)) (*awsdynamodb.GetItemOutput, error)
 	Query(ctx context.Context, params *awsdynamodb.QueryInput, optFns ...func(*awsdynamodb.Options)) (*awsdynamodb.QueryOutput, error)
@@ -28,17 +28,17 @@ type API interface {
 
 // MessageClient adapts DynamoDB to the message repository contract.
 type MessageClient struct {
-	Dynamo API
+	Dynamo dynamoRequester
 }
 
 // ChatClient adapts DynamoDB to the chat repository contract.
 type ChatClient struct {
-	Dynamo API
+	Dynamo dynamoRequester
 }
 
 // ScaleUpper raises DynamoDB capacity for the message table.
 type ScaleUpper struct {
-	Dynamo      API
+	Dynamo      dynamoRequester
 	DesiredRead int
 	TableName   string
 }
@@ -218,7 +218,9 @@ func (service ScaleUpper) ScaleUp(ctx context.Context) error {
 }
 
 // updateItem applies a contract update expression in DynamoDB.
-func updateItem(ctx context.Context, dynamoClient API, request Request) error {
+// For example, a request with Key{"chatId": 42} becomes one UpdateItem call
+// with DynamoDB-encoded key and values.
+func updateItem(ctx context.Context, dynamoClient dynamoRequester, request Request) error {
 	_, err := dynamoClient.UpdateItem(ctx, &awsdynamodb.UpdateItemInput{
 		TableName:                 awscore.String(request.TableName),
 		Key:                       encodeDynamoValues(request.Key),
@@ -234,6 +236,8 @@ func updateItem(ctx context.Context, dynamoClient API, request Request) error {
 }
 
 // encodeDynamoValues converts loose contract values into DynamoDB attributes.
+// For example, map[string]any{":chatId": int64(42)} becomes an N attribute with
+// value "42".
 func encodeDynamoValues(values map[string]any) map[string]ddbtypes.AttributeValue {
 	encoded := make(map[string]ddbtypes.AttributeValue, len(values))
 	for name, value := range values {
@@ -244,6 +248,7 @@ func encodeDynamoValues(values map[string]any) map[string]ddbtypes.AttributeValu
 }
 
 // encodeDynamoValue converts one loose contract value into a DynamoDB attribute.
+// For example, int64(42) becomes AttributeValueMemberN{"42"}.
 func encodeDynamoValue(value any) ddbtypes.AttributeValue {
 	switch typed := value.(type) {
 	case bool:
@@ -262,6 +267,8 @@ func encodeDynamoValue(value any) ddbtypes.AttributeValue {
 }
 
 // decodeMessage converts one DynamoDB item into a stored message row.
+// For example, an item with chatId and dateCreated becomes message.Message with
+// parsed DateCreated.
 func decodeMessage(item map[string]ddbtypes.AttributeValue) (message.Message, error) {
 	timestamp, err := message.ParseDateCreated(stringAttribute(item, "dateCreated"))
 	if err != nil {
@@ -281,6 +288,8 @@ func decodeMessage(item map[string]ddbtypes.AttributeValue) (message.Message, er
 }
 
 // decodeChat converts one DynamoDB item into a chat row.
+// For example, an item with offTime and workday becomes chat.Row with those
+// fields populated.
 func decodeChat(item map[string]ddbtypes.AttributeValue) chat.Row {
 	return chat.Row{
 		ChatID:        int64Attribute(item, "chatId"),
@@ -294,6 +303,7 @@ func decodeChat(item map[string]ddbtypes.AttributeValue) chat.Row {
 }
 
 // dueScanRowMatches applies the reference post-scan weekday filter.
+// For example, a row with MON|TUE matches day "MON" but not "SUN".
 func dueScanRowMatches(row chat.Row, day string) bool {
 	if row.Workday == nil {
 		return row.OffTime == ""
@@ -303,6 +313,7 @@ func dueScanRowMatches(row chat.Row, day string) bool {
 }
 
 // stringAttribute returns a string attribute when present.
+// For example, an S attribute "Ops" returns "Ops".
 func stringAttribute(item map[string]ddbtypes.AttributeValue, key string) string {
 	attribute, ok := item[key]
 	if !ok {
@@ -318,6 +329,7 @@ func stringAttribute(item map[string]ddbtypes.AttributeValue, key string) string
 }
 
 // int64Attribute returns an int64 attribute when present.
+// For example, an N attribute "42" returns 42.
 func int64Attribute(item map[string]ddbtypes.AttributeValue, key string) int64 {
 	attribute, ok := item[key]
 	if !ok {
@@ -338,6 +350,7 @@ func int64Attribute(item map[string]ddbtypes.AttributeValue, key string) int64 {
 }
 
 // intAttribute returns an int attribute when present.
+// For example, an N attribute "6" returns *int(6).
 func intAttribute(item map[string]ddbtypes.AttributeValue, key string) *int {
 	attribute, ok := item[key]
 	if !ok {
@@ -358,6 +371,7 @@ func intAttribute(item map[string]ddbtypes.AttributeValue, key string) *int {
 }
 
 // boolAttribute returns a bool attribute when present.
+// For example, a BOOL attribute true returns *bool(true).
 func boolAttribute(item map[string]ddbtypes.AttributeValue, key string) *bool {
 	attribute, ok := item[key]
 	if !ok {

@@ -34,6 +34,7 @@ var dayBits = map[string]int{
 }
 
 // Parse validates a stored workday bitmask.
+// For example, 6 becomes MON|TUE, while 128 is rejected.
 func Parse(mask int) (Workdays, error) {
 	if mask < 0 || mask&^allDaysMask != 0 {
 		return 0, fmt.Errorf("invalid workday mask %d", mask)
@@ -43,6 +44,7 @@ func Parse(mask int) (Workdays, error) {
 }
 
 // ParseList converts the contract comma-separated day list into a workday mask.
+// For example, "MON,TUE" becomes 6.
 func ParseList(raw string) (Workdays, error) {
 	if raw == "" {
 		return 0, fmt.Errorf("workday list is required")
@@ -61,11 +63,13 @@ func ParseList(raw string) (Workdays, error) {
 }
 
 // Contains reports whether date falls on an enabled workday.
+// For example, MON|TUE contains a Monday timestamp.
 func Contains(workdays Workdays, date time.Time) bool {
 	return int(workdays)&bitForWeekday(date.Weekday()) != 0
 }
 
 // MatchesDay reports whether a contract day token is enabled in the workday mask.
+// For example, "MON" matches MON|TUE, while "SUN" does not.
 func MatchesDay(day string, workdays Workdays) bool {
 	bit, ok := dayBits[day]
 	if !ok {
@@ -76,6 +80,7 @@ func MatchesDay(day string, workdays Workdays) bool {
 }
 
 // bitForWeekday returns the stored bit for a weekday.
+// For example, time.Monday becomes Mon.
 func bitForWeekday(weekday time.Weekday) int {
 	switch weekday {
 	case time.Sunday:
