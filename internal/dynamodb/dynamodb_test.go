@@ -15,7 +15,7 @@ func TestCollectPages(t *testing.T) {
 
 	pageIndex := 0
 	rows, err := CollectPages(context.Background(), func(ctx context.Context, startKey map[string]any) (Page[string], error) {
-		assert.NoError(t, ctx.Err())
+		require.NoError(t, ctx.Err())
 		pageIndex++
 		switch pageIndex {
 		case 1:

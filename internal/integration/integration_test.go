@@ -8,6 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/siutsin/telegram-jung2-bot/internal/app"
 	"github.com/siutsin/telegram-jung2-bot/internal/chat"
 	"github.com/siutsin/telegram-jung2-bot/internal/command"
@@ -19,8 +22,6 @@ import (
 	"github.com/siutsin/telegram-jung2-bot/internal/statistics"
 	"github.com/siutsin/telegram-jung2-bot/internal/workday"
 	"github.com/siutsin/telegram-jung2-bot/internal/worker"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestWebhookIntakeSlice(t *testing.T) {

@@ -49,12 +49,41 @@ type rawConfig struct {
 
 // Load validates configuration from an environment map.
 func Load(env map[string]string) (Config, error) {
-	raw, err := caarlosenv.ParseAsWithOptions[rawConfig](caarlosenv.Options{Environment: env})
+	raw, err := parseRawConfig(env)
 	if err != nil {
-		return Config{}, fmt.Errorf("parse environment: %w", err)
+		return Config{}, err
 	}
 
-	config := Config{
+	config := configFromRaw(raw)
+	if err := validateConfig(config); err != nil {
+		return Config{}, err
+	}
+	applyScaleUpReadCapacity(&config, raw.ScaleUpReadCapacity)
+	if err := applyTimeouts(&config, raw); err != nil {
+		return Config{}, err
+	}
+
+	return config, nil
+}
+
+// LoadEnviron validates configuration from process-style environment entries.
+func LoadEnviron(environ []string) (Config, error) {
+	return Load(caarlosenv.ToMap(environ))
+}
+
+// parseRawConfig decodes environment variables into the raw config shape.
+func parseRawConfig(env map[string]string) (rawConfig, error) {
+	raw, err := caarlosenv.ParseAsWithOptions[rawConfig](caarlosenv.Options{Environment: env})
+	if err != nil {
+		return rawConfig{}, fmt.Errorf("parse environment: %w", err)
+	}
+
+	return raw, nil
+}
+
+// configFromRaw builds defaulted runtime config from raw environment values.
+func configFromRaw(raw rawConfig) Config {
+	return Config{
 		AWSRegion:           raw.AWSRegion,
 		LogLevel:            raw.LogLevel,
 		Stage:               raw.Stage,
@@ -69,53 +98,69 @@ func Load(env map[string]string) (Config, error) {
 		ShutdownTimeout:     10 * time.Second,
 		ScaleUpReadCapacity: 0,
 	}
-
-	if config.TelegramBotToken == "" {
-		return Config{}, fmt.Errorf("TELEGRAM_BOT_TOKEN is required")
-	}
-	if err := validateTableName("MESSAGE_TABLE", config.MessageTable); err != nil {
-		return Config{}, err
-	}
-	if err := validateTableName("CHATID_TABLE", config.ChatIDTable); err != nil {
-		return Config{}, err
-	}
-	if err := validateURL("EVENT_QUEUE_URL", config.EventQueueURL); err != nil {
-		return Config{}, err
-	}
-	if err := validateOptionalURL("AWS_ENDPOINT_URL", config.AWSEndpointURL); err != nil {
-		return Config{}, err
-	}
-	if err := validateURL("TELEGRAM_API_BASE_URL", config.TelegramAPIBaseURL); err != nil {
-		return Config{}, err
-	}
-
-	if raw.ScaleUpReadCapacity != "" {
-		value, err := strconv.Atoi(raw.ScaleUpReadCapacity)
-		if err == nil && value > 0 {
-			config.ScaleUpReadCapacity = value
-		}
-	}
-	if raw.HTTPTimeoutSeconds != "" {
-		timeout, err := parsePositiveSeconds("HTTP_TIMEOUT_SECONDS", raw.HTTPTimeoutSeconds)
-		if err != nil {
-			return Config{}, err
-		}
-		config.HTTPTimeout = timeout
-	}
-	if raw.ShutdownTimeoutSeconds != "" {
-		timeout, err := parsePositiveSeconds("SHUTDOWN_TIMEOUT_SECONDS", raw.ShutdownTimeoutSeconds)
-		if err != nil {
-			return Config{}, err
-		}
-		config.ShutdownTimeout = timeout
-	}
-
-	return config, nil
 }
 
-// LoadEnviron validates configuration from process-style environment entries.
-func LoadEnviron(environ []string) (Config, error) {
-	return Load(caarlosenv.ToMap(environ))
+// validateConfig checks required startup settings before clients are built.
+func validateConfig(config Config) error {
+	if config.TelegramBotToken == "" {
+		return fmt.Errorf("TELEGRAM_BOT_TOKEN is required")
+	}
+	if err := validateTableName("MESSAGE_TABLE", config.MessageTable); err != nil {
+		return err
+	}
+	if err := validateTableName("CHATID_TABLE", config.ChatIDTable); err != nil {
+		return err
+	}
+	if err := validateURL("EVENT_QUEUE_URL", config.EventQueueURL); err != nil {
+		return err
+	}
+	if err := validateOptionalURL("AWS_ENDPOINT_URL", config.AWSEndpointURL); err != nil {
+		return err
+	}
+	if err := validateURL("TELEGRAM_API_BASE_URL", config.TelegramAPIBaseURL); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// applyScaleUpReadCapacity keeps invalid scale-up values at the default.
+func applyScaleUpReadCapacity(config *Config, raw string) {
+	if raw == "" {
+		return
+	}
+
+	value, err := strconv.Atoi(raw)
+	if err == nil && value > 0 {
+		config.ScaleUpReadCapacity = value
+	}
+}
+
+// applyTimeouts overrides default timeouts from validated raw values.
+func applyTimeouts(config *Config, raw rawConfig) error {
+	if err := applyTimeout(&config.HTTPTimeout, "HTTP_TIMEOUT_SECONDS", raw.HTTPTimeoutSeconds); err != nil {
+		return err
+	}
+	if err := applyTimeout(&config.ShutdownTimeout, "SHUTDOWN_TIMEOUT_SECONDS", raw.ShutdownTimeoutSeconds); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// applyTimeout replaces a default timeout when the raw value is set.
+func applyTimeout(target *time.Duration, key string, raw string) error {
+	if raw == "" {
+		return nil
+	}
+
+	timeout, err := parsePositiveSeconds(key, raw)
+	if err != nil {
+		return err
+	}
+	*target = timeout
+
+	return nil
 }
 
 // serverAddress returns the default bind address for the current environment.

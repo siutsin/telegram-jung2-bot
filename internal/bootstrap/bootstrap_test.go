@@ -6,10 +6,11 @@ import (
 	"os/exec"
 	"testing"
 
-	"github.com/siutsin/telegram-jung2-bot/internal/app"
-	"github.com/siutsin/telegram-jung2-bot/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/siutsin/telegram-jung2-bot/internal/app"
+	"github.com/siutsin/telegram-jung2-bot/internal/config"
 )
 
 // Keep this as a subprocess test because main exits non-zero on fatal startup
@@ -17,13 +18,13 @@ import (
 func TestMainExitsNonZeroOnStartupError(t *testing.T) {
 	t.Parallel()
 
-	command := exec.Command("go", "run", "./cmd")
+	command := exec.CommandContext(context.Background(), "go", "run", "./cmd")
 	command.Dir = "../.."
 	err := command.Run()
 
 	require.Error(t, err)
-	exitError, ok := err.(*exec.ExitError)
-	require.True(t, ok)
+	var exitError *exec.ExitError
+	require.ErrorAs(t, err, &exitError)
 	assert.NotZero(t, exitError.ExitCode())
 }
 
@@ -56,7 +57,7 @@ func TestRunLoadsEnvironment(t *testing.T) {
 	})
 
 	require.Error(t, err)
-	assert.EqualError(t, err, "sentinel")
+	require.EqualError(t, err, "sentinel")
 	assert.True(t, called)
 }
 

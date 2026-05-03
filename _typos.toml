@@ -1,0 +1,5 @@
+[default.extend-words]
+# Buck's gobuckify config uses this upstream field spelling.
+preambule = "preambule"
+# DynamoDB expression attribute placeholders use short contract tokens.
+ot = "ot"

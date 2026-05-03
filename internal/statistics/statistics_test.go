@@ -6,10 +6,11 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/siutsin/telegram-jung2-bot/internal/message"
-	"github.com/siutsin/telegram-jung2-bot/internal/telegram"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/siutsin/telegram-jung2-bot/internal/message"
+	"github.com/siutsin/telegram-jung2-bot/internal/telegram"
 )
 
 func TestNormaliseRowsRanksByMessageCount(t *testing.T) {

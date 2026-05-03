@@ -83,7 +83,7 @@ coverage is 100%. It reuses the same Buck test target set and race mode as
 make lint
 ```
 
-Runs Go, shell, and Markdown lint checks.
+Runs Go, shell, spelling, and Markdown lint checks.
 
 ```bash
 make lint-fix

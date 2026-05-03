@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -81,63 +82,20 @@ func New(dependencies ServerDeps) http.Handler {
 	mux.HandleFunc("/health", healthHandler)
 	mux.HandleFunc("/webhook", webhookHandler)
 	if dependencies.Stage != "" {
-		stagePrefix := "/jung2bot/" + strings.Trim(dependencies.Stage, "/")
-		mux.HandleFunc(stagePrefix+"/ping", func(writer http.ResponseWriter, request *http.Request) {
-			if request.Method != http.MethodGet {
-				http.Error(writer, "method not allowed", http.StatusMethodNotAllowed)
-				return
-			}
-			writeJSONResponse(writer, http.StatusOK, map[string]string{"health": "ok"})
-		})
-		mux.HandleFunc(stagePrefix, func(writer http.ResponseWriter, request *http.Request) {
-			http.NotFound(writer, request)
-		})
-		mux.HandleFunc(stagePrefix+"/", func(writer http.ResponseWriter, request *http.Request) {
-			if request.URL.Path != stagePrefix+"/" {
-				http.NotFound(writer, request)
-				return
-			}
-			if request.Method != http.MethodPost {
-				http.Error(writer, "method not allowed", http.StatusMethodNotAllowed)
-				return
-			}
-			body, err := io.ReadAll(http.MaxBytesReader(writer, request.Body, maxBodyBytes(dependencies)))
-			if err != nil {
-				writeJSONResponse(writer, http.StatusBadRequest, map[string]any{"statusCode": http.StatusBadRequest, "message": "read request body"})
-				return
-			}
-			response := HandleWebhook(request.Context(), body, dependencies.Dependencies)
-			writeStageWebhookResponse(writer, response)
-		})
-		mux.HandleFunc(stagePrefix+"/onOffFromWork", func(writer http.ResponseWriter, request *http.Request) {
-			if request.Method != http.MethodGet {
-				http.Error(writer, "method not allowed", http.StatusMethodNotAllowed)
-				return
-			}
-			if err := dependencies.Enqueuer.Enqueue(request.Context(), schedule.BuildOnOffFromWorkAction(request.URL.Query().Get("timeString"))); err != nil {
-				http.Error(writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-				return
-			}
-			writeJSONResponse(writer, http.StatusAccepted, map[string]string{"onOffFromWork": "ok"})
-		})
-		mux.HandleFunc(stagePrefix+"/onScaleUp", func(writer http.ResponseWriter, request *http.Request) {
-			if request.Method != http.MethodGet {
-				http.Error(writer, "method not allowed", http.StatusMethodNotAllowed)
-				return
-			}
-			if dependencies.ScaleUpper == nil {
-				writeJSONResponse(writer, http.StatusServiceUnavailable, map[string]string{"onScaleUp": "failed"})
-				return
-			}
-			if err := dependencies.ScaleUpper.ScaleUp(request.Context()); err != nil {
-				writeJSONResponse(writer, http.StatusServiceUnavailable, map[string]string{"onScaleUp": "failed"})
-				return
-			}
-			writeJSONResponse(writer, http.StatusOK, map[string]string{"onScaleUp": "ok"})
-		})
+		registerStageRoutes(mux, dependencies)
 	}
 
 	return mux
+}
+
+// registerStageRoutes wires the contract-compatible stage-prefixed routes.
+func registerStageRoutes(mux *http.ServeMux, dependencies ServerDeps) {
+	stagePrefix := "/jung2bot/" + strings.Trim(dependencies.Stage, "/")
+	registerStagePingRoute(mux, stagePrefix)
+	registerStagePrefixRoute(mux, stagePrefix)
+	registerStageWebhookRoute(mux, stagePrefix, dependencies)
+	registerOnOffFromWorkRoute(mux, stagePrefix, dependencies)
+	registerScaleUpRoute(mux, stagePrefix, dependencies)
 }
 
 // Health returns the health check response.
@@ -147,52 +105,187 @@ func Health() Response {
 
 // HandleWebhook processes a Telegram webhook payload.
 func HandleWebhook(ctx context.Context, payload []byte, dependencies Dependencies) Response {
+	telegramMessage, response, ok := parseGroupMessage(payload)
+	if !ok {
+		return response
+	}
+	if response, ok := saveWebhookState(ctx, *telegramMessage, currentTime(dependencies), dependencies); !ok {
+		return response
+	}
+
+	return enqueueWebhookCommands(ctx, *telegramMessage, dependencies)
+}
+
+// registerStagePingRoute wires the stage-compatible health route.
+func registerStagePingRoute(mux *http.ServeMux, stagePrefix string) {
+	mux.HandleFunc(stagePrefix+"/ping", func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodGet {
+			http.Error(writer, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		writeJSONResponse(writer, http.StatusOK, map[string]string{"health": "ok"})
+	})
+}
+
+// registerStagePrefixRoute keeps the stage root without trailing slash as 404.
+func registerStagePrefixRoute(mux *http.ServeMux, stagePrefix string) {
+	mux.HandleFunc(stagePrefix, func(writer http.ResponseWriter, request *http.Request) {
+		http.NotFound(writer, request)
+	})
+}
+
+// registerStageWebhookRoute wires the stage-compatible webhook route.
+func registerStageWebhookRoute(mux *http.ServeMux, stagePrefix string, dependencies ServerDeps) {
+	mux.HandleFunc(stagePrefix+"/", func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != stagePrefix+"/" {
+			http.NotFound(writer, request)
+			return
+		}
+		if request.Method != http.MethodPost {
+			http.Error(writer, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		body, err := readRequestBody(writer, request, maxBodyBytes(dependencies))
+		if err != nil {
+			writeJSONResponse(writer, http.StatusBadRequest, map[string]any{"statusCode": http.StatusBadRequest, "message": "read request body"})
+			return
+		}
+		writeStageWebhookResponse(writer, HandleWebhook(request.Context(), body, dependencies.Dependencies))
+	})
+}
+
+// registerOnOffFromWorkRoute wires the stage-compatible off-work trigger route.
+func registerOnOffFromWorkRoute(mux *http.ServeMux, stagePrefix string, dependencies ServerDeps) {
+	mux.HandleFunc(stagePrefix+"/onOffFromWork", func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodGet {
+			http.Error(writer, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if err := dependencies.Enqueuer.Enqueue(request.Context(), schedule.BuildOnOffFromWorkAction(request.URL.Query().Get("timeString"))); err != nil {
+			http.Error(writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		writeJSONResponse(writer, http.StatusAccepted, map[string]string{"onOffFromWork": "ok"})
+	})
+}
+
+// registerScaleUpRoute wires the stage-compatible scale-up route.
+func registerScaleUpRoute(mux *http.ServeMux, stagePrefix string, dependencies ServerDeps) {
+	mux.HandleFunc(stagePrefix+"/onScaleUp", func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodGet {
+			http.Error(writer, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if err := scaleUp(request.Context(), dependencies.ScaleUpper); err != nil {
+			writeJSONResponse(writer, http.StatusServiceUnavailable, map[string]string{"onScaleUp": "failed"})
+			return
+		}
+		writeJSONResponse(writer, http.StatusOK, map[string]string{"onScaleUp": "ok"})
+	})
+}
+
+// readRequestBody reads a bounded request body.
+func readRequestBody(writer http.ResponseWriter, request *http.Request, bodyLimit int64) ([]byte, error) {
+	return io.ReadAll(http.MaxBytesReader(writer, request.Body, bodyLimit))
+}
+
+// scaleUp triggers the optional scale-up dependency.
+func scaleUp(ctx context.Context, scaleUpper ScaleUpper) error {
+	if scaleUpper == nil {
+		return fmt.Errorf("scale upper is required")
+	}
+
+	return scaleUpper.ScaleUp(ctx)
+}
+
+// parseGroupMessage parses a Telegram webhook and keeps only group messages.
+func parseGroupMessage(payload []byte) (*telegram.Message, Response, bool) {
 	update, err := telegram.ParseUpdate(payload)
 	if err != nil {
-		return Response{StatusCode: 500, Message: "decode Telegram update"}
+		return nil, Response{StatusCode: 500, Message: "decode Telegram update"}, false
 	}
 	if update.Message == nil || !strings.Contains(update.Message.Chat.Type, "group") {
-		return Response{StatusCode: 204, Message: "edited_message or non-group"}
+		return nil, Response{StatusCode: 204, Message: "edited_message or non-group"}, false
 	}
 
-	now := currentTime(dependencies)
-	storedMessage := message.FromTelegram(*update.Message, now)
-	if err := dependencies.Store.SaveMessage(ctx, message.BuildSaveUpdate(dependencies.MessageTable, storedMessage)); err != nil {
-		return Response{StatusCode: 500, Message: "save message"}
+	return update.Message, Response{}, true
+}
+
+// saveWebhookState persists the message and chat records for a webhook update.
+func saveWebhookState(ctx context.Context, telegramMessage telegram.Message, now time.Time, dependencies Dependencies) (Response, bool) {
+	if err := saveWebhookMessage(ctx, telegramMessage, now, dependencies); err != nil {
+		return Response{StatusCode: 500, Message: "save message"}, false
 	}
-	storedChat := chat.FromTelegram(*update.Message, now)
-	if err := dependencies.Store.SaveChat(ctx, chat.BuildMetadataUpdate(dependencies.ChatTable, storedChat)); err != nil {
-		return Response{StatusCode: 500, Message: "save chat"}
+	if err := saveWebhookChat(ctx, telegramMessage, now, dependencies); err != nil {
+		return Response{StatusCode: 500, Message: "save chat"}, false
 	}
 
-	parsedCommands := parseCommands(*update.Message)
-	if len(parsedCommands) == 0 {
-		return Response{StatusCode: 200}
-	}
+	return Response{}, true
+}
 
-	for _, parsedCommand := range parsedCommands {
-		action, err := command.ActionFor(parsedCommand, command.ChatContext{
-			ChatID:    update.Message.Chat.ID,
-			ChatTitle: update.Message.Chat.Title,
-			UserID:    userID(update.Message.From),
-		})
-		if err != nil {
-			if parsedCommand.Name == command.SetOffFromWorkTimeUTC {
-				if dependencies.Messenger == nil {
-					return Response{StatusCode: 500, Message: "reply invalid command"}
-				}
-				if sendErr := dependencies.Messenger.SendMessage(ctx, update.Message.Chat.ID, schedule.InvalidSetOffFromWorkTimeUTCMessage(update.Message.Chat.Title)); sendErr != nil {
-					return Response{StatusCode: 500, Message: "reply invalid command"}
-				}
-			}
-			continue
-		}
-		if err := dependencies.Enqueuer.Enqueue(ctx, action); err != nil {
-			return Response{StatusCode: 500, Message: "enqueue command"}
+// saveWebhookMessage persists a Telegram message row.
+func saveWebhookMessage(ctx context.Context, telegramMessage telegram.Message, now time.Time, dependencies Dependencies) error {
+	storedMessage := message.FromTelegram(telegramMessage, now)
+	return dependencies.Store.SaveMessage(ctx, message.BuildSaveUpdate(dependencies.MessageTable, storedMessage))
+}
+
+// saveWebhookChat persists Telegram chat metadata.
+func saveWebhookChat(ctx context.Context, telegramMessage telegram.Message, now time.Time, dependencies Dependencies) error {
+	storedChat := chat.FromTelegram(telegramMessage, now)
+	return dependencies.Store.SaveChat(ctx, chat.BuildMetadataUpdate(dependencies.ChatTable, storedChat))
+}
+
+// enqueueWebhookCommands converts and enqueues supported Telegram commands.
+func enqueueWebhookCommands(ctx context.Context, telegramMessage telegram.Message, dependencies Dependencies) Response {
+	for _, parsedCommand := range parseCommands(telegramMessage) {
+		response, ok := enqueueWebhookCommand(ctx, telegramMessage, parsedCommand, dependencies)
+		if !ok {
+			return response
 		}
 	}
 
 	return Response{StatusCode: 200}
+}
+
+// enqueueWebhookCommand converts one parsed command into queue work.
+func enqueueWebhookCommand(ctx context.Context, telegramMessage telegram.Message, parsedCommand command.Command, dependencies Dependencies) (Response, bool) {
+	action, err := command.ActionFor(parsedCommand, command.ChatContext{
+		ChatID:    telegramMessage.Chat.ID,
+		ChatTitle: telegramMessage.Chat.Title,
+		UserID:    userID(telegramMessage.From),
+	})
+	if err == nil {
+		if enqueueErr := dependencies.Enqueuer.Enqueue(ctx, action); enqueueErr != nil {
+			return Response{StatusCode: 500, Message: "enqueue command"}, false
+		}
+		return Response{}, true
+	}
+	if shouldIgnoreCommandError(parsedCommand) {
+		return Response{}, true
+	}
+	if sendErr := sendInvalidSetOffReply(ctx, telegramMessage, dependencies); sendErr != nil {
+		return Response{StatusCode: 500, Message: "reply invalid command"}, false
+	}
+
+	return Response{}, true
+}
+
+// shouldIgnoreCommandError reports whether a command error should be skipped.
+func shouldIgnoreCommandError(parsedCommand command.Command) bool {
+	return parsedCommand.Name != command.SetOffFromWorkTimeUTC
+}
+
+// sendInvalidSetOffReply sends the contract reply for invalid off-work input.
+func sendInvalidSetOffReply(ctx context.Context, telegramMessage telegram.Message, dependencies Dependencies) error {
+	if dependencies.Messenger == nil {
+		return fmt.Errorf("messenger is required")
+	}
+
+	return dependencies.Messenger.SendMessage(
+		ctx,
+		telegramMessage.Chat.ID,
+		schedule.InvalidSetOffFromWorkTimeUTCMessage(telegramMessage.Chat.Title),
+	)
 }
 
 // currentTime returns the injected time or time.Now.
@@ -255,8 +348,10 @@ func maxBodyBytes(dependencies ServerDeps) int64 {
 // writeResponse writes a plain response body.
 func writeResponse(writer http.ResponseWriter, response Response) {
 	writer.WriteHeader(response.StatusCode)
-	if response.Message != "" {
-		_, _ = writer.Write([]byte(response.Message))
+	if response.Message != "" && allowsResponseBody(response.StatusCode) {
+		if _, err := writer.Write([]byte(response.Message)); err != nil {
+			logResponseWriteError("write plain response", response.StatusCode, err)
+		}
 	}
 }
 
@@ -273,5 +368,17 @@ func writeStageWebhookResponse(writer http.ResponseWriter, response Response) {
 func writeJSONResponse(writer http.ResponseWriter, statusCode int, body any) {
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(statusCode)
-	_ = json.NewEncoder(writer).Encode(body)
+	if err := json.NewEncoder(writer).Encode(body); err != nil {
+		logResponseWriteError("encode JSON response", statusCode, err)
+	}
+}
+
+// allowsResponseBody reports whether an HTTP status permits a response body.
+func allowsResponseBody(statusCode int) bool {
+	return statusCode != http.StatusNoContent && statusCode != http.StatusNotModified
+}
+
+// logResponseWriteError records response write failures after headers are in flight.
+func logResponseWriteError(operation string, statusCode int, err error) {
+	slog.Error(operation, "status_code", statusCode, "err", err)
 }

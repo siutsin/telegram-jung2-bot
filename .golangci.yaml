@@ -1,0 +1,98 @@
+version: "2"
+
+run:
+  allow-parallel-runners: true
+  relative-path-mode: gomod
+  tests: true
+  timeout: 5m
+
+linters:
+  default: standard
+  enable:
+    - bodyclose     # Detect leaked HTTP response bodies.
+    - copyloopvar   # Catch unsafe loop variable copies and captures.
+    - durationcheck # Flag invalid duration arithmetic.
+    - errorlint     # Enforce modern wrapped-error handling.
+    - gocognit      # Flag functions whose control flow becomes too hard to follow.
+    - gosec         # Flag common security-sensitive code patterns and dangerous APIs.
+    - loggercheck   # Validate structured logging key/value usage.
+    - misspell      # Catch common spelling mistakes using UK English.
+    - noctx         # Require context-aware APIs in non-test code paths.
+    - nilerr        # Reject error branches that accidentally return nil.
+    - nilnil        # Reject returning both a nil error and an invalid nil value combination.
+    - nilnesserr    # Catch mismatched nil return values in error-handling branches.
+    - nolintlint    # Keep nolint directives specific and justified.
+    - revive        # Provide configurable, actively maintained style and correctness checks.
+    - testifylint   # Catch misuse of testify assertions in tests.
+    - unconvert     # Remove unnecessary type conversions.
+    - unparam       # Find parameters that are never used by callees.
+    - usestdlibvars # Prefer standard-library constants and variables over duplicated literals.
+  settings:
+    errcheck:
+      # Surface intentionally ignored writes and unsafe type assertions.
+      check-blank: true
+      check-type-assertions: true
+    gocognit:
+      # Keep complexity pressure visible before handlers and wiring paths become opaque.
+      min-complexity: 15
+    govet:
+      # Keep the higher-signal analysers that catch real nil-flow and shadowing bugs.
+      enable:
+        - nilness
+        - shadow
+    misspell:
+      # Match the repo's preferred spelling convention.
+      locale: UK
+    nolintlint:
+      # Force every nolint to stay intentional, documented, and narrowly scoped.
+      allow-unused: false
+      require-explanation: true
+      require-specific: true
+    revive:
+      # Keep a small revive ruleset that improves readability without fighting the repo.
+      rules:
+        - name: comment-spacings
+        - name: indent-error-flow
+        - name: unexported-return
+          # Factory helpers and package-local seams return unexported types on purpose.
+          disabled: true
+    testifylint:
+      # Enable the full testify ruleset because the repo uses testify heavily in tests.
+      enable-all: true
+  exclusions:
+    # Generated Go should still be linted loosely enough to avoid constant churn.
+    generated: lax
+    rules:
+      # Test files legitimately repeat fixtures and request payloads that would be noisy elsewhere.
+      - path: (.+)_test\.go
+        linters:
+          - dupl
+          - goconst
+          - lll
+          - noctx
+      # Integration tests intentionally use simple background contexts to keep the slices readable.
+      - path: ^internal/integration/
+        linters:
+          - noctx
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    gofmt:
+      # Normalise legacy empty-interface spellings to modern Go.
+      rewrite-rules:
+        - pattern: interface{}
+          replacement: any
+    goimports:
+      # Keep first-party imports grouped consistently for this module path.
+      local-prefixes:
+        - github.com/siutsin/telegram-jung2-bot
+  exclusions:
+    # Generated files are left out of formatter enforcement for the same reason as lint.
+    generated: lax
+    paths:
+      # Skip external or example trees that are not part of the maintained service code.
+      - third_party$
+      - builtin$
+      - examples$
