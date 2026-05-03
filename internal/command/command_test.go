@@ -9,30 +9,72 @@ import (
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
 )
 
-func TestParseSupportedCommands(t *testing.T) {
+func TestParseAll(t *testing.T) {
 	tests := []struct {
-		text string
-		name string
-		args string
+		name     string
+		text     string
+		commands []Command
 	}{
-		{text: "/jungHelp", name: JungHelp},
-		{text: "/topTen", name: TopTen},
-		{text: "/topDiver", name: TopDiver},
-		{text: "/allJung", name: AllJung},
-		{text: "/enableAllJung", name: EnableAllJung},
-		{text: "/disableAllJung", name: DisableAllJung},
-		{text: "/setOffFromWorkTimeUTC 1830 MON,TUE", name: SetOffFromWorkTimeUTC, args: "1830 MON,TUE"},
-		{text: "please /topTen now", name: TopTen, args: "now"},
-		{text: "/TOPTEN", name: TopTen},
-		{text: "/setOffFromWorkTimeUTC@jung2bot 1830 MON,TUE", name: SetOffFromWorkTimeUTC, args: "1830 MON,TUE"},
+		{
+			name:     "junghelp",
+			text:     "/jungHelp",
+			commands: []Command{{Name: jungHelp}},
+		},
+		{
+			name:     "topten",
+			text:     "/topTen",
+			commands: []Command{{Name: topTen}},
+		},
+		{
+			name:     "topdiver",
+			text:     "/topDiver",
+			commands: []Command{{Name: topDiver}},
+		},
+		{
+			name:     "alljung",
+			text:     "/allJung",
+			commands: []Command{{Name: allJung}},
+		},
+		{
+			name:     "enablealljung",
+			text:     "/enableAllJung",
+			commands: []Command{{Name: enableAllJung}},
+		},
+		{
+			name:     "disablealljung",
+			text:     "/disableAllJung",
+			commands: []Command{{Name: disableAllJung}},
+		},
+		{
+			name:     "set off work args",
+			text:     "/setOffFromWorkTimeUTC 1830 MON,TUE",
+			commands: []Command{{Name: SetOffFromWorkTimeUTC, Args: "1830 MON,TUE"}},
+		},
+		{
+			name:     "command inside text",
+			text:     "please /topTen now",
+			commands: []Command{{Name: topTen, Args: "now"}},
+		},
+		{
+			name:     "case insensitive",
+			text:     "/TOPTEN",
+			commands: []Command{{Name: topTen}},
+		},
+		{
+			name:     "mention stripped",
+			text:     "/setOffFromWorkTimeUTC@jung2bot 1830 MON,TUE",
+			commands: []Command{{Name: SetOffFromWorkTimeUTC, Args: "1830 MON,TUE"}},
+		},
+		{
+			name:     "unknown command",
+			text:     "/unknown",
+			commands: []Command{},
+		},
 	}
 
 	for _, test := range tests {
-		t.Run(test.text, func(t *testing.T) {
-			command, ok := Parse(test.text)
-			require.True(t, ok)
-			assert.Equal(t, test.name, command.Name)
-			assert.Equal(t, test.args, command.Args)
+		t.Run(test.name, func(t *testing.T) {
+			assert.Equal(t, test.commands, ParseAll(test.text))
 		})
 	}
 }
@@ -43,15 +85,40 @@ func TestParseAllReturnsContractCommandOrder(t *testing.T) {
 	commands := ParseAll("/allJung and /topTen and /jungHelp")
 
 	assert.Equal(t, []Command{
-		{Name: JungHelp, Args: ""},
-		{Name: TopTen, Args: "and /jungHelp"},
-		{Name: AllJung, Args: "and /topTen and /jungHelp"},
+		{Name: jungHelp, Args: ""},
+		{Name: topTen, Args: "and /jungHelp"},
+		{Name: allJung, Args: "and /topTen and /jungHelp"},
 	}, commands)
 }
 
-func TestParseIgnoresUnknownCommands(t *testing.T) {
-	_, ok := Parse("/unknown")
-	assert.False(t, ok)
+func TestCommandArgs(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  string
+		want string
+	}{
+		{
+			name: "plain args",
+			raw:  " now",
+			want: "now",
+		},
+		{
+			name: "mention with args",
+			raw:  "@jung2bot 1830 MON,TUE",
+			want: "1830 MON,TUE",
+		},
+		{
+			name: "mention only",
+			raw:  "@jung2bot",
+			want: "",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert.Equal(t, test.want, commandArgs(test.raw))
+		})
+	}
 }
 
 func TestActionForMapsStableNames(t *testing.T) {
@@ -60,12 +127,12 @@ func TestActionForMapsStableNames(t *testing.T) {
 		actionName  string
 		body        string
 	}{
-		{commandName: JungHelp, actionName: queue.ActionJungHelp, body: queue.BodyJungHelp},
-		{commandName: TopTen, actionName: queue.ActionTopTen, body: queue.BodyTopTen},
-		{commandName: TopDiver, actionName: queue.ActionTopDiver, body: queue.BodyTopDiver},
-		{commandName: AllJung, actionName: queue.ActionAllJung, body: queue.BodyAllJung},
-		{commandName: EnableAllJung, actionName: queue.ActionEnableAllJung, body: queue.BodyEnableAllJung},
-		{commandName: DisableAllJung, actionName: queue.ActionDisableAllJung, body: queue.BodyDisableAllJung},
+		{commandName: jungHelp, actionName: queue.ActionJungHelp, body: queue.BodyJungHelp},
+		{commandName: topTen, actionName: queue.ActionTopTen, body: queue.BodyTopTen},
+		{commandName: topDiver, actionName: queue.ActionTopDiver, body: queue.BodyTopDiver},
+		{commandName: allJung, actionName: queue.ActionAllJung, body: queue.BodyAllJung},
+		{commandName: enableAllJung, actionName: queue.ActionEnableAllJung, body: queue.BodyEnableAllJung},
+		{commandName: disableAllJung, actionName: queue.ActionDisableAllJung, body: queue.BodyDisableAllJung},
 		{commandName: SetOffFromWorkTimeUTC, actionName: queue.ActionSetOffWorkTime, body: queue.BodySetOffWorkTime},
 	}
 
@@ -94,7 +161,7 @@ func TestActionForPreservesContractAttributeShapes(t *testing.T) {
 	}{
 		{
 			name:     "junghelp",
-			command:  Command{Name: JungHelp},
+			command:  Command{Name: jungHelp},
 			wantBody: queue.BodyJungHelp,
 			attributes: map[string]string{
 				"chatId":    "123",
@@ -104,7 +171,7 @@ func TestActionForPreservesContractAttributeShapes(t *testing.T) {
 		},
 		{
 			name:     "topten",
-			command:  Command{Name: TopTen},
+			command:  Command{Name: topTen},
 			wantBody: queue.BodyTopTen,
 			attributes: map[string]string{
 				"chatId": "123",
@@ -113,7 +180,7 @@ func TestActionForPreservesContractAttributeShapes(t *testing.T) {
 		},
 		{
 			name:     "enableAllJung",
-			command:  Command{Name: EnableAllJung},
+			command:  Command{Name: enableAllJung},
 			wantBody: queue.BodyEnableAllJung,
 			attributes: map[string]string{
 				"chatId":    "123",
@@ -161,10 +228,10 @@ func TestParseSetOffFromWorkTimeArgsMatchesContractValidation(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.args, func(t *testing.T) {
-			args, err := ParseSetOffFromWorkTimeArgs(test.args)
+			offTime, workday, err := parseSetOffFromWorkTimeArgs(test.args)
 			require.NoError(t, err)
-			assert.Equal(t, test.wantOffTime, args.OffTime)
-			assert.Equal(t, test.wantWorkday, args.Workday)
+			assert.Equal(t, test.wantOffTime, offTime)
+			assert.Equal(t, test.wantWorkday, workday)
 		})
 	}
 }
@@ -187,7 +254,7 @@ func TestParseSetOffFromWorkTimeArgsRejectsContractInvalidFormats(t *testing.T) 
 
 	for _, args := range tests {
 		t.Run(args, func(t *testing.T) {
-			_, err := ParseSetOffFromWorkTimeArgs(args)
+			_, _, err := parseSetOffFromWorkTimeArgs(args)
 			require.Error(t, err)
 		})
 	}

@@ -53,6 +53,7 @@ type rawConfig struct {
 }
 
 // Load validates configuration from an environment map.
+// For example, it turns "HTTP_TIMEOUT_SECONDS=5" into HTTPTimeout=5*time.Second.
 func Load(env map[string]string) (Config, error) {
 	raw, err := parseRawConfig(env)
 	if err != nil {
@@ -72,11 +73,13 @@ func Load(env map[string]string) (Config, error) {
 }
 
 // LoadEnviron validates configuration from process-style environment entries.
+// For example, []string{"STAGE=prod"} becomes Config{Stage: "prod"}.
 func LoadEnviron(environ []string) (Config, error) {
 	return Load(caarlosenv.ToMap(environ))
 }
 
 // parseRawConfig decodes environment variables into the raw config shape.
+// For example, "HTTP_TIMEOUT_SECONDS=5" stays as raw.HTTPTimeoutSeconds == "5".
 func parseRawConfig(env map[string]string) (rawConfig, error) {
 	raw, err := caarlosenv.ParseAsWithOptions[rawConfig](caarlosenv.Options{
 		Environment: env,
@@ -89,6 +92,8 @@ func parseRawConfig(env map[string]string) (rawConfig, error) {
 }
 
 // configFromRaw builds defaulted runtime config from raw environment values.
+// For example, it turns raw timeout strings into time.Duration values and
+// fills the default server address when none is set.
 func configFromRaw(raw rawConfig) (Config, error) {
 	httpTimeout := defaultHTTPTimeout
 	if raw.HTTPTimeoutSeconds != "" {
@@ -132,6 +137,7 @@ func configFromRaw(raw rawConfig) (Config, error) {
 }
 
 // validateConfig checks required startup settings before clients are built.
+// For example, it rejects a relative EVENT_QUEUE_URL like "/queue".
 func validateConfig(config Config) error {
 	err := validateTableName("MESSAGE_TABLE", config.MessageTable)
 	if err != nil {
@@ -160,6 +166,7 @@ func validateConfig(config Config) error {
 }
 
 // serverAddress returns the default bind address for the current environment.
+// For example, empty input becomes "127.0.0.1:3000" or "0.0.0.0:3000" in Docker.
 func serverAddress(value string, docker string) string {
 	if value != "" {
 		return value
@@ -172,6 +179,7 @@ func serverAddress(value string, docker string) string {
 }
 
 // validateTableName checks a DynamoDB table name.
+// For example, "messages-prod" is valid, while "bad/table" is not.
 func validateTableName(key string, value string) error {
 	if !dynamoDBTableNamePattern.MatchString(value) {
 		return fmt.Errorf("%s is not a valid DynamoDB table name", key)
@@ -181,6 +189,7 @@ func validateTableName(key string, value string) error {
 }
 
 // validateURL checks that value is an absolute URL.
+// For example, "https://example.com/queue" is valid, while "/queue" is not.
 func validateURL(key string, value string) error {
 	parsed, err := url.Parse(value)
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
@@ -191,6 +200,7 @@ func validateURL(key string, value string) error {
 }
 
 // parsePositiveSeconds parses a positive timeout in seconds.
+// For example, "5" becomes 5*time.Second.
 func parsePositiveSeconds(key string, raw string) (time.Duration, error) {
 	value, err := strconv.Atoi(raw)
 	if err != nil || value < 1 {
