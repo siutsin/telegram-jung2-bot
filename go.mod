@@ -7,6 +7,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.32.17
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.57.3
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.42.27
+	github.com/caarlos0/env/v11 v11.4.1
 	github.com/stretchr/testify v1.11.1
 )
 

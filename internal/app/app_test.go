@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -19,19 +20,17 @@ import (
 )
 
 func TestRunBuildsAndStartsDefaultRuntime(t *testing.T) {
-	original := newRuntimeFactory
-	t.Cleanup(func() { newRuntimeFactory = original })
-
 	ctx, cancel := context.WithCancel(context.Background())
 	httpServer := newBlockingHTTPServer()
 	queueWorker := &fakeQueueWorker{}
-	newRuntimeFactory = func(ctx context.Context, config config.Config) (Factory, error) {
+	application, err := New(ctx, config.Config{}, Options{FactoryBuilder: func(ctx context.Context, config config.Config) (Factory, error) {
 		return &fakeFactory{httpServer: httpServer, queueWorker: queueWorker}, nil
-	}
+	}})
+	require.NoError(t, err)
 	done := make(chan error, 1)
 
 	go func() {
-		done <- Run(ctx, config.Config{})
+		done <- application.Run(ctx)
 	}()
 
 	<-httpServer.started
@@ -43,16 +42,24 @@ func TestRunBuildsAndStartsDefaultRuntime(t *testing.T) {
 }
 
 func TestRunReturnsRuntimeFactoryError(t *testing.T) {
-	original := newRuntimeFactory
-	t.Cleanup(func() { newRuntimeFactory = original })
-	newRuntimeFactory = func(ctx context.Context, config config.Config) (Factory, error) {
+	_, err := New(context.Background(), config.Config{}, Options{FactoryBuilder: func(ctx context.Context, config config.Config) (Factory, error) {
 		return nil, errors.New("boom")
-	}
-
-	err := Run(context.Background(), config.Config{})
+	}})
 
 	require.Error(t, err)
 	assert.EqualError(t, err, "build runtime factory: boom")
+}
+
+func TestNewUsesProvidedFactory(t *testing.T) {
+	t.Parallel()
+
+	application, err := New(context.Background(), config.Config{ShutdownTimeout: time.Second}, Options{
+		Factory:         &fakeFactory{},
+		ShutdownTimeout: 2 * time.Second,
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, 2*time.Second, application.shutdownTimeout)
 }
 
 // These cases pin the setup-stage error boundaries so wiring regressions fail
@@ -61,18 +68,18 @@ func TestRunWithSetupErrors(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		options Options
-		wantErr string
+		name        string
+		application *App
+		wantErr     string
 	}{
-		{name: "missing factory", options: Options{}, wantErr: "factory is required"},
-		{name: "http factory error", options: Options{Factory: &fakeFactory{httpErr: errors.New("boom")}}, wantErr: "create HTTP server: boom"},
-		{name: "queue factory error", options: Options{Factory: &fakeFactory{queueErr: errors.New("boom")}}, wantErr: "create queue worker: boom"},
+		{name: "missing factory", application: &App{}, wantErr: "factory is required"},
+		{name: "http factory error", application: &App{factory: &fakeFactory{httpErr: errors.New("boom")}}, wantErr: "create HTTP server: boom"},
+		{name: "queue factory error", application: &App{factory: &fakeFactory{queueErr: errors.New("boom")}}, wantErr: "create queue worker: boom"},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := RunWith(context.Background(), config.Config{}, test.options)
+			err := test.application.Run(context.Background())
 
 			require.Error(t, err)
 			assert.EqualError(t, err, test.wantErr)
@@ -83,10 +90,12 @@ func TestRunWithSetupErrors(t *testing.T) {
 func TestRunWithReturnsHTTPServerError(t *testing.T) {
 	t.Parallel()
 
-	err := RunWith(context.Background(), config.Config{}, Options{Factory: &fakeFactory{
-		httpServer: &fakeHTTPServer{listenErr: errors.New("boom")},
-	}})
+	application, err := New(context.Background(), config.Config{}, Options{
+		Factory: &fakeFactory{httpServer: &fakeHTTPServer{listenErr: errors.New("boom")}},
+	})
+	require.NoError(t, err)
 
+	err = application.Run(context.Background())
 	require.Error(t, err)
 	assert.EqualError(t, err, "boom")
 }
@@ -94,11 +103,13 @@ func TestRunWithReturnsHTTPServerError(t *testing.T) {
 func TestRunWithReturnsQueueWorkerError(t *testing.T) {
 	t.Parallel()
 
-	err := RunWith(context.Background(), config.Config{}, Options{Factory: &fakeFactory{
+	application, err := New(context.Background(), config.Config{}, Options{Factory: &fakeFactory{
 		httpServer:  newBlockingHTTPServer(),
 		queueWorker: &fakeQueueWorker{err: errors.New("boom")},
 	}})
+	require.NoError(t, err)
 
+	err = application.Run(context.Background())
 	require.Error(t, err)
 	assert.EqualError(t, err, "boom")
 }
@@ -106,22 +117,25 @@ func TestRunWithReturnsQueueWorkerError(t *testing.T) {
 func TestRunWithReturnsNilWhenComponentStopsCleanly(t *testing.T) {
 	t.Parallel()
 
-	err := RunWith(context.Background(), config.Config{}, Options{Factory: &fakeFactory{
+	application, err := New(context.Background(), config.Config{}, Options{Factory: &fakeFactory{
 		httpServer:  &fakeHTTPServer{},
 		queueWorker: &fakeQueueWorker{},
 	}})
-
 	require.NoError(t, err)
+
+	require.NoError(t, application.Run(context.Background()))
 }
 
 func TestRunWithReturnsShutdownErrorAfterComponentFailure(t *testing.T) {
 	t.Parallel()
 
-	err := RunWith(context.Background(), config.Config{}, Options{Factory: &fakeFactory{
+	application, err := New(context.Background(), config.Config{}, Options{Factory: &fakeFactory{
 		httpServer:  &fakeHTTPServer{shutdownErr: errors.New("shutdown boom")},
 		queueWorker: &fakeQueueWorker{err: errors.New("worker boom")},
 	}})
+	require.NoError(t, err)
 
+	err = application.Run(context.Background())
 	require.Error(t, err)
 	assert.EqualError(t, err, "shutdown HTTP server: shutdown boom")
 }
@@ -134,13 +148,15 @@ func TestRunWithShutsDownHTTPServerOnContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	httpServer := newBlockingHTTPServer()
 	queueWorker := &fakeQueueWorker{}
+	application, err := New(context.Background(), config.Config{}, Options{
+		Factory:         &fakeFactory{httpServer: httpServer, queueWorker: queueWorker},
+		ShutdownTimeout: time.Millisecond,
+	})
+	require.NoError(t, err)
 	done := make(chan error, 1)
 
 	go func() {
-		done <- RunWith(ctx, config.Config{}, Options{
-			Factory:         &fakeFactory{httpServer: httpServer, queueWorker: queueWorker},
-			ShutdownTimeout: time.Millisecond,
-		})
+		done <- application.Run(ctx)
 	}()
 
 	<-httpServer.started
@@ -159,18 +175,20 @@ func TestRunWithReturnsShutdownError(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	httpServer := newBlockingHTTPServer()
 	httpServer.shutdownErr = errors.New("boom")
+	application, err := New(context.Background(), config.Config{ShutdownTimeout: time.Millisecond}, Options{
+		Factory: &fakeFactory{httpServer: httpServer, queueWorker: &fakeQueueWorker{}},
+	})
+	require.NoError(t, err)
 	done := make(chan error, 1)
 
 	go func() {
-		done <- RunWith(ctx, config.Config{ShutdownTimeout: time.Millisecond}, Options{
-			Factory: &fakeFactory{httpServer: httpServer, queueWorker: &fakeQueueWorker{}},
-		})
+		done <- application.Run(ctx)
 	}()
 
 	<-httpServer.started
 	cancel()
 
-	err := <-done
+	err = <-done
 	require.Error(t, err)
 	assert.EqualError(t, err, "shutdown HTTP server: boom")
 }
@@ -285,8 +303,11 @@ func (factory *fakeFactory) NewQueueWorker(config config.Config) (QueueWorker, e
 }
 
 type fakeHTTPServer struct {
+	mu             sync.Mutex
 	started        chan struct{}
+	startedOnce    sync.Once
 	shutdown       chan struct{}
+	shutdownOnce   sync.Once
 	listenBlocks   bool
 	listenErr      error
 	shutdownCalled atomic.Bool
@@ -302,15 +323,11 @@ func newBlockingHTTPServer() *fakeHTTPServer {
 }
 
 func (server *fakeHTTPServer) ListenAndServe() error {
-	if server.started == nil {
-		server.started = make(chan struct{})
-	}
-	if server.shutdown == nil {
-		server.shutdown = make(chan struct{})
-	}
-	close(server.started)
+	server.startedOnce.Do(func() {
+		close(server.startedChan())
+	})
 	if server.listenBlocks {
-		<-server.shutdown
+		<-server.shutdownChan()
 	}
 
 	return server.listenErr
@@ -318,10 +335,34 @@ func (server *fakeHTTPServer) ListenAndServe() error {
 
 func (server *fakeHTTPServer) Shutdown(ctx context.Context) error {
 	server.shutdownCalled.Store(true)
-	if server.shutdown != nil {
-		close(server.shutdown)
-	}
+	server.shutdownOnce.Do(func() {
+		close(server.shutdownChan())
+	})
 	return server.shutdownErr
+}
+
+// startedChan returns the startup signal channel.
+func (server *fakeHTTPServer) startedChan() chan struct{} {
+	server.mu.Lock()
+	defer server.mu.Unlock()
+
+	if server.started == nil {
+		server.started = make(chan struct{})
+	}
+
+	return server.started
+}
+
+// shutdownChan returns the shutdown signal channel.
+func (server *fakeHTTPServer) shutdownChan() chan struct{} {
+	server.mu.Lock()
+	defer server.mu.Unlock()
+
+	if server.shutdown == nil {
+		server.shutdown = make(chan struct{})
+	}
+
+	return server.shutdown
 }
 
 type fakeQueueWorker struct {

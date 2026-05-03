@@ -28,8 +28,20 @@ type Factory interface {
 	NewQueueWorker(config config.Config) (QueueWorker, error)
 }
 
+// FactoryBuilder constructs a runtime factory for one configured app instance.
+type FactoryBuilder func(ctx context.Context, config config.Config) (Factory, error)
+
+// App wraps the configured application runtime and its dependencies.
+type App struct {
+	config          config.Config
+	factory         Factory
+	shutdownTimeout time.Duration
+}
+
+// Options configures how an application instance is assembled.
 type Options struct {
 	Factory         Factory
+	FactoryBuilder  FactoryBuilder
 	ShutdownTimeout time.Duration
 }
 
@@ -44,32 +56,31 @@ type RuntimeFactory struct {
 	Now        func() time.Time
 }
 
-var newRuntimeFactory = buildRuntimeFactory
-
-// Run starts the app with the default runtime factory.
-func Run(ctx context.Context, config config.Config) error {
-	factory, err := newRuntimeFactory(ctx, config)
+// New constructs an application with the provided runtime options.
+func New(ctx context.Context, config config.Config, options Options) (*App, error) {
+	factory, err := appFactory(ctx, config, options)
 	if err != nil {
-		return fmt.Errorf("build runtime factory: %w", err)
+		return nil, err
 	}
 
-	return RunWith(ctx, config, Options{
-		Factory:         factory,
-		ShutdownTimeout: config.ShutdownTimeout,
-	})
+	return &App{
+		config:          config,
+		factory:         factory,
+		shutdownTimeout: shutdownTimeout(config, options),
+	}, nil
 }
 
-// RunWith starts the app with the provided runtime options.
-func RunWith(ctx context.Context, config config.Config, options Options) error {
-	if options.Factory == nil {
+// Run starts the configured application.
+func (app *App) Run(ctx context.Context) error {
+	if app == nil || app.factory == nil {
 		return fmt.Errorf("factory is required")
 	}
 
-	httpServer, err := options.Factory.NewHTTPServer(config)
+	httpServer, err := app.factory.NewHTTPServer(app.config)
 	if err != nil {
 		return fmt.Errorf("create HTTP server: %w", err)
 	}
-	queueWorker, err := options.Factory.NewQueueWorker(config)
+	queueWorker, err := app.factory.NewQueueWorker(app.config)
 	if err != nil {
 		return fmt.Errorf("create queue worker: %w", err)
 	}
@@ -88,10 +99,10 @@ func RunWith(ctx context.Context, config config.Config, options Options) error {
 	select {
 	case <-ctx.Done():
 		cancel()
-		return shutdownHTTP(httpServer, shutdownTimeout(config, options))
+		return shutdownHTTP(httpServer, app.shutdownTimeout)
 	case err := <-errs:
 		cancel()
-		if shutdownErr := shutdownHTTP(httpServer, shutdownTimeout(config, options)); shutdownErr != nil {
+		if shutdownErr := shutdownHTTP(httpServer, app.shutdownTimeout); shutdownErr != nil {
 			return shutdownErr
 		}
 		if err != nil {
@@ -99,6 +110,25 @@ func RunWith(ctx context.Context, config config.Config, options Options) error {
 		}
 		return nil
 	}
+}
+
+// appFactory resolves the factory to use for a configured application.
+func appFactory(ctx context.Context, config config.Config, options Options) (Factory, error) {
+	if options.Factory != nil {
+		return options.Factory, nil
+	}
+
+	builder := options.FactoryBuilder
+	if builder == nil {
+		builder = buildRuntimeFactory
+	}
+
+	factory, err := builder(ctx, config)
+	if err != nil {
+		return nil, fmt.Errorf("build runtime factory: %w", err)
+	}
+
+	return factory, nil
 }
 
 // shutdownHTTP stops the HTTP server with a timeout.

@@ -5,14 +5,16 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	"github.com/siutsin/telegram-jung2-bot/internal/app"
 	"github.com/siutsin/telegram-jung2-bot/internal/config"
 )
 
-var runApp = app.Run
+var loadConfig = config.LoadEnviron
+var newApp = func(ctx context.Context, loaded config.Config) (*app.App, error) {
+	return app.New(ctx, loaded, app.Options{})
+}
 
 // main starts the bot process.
 func main() {
@@ -27,23 +29,15 @@ func main() {
 
 // run loads configuration and starts the app.
 func run(ctx context.Context, environ []string) error {
-	loaded, err := config.Load(envMap(environ))
+	loaded, err := loadConfig(environ)
 	if err != nil {
 		return err
 	}
 
-	return runApp(ctx, loaded)
-}
-
-// envMap converts environment entries into a lookup map.
-func envMap(environ []string) map[string]string {
-	env := make(map[string]string, len(environ))
-	for _, entry := range environ {
-		key, value, ok := strings.Cut(entry, "=")
-		if ok {
-			env[key] = value
-		}
+	application, err := newApp(ctx, loaded)
+	if err != nil {
+		return err
 	}
 
-	return env
+	return application.Run(ctx)
 }

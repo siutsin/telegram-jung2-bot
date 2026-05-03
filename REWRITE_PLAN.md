@@ -141,36 +141,53 @@ complete. It must be removed before the final cleanup gate.
 - [x] Covered: fakeable HTTP server and queue worker lifecycle, cancellation,
   shutdown timeout, dependency-construction errors, and test coverage.
 
+### Runtime Wiring
+
+- [x] Production runtime assembly lives under `internal/runtime`, with
+  `internal/app` owning the application wrapper and graceful lifecycle.
+- [x] The default startup path builds real DynamoDB, SQS, Telegram, and
+  scale-up adapters.
+- [x] Worker handlers are wired for `junghelp`, `topten`, `topdiver`,
+  `alljung`, `offFromWork`, `enableAllJung`, `disableAllJung`,
+  `setOffFromWorkTimeUTC`, and `onOffFromWork`.
+- [x] `/allJung` suppression when `enableAllJung=false` is enforced in the
+  production action path.
+- [x] The stage `/onScaleUp` route receives the production scale-up
+  dependency.
+
+### Bootstrap
+
+- [x] `cmd/telegram-jung2-bot/main.go` is reduced to process bootstrap only:
+  load config, construct the app, and run it.
+- [x] Environment loading now uses `github.com/caarlos0/env/v11` through
+  `internal/config`.
+- [x] The application is wrapped by `app.App`, so dependencies can be injected
+  into a concrete application object and run via `(*App).Run`.
+
 ## Remaining Work
 
-### Production Adapter Wiring
+### Test And Coverage Gate
 
-- [ ] Wire real DynamoDB clients for message saves, chat saves, chat/message
-  queries, due-chat scans, pagination, and scale-up.
-- [ ] Wire real SQS sender, receiver, and deleter.
-- [ ] Wire real Telegram messenger and administrator lookup.
-- [ ] Wire EventBridge Scheduler integration if scheduled chat sync is still
-  required by production.
-- [ ] Pass the scale-up dependency into the stage `/onScaleUp` route.
-- [ ] Ensure the default `app.Run` path starts with real adapters, not empty
-  factory fields.
+- [ ] Raise total Go statement coverage from the current `87.4%` to the
+  required `100.0%` so `make test` passes end to end.
+- [ ] Add coverage for the remaining uncovered bootstrap paths in
+  `cmd/telegram-jung2-bot/main.go`.
+- [ ] Add coverage for the remaining uncovered runtime-construction and AWS
+  adapter paths in `internal/app/app.go` and `internal/runtime/runtime.go`.
+- [ ] Add coverage for the remaining uncovered HTTP edge paths in
+  `internal/httpserver/httpserver.go`.
 
-### Worker Handlers
+### Build And Tooling Hygiene
 
-- [ ] Wire `junghelp`, `topten`, `topdiver`, `alljung`, and `offFromWork`
-  handlers to query data, render responses, update counts, and send Telegram
-  messages.
-- [ ] Enforce `/allJung` suppression when `enableAllJung=false`.
-- [ ] Wire admin handlers for `enableAllJung`, `disableAllJung`, and
-  `setOffFromWorkTimeUTC`.
-- [ ] Wire `onOffFromWork` fan-out to list due chats and enqueue
-  `offFromWork` actions.
-- [ ] Return explicit errors for missing production wiring instead of panics.
+- [ ] Run `make lint` and fix any remaining lint failures.
+- [ ] Document or otherwise preserve the convention that first-party BUCK deps
+  still need manual maintenance when Go imports change; `gobuckify` only
+  generates vendored third-party BUCK targets in this repo.
 
 ### End-State Cleanup
 
 - [ ] Remove migration-only reference material after production adapter and
-  worker-handler parity is complete.
+  worker-handler parity is complete and the coverage/lint gates are green.
 - [ ] Remove migration-only docs, package comments, test names, and helper names.
 - [ ] Remove route aliases or reference-shaped response code only if production
   no longer depends on those public HTTP paths.
@@ -185,7 +202,8 @@ complete. It must be removed before the final cleanup gate.
 - Owns required environment variables, default values, table names, queue URLs,
   Telegram token, AWS region, logging level, local endpoint overrides, server
   addresses, timeouts, and numeric limits.
-- Public API: `Load(env map[string]string) (Config, error)`.
+- Public API: `Load(env map[string]string) (Config, error)` and
+  `LoadEnviron([]string) (Config, error)`.
 
 ### `workday`
 
@@ -252,8 +270,9 @@ complete. It must be removed before the final cleanup gate.
 
 ### `app`
 
-- Owns application wiring, dependency construction, worker lifecycle, startup,
-  and graceful shutdown.
+- Owns the concrete application wrapper, dependency construction, worker
+  lifecycle, startup, and graceful shutdown.
+- Public API: `New(ctx, config, options) (*App, error)` and `(*App).Run(ctx)`.
 
 ## Quality Gates
 
