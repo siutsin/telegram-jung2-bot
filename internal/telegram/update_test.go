@@ -65,13 +65,13 @@ func TestSendMessagePostsContractPayload(t *testing.T) {
 		assert.Equal(t, http.MethodPost, request.Method)
 		assert.Equal(t, "application/json", request.Header.Get("Content-Type"))
 
-		body, err := io.ReadAll(request.Body)
-		assert.NoError(t, err)
+		body, readErr := io.ReadAll(request.Body)
+		assert.NoError(t, readErr)
 		assert.JSONEq(t, `{"chat_id":123,"text":"hi"}`, string(body))
 
 		response.WriteHeader(http.StatusOK)
-		_, err = response.Write([]byte(`{"ok":true}`))
-		assert.NoError(t, err)
+		_, writeErr := response.Write([]byte(`{"ok":true}`))
+		assert.NoError(t, writeErr)
 	}))
 	defer server.Close()
 
@@ -84,13 +84,13 @@ func TestSendMessagePostsContractPayload(t *testing.T) {
 
 func TestSendMessageWithOptionsPostsOptionalTelegramFields(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		body, err := io.ReadAll(request.Body)
-		assert.NoError(t, err)
+		body, readErr := io.ReadAll(request.Body)
+		assert.NoError(t, readErr)
 		assert.JSONEq(t, `{"chat_id":123,"disable_web_page_preview":true,"parse_mode":"markdown","text":"hi"}`, string(body))
 
 		response.WriteHeader(http.StatusOK)
-		_, err = response.Write([]byte(`{"ok":true}`))
-		assert.NoError(t, err)
+		_, writeErr := response.Write([]byte(`{"ok":true}`))
+		assert.NoError(t, writeErr)
 	}))
 	defer server.Close()
 
@@ -142,8 +142,8 @@ func TestGetChatAdministratorsDecodesResponse(t *testing.T) {
 		assert.Equal(t, http.MethodGet, request.Method)
 		assert.Equal(t, "123", request.URL.Query().Get("chat_id"))
 
-		_, err := response.Write([]byte(`{"ok":true,"result":[{"user":{"id":234,"first_name":"first_name","username":"username"}}]}`))
-		assert.NoError(t, err)
+		_, writeErr := response.Write([]byte(`{"ok":true,"result":[{"user":{"id":234,"first_name":"first_name","username":"username"}}]}`))
+		assert.NoError(t, writeErr)
 	}))
 	defer server.Close()
 
@@ -160,8 +160,8 @@ func TestGetChatAdministratorsDecodesResponse(t *testing.T) {
 
 func TestGetChatAdministratorsReturnsDecodeError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		_, err := response.Write([]byte(`{`))
-		assert.NoError(t, err)
+		_, writeErr := response.Write([]byte(`{`))
+		assert.NoError(t, writeErr)
 	}))
 	defer server.Close()
 
@@ -184,8 +184,8 @@ func TestGetChatAdministratorsReturnsHTTPClientError(t *testing.T) {
 
 func TestIsAdminReportsMembership(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		_, err := response.Write([]byte(`{"ok":true,"result":[{"user":{"id":234}},{"user":{"id":345}}]}`))
-		assert.NoError(t, err)
+		_, writeErr := response.Write([]byte(`{"ok":true,"result":[{"user":{"id":234}},{"user":{"id":345}}]}`))
+		assert.NoError(t, writeErr)
 	}))
 	defer server.Close()
 

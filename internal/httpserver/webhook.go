@@ -20,7 +20,7 @@ func handleWebhook(ctx context.Context, payload []byte, dependencies Dependencie
 	if !ok {
 		return result
 	}
-	if saveResult, ok := saveWebhookState(ctx, *telegramMessage, currentTime(dependencies), dependencies); !ok {
+	if saveResult, saved := saveWebhookState(ctx, *telegramMessage, currentTime(dependencies), dependencies); !saved {
 		return saveResult
 	}
 

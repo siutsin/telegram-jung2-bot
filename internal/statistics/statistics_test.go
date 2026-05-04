@@ -185,7 +185,7 @@ func TestGenerateReportTruncatesFinalText(t *testing.T) {
 	assert.LessOrEqual(t, utf8.RuneCountInString(summary.Report), telegram.ReportLimit)
 }
 
-func TestDisplayNameMatchesReferenceJoinBehavior(t *testing.T) {
+func TestDisplayNameMatchesReferenceJoinBehaviour(t *testing.T) {
 	t.Parallel()
 
 	assert.Equal(t, " grace", displayName(message.Message{LastName: "grace"}))

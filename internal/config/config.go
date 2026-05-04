@@ -97,18 +97,18 @@ func parseRawConfig(env map[string]string) (rawConfig, error) {
 func configFromRaw(raw rawConfig) (Config, error) {
 	httpTimeout := defaultHTTPTimeout
 	if raw.HTTPTimeoutSeconds != "" {
-		parsedTimeout, err := parsePositiveSeconds("HTTP_TIMEOUT_SECONDS", raw.HTTPTimeoutSeconds)
-		if err != nil {
-			return Config{}, err
+		parsedTimeout, parseErr := parsePositiveSeconds("HTTP_TIMEOUT_SECONDS", raw.HTTPTimeoutSeconds)
+		if parseErr != nil {
+			return Config{}, parseErr
 		}
 		httpTimeout = parsedTimeout
 	}
 
 	shutdownTimeout := defaultShutdownTimeout
 	if raw.ShutdownTimeoutSeconds != "" {
-		parsedTimeout, err := parsePositiveSeconds("SHUTDOWN_TIMEOUT_SECONDS", raw.ShutdownTimeoutSeconds)
-		if err != nil {
-			return Config{}, err
+		parsedTimeout, parseErr := parsePositiveSeconds("SHUTDOWN_TIMEOUT_SECONDS", raw.ShutdownTimeoutSeconds)
+		if parseErr != nil {
+			return Config{}, parseErr
 		}
 		shutdownTimeout = parsedTimeout
 	}

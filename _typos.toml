@@ -1,5 +1,10 @@
 [default.extend-words]
 # Buck's gobuckify config uses this upstream field spelling.
 preambule = "preambule"
+# Buck/prelude and Go analysis APIs use US spelling in identifiers.
+analyzer = "analyzer"
+Analyzer = "Analyzer"
+# Go's context package exports context.Canceled.
+Canceled = "Canceled"
 # DynamoDB expression attribute placeholders use short contract tokens.
 ot = "ot"

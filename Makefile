@@ -1,4 +1,4 @@
-.PHONY: build coverage test ci vendor lint lint-fix mock install-buck2 clean
+.PHONY: build coverage test ci vendor lint lint-fix lint-bin mock install-buck2 clean
 
 TEST_TARGETS := //...
 TEST_MODIFIERS := -m toolchains//:race
@@ -21,11 +21,14 @@ vendor: clean
 	go mod vendor
 	buck2 run prelude//go/tools/gobuckify:gobuckify -- .
 
-lint:
-	./hack/lint.sh
+lint: lint-bin
+	GOLANGCI_LINT=./bin/golangci-lint-custom ./hack/lint.sh
 
-lint-fix:
-	./hack/lint.sh fix
+lint-fix: lint-bin
+	GOLANGCI_LINT=./bin/golangci-lint-custom ./hack/lint.sh fix
+
+lint-bin:
+	golangci-lint custom
 
 mock:
 	rm -f internal/mock/*_mock.go

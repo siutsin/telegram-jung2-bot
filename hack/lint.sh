@@ -7,6 +7,8 @@ if [[ "${mode}" != "check" && "${mode}" != "fix" ]]; then
   exit 2
 fi
 
+golangci_lint="${GOLANGCI_LINT:-golangci-lint}"
+
 go_files=()
 while IFS= read -r go_file; do
   go_files+=("${go_file}")
@@ -46,6 +48,9 @@ if ((${#go_files[@]} > 0)); then
 fi
 
 go_packages=(./cmd/...)
+if [[ -d ./tools ]]; then
+  go_packages+=(./tools/...)
+fi
 while IFS= read -r go_package; do
   go_packages+=("${go_package}/...")
 done < <(find ./internal \
@@ -71,11 +76,11 @@ typos_args=(
 )
 
 if [[ "${mode}" == "fix" ]]; then
-  golangci-lint run --fix "${go_packages[@]}"
+  "${golangci_lint}" run --fix "${go_packages[@]}"
   typos --write-changes "${typos_args[@]}"
   markdownlint-cli2 --fix
 else
-  golangci-lint run "${go_packages[@]}"
+  "${golangci_lint}" run "${go_packages[@]}"
   typos "${typos_args[@]}"
   markdownlint-cli2
 fi

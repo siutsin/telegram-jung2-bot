@@ -17,7 +17,7 @@ type page[T any] struct {
 // messages, chat settings, and chat IDs.
 func collectPages[T any](
 	ctx context.Context,
-	fetch func(ctx context.Context, exclusiveStartKey map[string]any) (page[T], error),
+	fetch func(pageCtx context.Context, exclusiveStartKey map[string]any) (page[T], error),
 ) ([]T, error) {
 	var rows []T
 	var startKey map[string]any

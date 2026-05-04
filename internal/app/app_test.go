@@ -30,13 +30,13 @@ func TestRunStartsProcessesAndCancelsWorker(t *testing.T) {
 		<-shutdown
 		return nil
 	})
-	httpServer.EXPECT().Shutdown(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+	httpServer.EXPECT().Shutdown(gomock.Any()).DoAndReturn(func(mockCtx context.Context) error {
 		shutdownCalled.Store(true)
 		close(shutdown)
 		return nil
 	})
-	queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
-		<-ctx.Done()
+	queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(mockCtx context.Context) error {
+		<-mockCtx.Done()
 		workerCancelled.Store(true)
 		return nil
 	})
@@ -83,8 +83,8 @@ func TestRunReturnsHTTPServerError(t *testing.T) {
 	httpServer, queueWorker := newMocks(t)
 	httpServer.EXPECT().ListenAndServe().Return(errors.New("boom"))
 	httpServer.EXPECT().Shutdown(gomock.Any()).Return(nil)
-	queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
-		<-ctx.Done()
+	queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(mockCtx context.Context) error {
+		<-mockCtx.Done()
 		return nil
 	})
 	application := New(httpServer, queueWorker, Options{ShutdownTimeout: time.Second})
@@ -103,7 +103,7 @@ func TestRunReturnsQueueWorkerError(t *testing.T) {
 		<-shutdown
 		return nil
 	})
-	httpServer.EXPECT().Shutdown(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+	httpServer.EXPECT().Shutdown(gomock.Any()).DoAndReturn(func(mockCtx context.Context) error {
 		close(shutdown)
 		return nil
 	})
@@ -121,8 +121,8 @@ func TestRunReturnsNilWhenComponentStopsCleanly(t *testing.T) {
 	httpServer, queueWorker := newMocks(t)
 	httpServer.EXPECT().ListenAndServe().Return(nil)
 	httpServer.EXPECT().Shutdown(gomock.Any()).Return(nil)
-	queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
-		<-ctx.Done()
+	queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(mockCtx context.Context) error {
+		<-mockCtx.Done()
 		return nil
 	})
 	application := New(httpServer, queueWorker, Options{ShutdownTimeout: time.Second})
@@ -139,7 +139,7 @@ func TestRunReturnsShutdownErrorAfterComponentFailure(t *testing.T) {
 		<-shutdown
 		return nil
 	})
-	httpServer.EXPECT().Shutdown(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+	httpServer.EXPECT().Shutdown(gomock.Any()).DoAndReturn(func(mockCtx context.Context) error {
 		close(shutdown)
 		return errors.New("shutdown boom")
 	})
@@ -163,12 +163,12 @@ func TestRunIgnoresExpectedHTTPServerClosed(t *testing.T) {
 		<-shutdown
 		return http.ErrServerClosed
 	})
-	httpServer.EXPECT().Shutdown(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+	httpServer.EXPECT().Shutdown(gomock.Any()).DoAndReturn(func(mockCtx context.Context) error {
 		close(shutdown)
 		return nil
 	})
-	queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
-		<-ctx.Done()
+	queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(mockCtx context.Context) error {
+		<-mockCtx.Done()
 		return nil
 	})
 	application := New(httpServer, queueWorker, Options{ShutdownTimeout: time.Millisecond})
@@ -188,13 +188,13 @@ func TestRunIgnoresExpectedWorkerCancellation(t *testing.T) {
 		<-shutdown
 		return nil
 	})
-	httpServer.EXPECT().Shutdown(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+	httpServer.EXPECT().Shutdown(gomock.Any()).DoAndReturn(func(mockCtx context.Context) error {
 		close(shutdown)
 		return nil
 	})
-	queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
-		<-ctx.Done()
-		return ctx.Err()
+	queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(mockCtx context.Context) error {
+		<-mockCtx.Done()
+		return mockCtx.Err()
 	})
 	application := New(httpServer, queueWorker, Options{ShutdownTimeout: time.Millisecond})
 
@@ -215,12 +215,12 @@ func TestRunReturnsShutdownError(t *testing.T) {
 		<-shutdown
 		return nil
 	})
-	httpServer.EXPECT().Shutdown(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+	httpServer.EXPECT().Shutdown(gomock.Any()).DoAndReturn(func(mockCtx context.Context) error {
 		close(shutdown)
 		return errors.New("boom")
 	})
-	queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
-		<-ctx.Done()
+	queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(mockCtx context.Context) error {
+		<-mockCtx.Done()
 		return nil
 	})
 	application := New(httpServer, queueWorker, Options{ShutdownTimeout: time.Millisecond})
@@ -249,13 +249,13 @@ func TestRunHandlesRepeatedConcurrentShutdownInterleavings(t *testing.T) {
 					<-shutdown
 					return nil
 				})
-				httpServer.EXPECT().Shutdown(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+				httpServer.EXPECT().Shutdown(gomock.Any()).DoAndReturn(func(mockCtx context.Context) error {
 					close(shutdown)
 					return nil
 				})
-				queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+				queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(mockCtx context.Context) error {
 					started <- struct{}{}
-					<-ctx.Done()
+					<-mockCtx.Done()
 					return nil
 				})
 
@@ -277,11 +277,11 @@ func TestRunHandlesRepeatedConcurrentShutdownInterleavings(t *testing.T) {
 					<-shutdown
 					return nil
 				})
-				httpServer.EXPECT().Shutdown(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+				httpServer.EXPECT().Shutdown(gomock.Any()).DoAndReturn(func(mockCtx context.Context) error {
 					close(shutdown)
 					return nil
 				})
-				queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+				queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(mockCtx context.Context) error {
 					started <- struct{}{}
 					<-workerRelease
 					return errors.New("boom")
@@ -306,9 +306,9 @@ func TestRunHandlesRepeatedConcurrentShutdownInterleavings(t *testing.T) {
 					return errors.New("boom")
 				})
 				httpServer.EXPECT().Shutdown(gomock.Any()).Return(nil)
-				queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+				queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(mockCtx context.Context) error {
 					started <- struct{}{}
-					<-ctx.Done()
+					<-mockCtx.Done()
 					return nil
 				})
 

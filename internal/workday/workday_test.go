@@ -131,8 +131,8 @@ func TestContainsChecksDateWeekday(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			date, err := time.Parse(time.RFC3339, test.date)
-			require.NoError(t, err)
+			date, parseErr := time.Parse(time.RFC3339, test.date)
+			require.NoError(t, parseErr)
 
 			assert.Equal(t, test.want, Contains(workdays, date))
 		})

@@ -1,0 +1,18 @@
+go_library(
+    name = "noshadow",
+    srcs = glob(["*.go"], exclude = ["*_test.go"]),
+    package_name = "github.com/siutsin/telegram-jung2-bot/tools/noshadow",
+    deps = [
+        "//vendor/golang.org/x/tools/go/analysis:analysis",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+go_test(
+    name = "noshadow_test",
+    srcs = glob(["*.go"]),
+    deps = [
+        "//vendor/golang.org/x/tools/go/analysis:analysis",
+        ":noshadow",
+    ],
+)

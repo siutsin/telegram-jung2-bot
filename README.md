@@ -78,15 +78,16 @@ vendoring. `make lint` runs first.
 make coverage
 ```
 
-Runs the Buck-built Go coverage check and fails unless `internal/` statement
-coverage is 100%. It reuses the same Buck test target set and race mode as
-`make test`.
+Runs the Buck-built Go coverage check and fails unless the packages included by
+`hack/test-coverage.sh` have 100% statement coverage. It reuses the same Buck
+test target set and race mode as `make test`.
 
 ```bash
 make lint
 ```
 
-Runs Go, shell, spelling, and Markdown lint checks.
+Builds the repo's custom golangci-lint binary, then runs Go, shell, spelling,
+and Markdown lint checks.
 
 ```bash
 make lint-fix

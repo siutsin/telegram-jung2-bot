@@ -23,12 +23,19 @@ linters:
     - nilerr        # Reject error branches that accidentally return nil.
     - nilnil        # Reject returning both a nil error and an invalid nil value combination.
     - nilnesserr    # Catch mismatched nil return values in error-handling branches.
+    - noshadow      # Reject declarations that shadow names from an outer scope.
     - nolintlint    # Keep nolint directives specific and justified.
     - revive        # Provide configurable, actively maintained style and correctness checks.
     - testifylint   # Catch misuse of testify assertions in tests.
     - unconvert     # Remove unnecessary type conversions.
     - unparam       # Find parameters that are never used by callees.
   settings:
+    custom:
+      noshadow:
+        type: module
+        description: Reports declarations that shadow names from an outer scope.
+        settings:
+          testT: true
     errcheck:
       # Surface intentionally ignored writes and unsafe type assertions.
       check-blank: true

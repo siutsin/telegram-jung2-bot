@@ -1,0 +1,9 @@
+go_test(
+    name = "golangci_test",
+    srcs = glob(["*.go"]),
+    deps = [
+        "//vendor/github.com/golangci/plugin-module-register/register:register",
+        "//vendor/golang.org/x/tools/go/analysis:analysis",
+        "//tools/noshadow:noshadow",
+    ],
+)

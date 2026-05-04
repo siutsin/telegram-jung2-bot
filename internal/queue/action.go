@@ -135,11 +135,11 @@ func (consumer Consumer) Poll(ctx context.Context, handler Handler) error {
 	)
 	for _, message := range response.Messages {
 		waiter.Go(func() {
-			err := handler(ctx, message)
-			if err != nil {
+			handlerErr := handler(ctx, message)
+			if handlerErr != nil {
 				mutex.Lock()
 				if firstErr == nil {
-					firstErr = err
+					firstErr = handlerErr
 				}
 				mutex.Unlock()
 			}
@@ -203,8 +203,8 @@ func DecodeMessage(message RawMessage) (Action, error) {
 	}
 
 	attributes := make(map[string]string, len(message.MessageAttributes))
-	for name, attribute := range message.MessageAttributes {
-		attributes[name] = attribute.value()
+	for name, messageAttribute := range message.MessageAttributes {
+		attributes[name] = messageAttribute.value()
 	}
 
 	return Action{
