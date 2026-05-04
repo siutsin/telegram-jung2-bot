@@ -13,7 +13,7 @@ import (
 func TestHealth(t *testing.T) {
 	t.Parallel()
 
-	assert.Equal(t, response{StatusCode: 200, Message: "ok"}, health())
+	assert.Equal(t, response{statusCode: 200, message: "ok"}, health())
 }
 
 func TestNewServerBuildsConfiguredHTTPServer(t *testing.T) {

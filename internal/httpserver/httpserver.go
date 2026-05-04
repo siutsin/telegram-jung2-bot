@@ -15,8 +15,8 @@ import (
 )
 
 type response struct {
-	StatusCode int
-	Message    string
+	statusCode int
+	message    string
 }
 
 type messageSaver interface {
@@ -52,8 +52,8 @@ type Dependencies struct {
 
 type serverDeps struct {
 	Dependencies
-	MaxBodyBytes int64
-	Stage        string
+	maxBodyBytes int64
+	stage        string
 }
 
 // NewServer builds the production HTTP server from validated runtime values.
@@ -67,7 +67,7 @@ func NewServer(address string, timeout time.Duration, stage string, dependencies
 		Addr: address,
 		Handler: newHandler(serverDeps{
 			Dependencies: dependencies,
-			Stage:        stage,
+			stage:        stage,
 		}),
 		ReadHeaderTimeout: timeout,
 		ReadTimeout:       timeout,
@@ -78,5 +78,5 @@ func NewServer(address string, timeout time.Duration, stage string, dependencies
 
 // Health returns the health check response.
 func health() response {
-	return response{StatusCode: 200, Message: "ok"}
+	return response{statusCode: 200, message: "ok"}
 }

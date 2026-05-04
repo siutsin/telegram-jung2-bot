@@ -12,21 +12,21 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-//go:generate sh -c "GOFLAGS=-mod=mod go run go.uber.org/mock/mockgen -source=app.go -destination=../mock/app_mock.go -package=mock"
+//go:generate sh -c "GOFLAGS=-mod=mod go run go.uber.org/mock/mockgen -source=app.go -destination=../mock/app_mock.go -package=mock -mock_names httpRunner=MockHTTPRunner,queueRunner=MockQueueWorker"
 
-type HTTPRunner interface {
+type httpRunner interface {
 	ListenAndServe() error
 	Shutdown(ctx context.Context) error
 }
 
-type QueueWorker interface {
+type queueRunner interface {
 	Run(ctx context.Context) error
 }
 
-// App wraps the configured application processes.
-type App struct {
-	httpServer      HTTPRunner
-	queueWorker     QueueWorker
+// runtimeApp wraps the configured application processes.
+type runtimeApp struct {
+	httpServer      httpRunner
+	queueWorker     queueRunner
 	shutdownTimeout time.Duration
 }
 
@@ -36,8 +36,8 @@ type Options struct {
 }
 
 // New constructs an application with the provided processes and options.
-func New(httpServer HTTPRunner, queueWorker QueueWorker, options Options) *App {
-	return &App{
+func New(httpServer httpRunner, queueWorker queueRunner, options Options) *runtimeApp {
+	return &runtimeApp{
 		httpServer:      httpServer,
 		queueWorker:     queueWorker,
 		shutdownTimeout: shutdownTimeout(options),
@@ -45,7 +45,7 @@ func New(httpServer HTTPRunner, queueWorker QueueWorker, options Options) *App {
 }
 
 // Run starts the configured application.
-func (app *App) Run(ctx context.Context) error {
+func (app *runtimeApp) Run(ctx context.Context) error {
 	if app == nil || app.httpServer == nil {
 		return fmt.Errorf("http server is required")
 	}
@@ -105,7 +105,7 @@ func (app *App) Run(ctx context.Context) error {
 }
 
 // shutdownHTTP stops the HTTP server with a timeout.
-func shutdownHTTP(httpServer HTTPRunner, timeout time.Duration) error {
+func shutdownHTTP(httpServer httpRunner, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 

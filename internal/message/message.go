@@ -3,7 +3,6 @@ package message
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/siutsin/telegram-jung2-bot/internal/telegram"
@@ -28,16 +27,6 @@ type Message struct {
 	FirstName   string
 	LastName    string
 	TTL         int64
-}
-
-// updateExpression describes the contract DynamoDB update request shape without
-// depending on the AWS SDK.
-type updateExpression struct {
-	TableName                 string
-	Key                       map[string]any
-	UpdateExpression          string
-	ExpressionAttributeNames  map[string]string
-	ExpressionAttributeValues map[string]any
 }
 
 // FromTelegram converts a Telegram message into the stored message model.
@@ -83,70 +72,4 @@ func ParseDateCreated(raw string) (time.Time, error) {
 // For example, now plus seven days becomes the Unix expiry stored in ttl.
 func TTL(now time.Time, retention time.Duration) int64 {
 	return now.Add(retention).Unix()
-}
-
-// BuildSaveUpdate builds the contract DynamoDB update shape for a message row.
-// For example, a message with username and firstName adds only those non-empty
-// fields to the SET clause.
-func BuildSaveUpdate(tableName string, message Message) updateExpression {
-	attributeNames := make(map[string]string)
-	attributeValues := make(map[string]any)
-	assignments := make([]string, 0, 6)
-
-	attributes := []struct {
-		name  string
-		value any
-	}{
-		{name: "chatTitle", value: message.ChatTitle},
-		{name: "userId", value: message.UserID},
-		{name: "username", value: message.Username},
-		{name: "firstName", value: message.FirstName},
-		{name: "lastName", value: message.LastName},
-		{name: "ttl", value: message.TTL},
-	}
-	for _, attribute := range attributes {
-		assignments = addAttribute(assignments, attributeNames, attributeValues, attribute.name, attribute.value)
-	}
-
-	return updateExpression{
-		TableName: tableName,
-		Key: map[string]any{
-			"chatId":      message.ChatID,
-			"dateCreated": FormatDateCreated(message.DateCreated),
-		},
-		UpdateExpression:          "SET " + strings.Join(assignments, ", "),
-		ExpressionAttributeNames:  attributeNames,
-		ExpressionAttributeValues: attributeValues,
-	}
-}
-
-// addAttribute adds a non-zero contract attribute to an update.
-// For example, "username", "alice" appends "#username = :username".
-func addAttribute(
-	assignments []string,
-	names map[string]string,
-	values map[string]any,
-	name string,
-	value any,
-) []string {
-	if isZeroAttributeValue(value) {
-		return assignments
-	}
-
-	placeholder := "#" + name
-	valuePlaceholder := ":" + name
-	names[placeholder] = name
-	values[valuePlaceholder] = value
-	return append(assignments, placeholder+" = "+valuePlaceholder)
-}
-
-func isZeroAttributeValue(value any) bool {
-	switch typedValue := value.(type) {
-	case string:
-		return typedValue == ""
-	case int64:
-		return typedValue == 0
-	default:
-		return value == nil
-	}
 }

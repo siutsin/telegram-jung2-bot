@@ -8,7 +8,7 @@ It:
 
 - defines stable action names and bodies
 - decodes raw queue messages
-- builds send and delete requests
+- builds send requests
 - polls and dispatches queue batches
 - adapts the AWS SQS SDK
 
@@ -26,24 +26,30 @@ This package depends on:
 
 ```mermaid
 flowchart TD
-    action[Action] --> build[BuildSendMessageRequest]
-    build --> producer[Producer.Enqueue]
-    producer --> sqs[SQS]
+    action[Action] --> build[buildSendMessageRequest]
+    build --> producer[NewProducer]
+    producer --> enqueue[Enqueue]
+    enqueue --> sqs[SQS]
 ```
 
-- `Producer` turns one action into the contract SQS send shape
+- `NewProducer` returns the package-local producer used by callers through its
+  `Enqueue` method.
+- `buildSendMessageRequest` turns one action into the contract SQS send shape.
 
 ### Consume flow
 
 ```mermaid
 flowchart TD
-    consumer[Consumer.Poll] --> receive[ReceiveMessage]
+    consumer[NewConsumer] --> poll[Poll]
+    poll --> receive[ReceiveMessage]
     receive --> raw[RawMessage]
     raw --> decode[DecodeMessage]
-    decode --> handler[Handler]
+    decode --> handler[handler function]
 ```
 
-- `Consumer.Poll` receives one batch
+- `NewConsumer` returns the package-local consumer used by the worker through
+  its `Poll` method.
+- `Poll` receives one batch
 - each message is handled concurrently inside the batch
 - the first handler error is returned
 

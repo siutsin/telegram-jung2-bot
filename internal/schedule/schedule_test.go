@@ -20,7 +20,7 @@ func TestServiceSyncChat(t *testing.T) {
 	scheduler := &fakeScheduler{}
 	settings := chat.ChatSetting{ChatID: 123}
 
-	err := (Service{Scheduler: scheduler}).SyncChat(context.Background(), settings)
+	err := (scheduleService{scheduler: scheduler}).syncChat(context.Background(), settings)
 
 	require.NoError(t, err)
 	assert.Equal(t, []chat.ChatSetting{settings}, scheduler.synced)
@@ -29,7 +29,7 @@ func TestServiceSyncChat(t *testing.T) {
 func TestServiceSyncChatRequiresScheduler(t *testing.T) {
 	t.Parallel()
 
-	err := (Service{}).SyncChat(context.Background(), chat.ChatSetting{})
+	err := (scheduleService{}).syncChat(context.Background(), chat.ChatSetting{})
 
 	require.Error(t, err)
 	assert.EqualError(t, err, "scheduler is required")
@@ -38,7 +38,7 @@ func TestServiceSyncChatRequiresScheduler(t *testing.T) {
 func TestServiceSyncChatWrapsSchedulerError(t *testing.T) {
 	t.Parallel()
 
-	err := (Service{Scheduler: &fakeScheduler{err: errors.New("boom")}}).SyncChat(context.Background(), chat.ChatSetting{})
+	err := (scheduleService{scheduler: &fakeScheduler{err: errors.New("boom")}}).syncChat(context.Background(), chat.ChatSetting{})
 
 	require.Error(t, err)
 	assert.EqualError(t, err, "sync chat schedule: boom")
@@ -54,7 +54,7 @@ func TestServiceHandleDueReportEnqueuesDueChats(t *testing.T) {
 		{ChatID: 3, OffTime: "1800", HasOffTime: true, Workday: workday.Workdays(workday.Fri), HasWorkday: true},
 	}
 
-	err := (Service{Chats: &fakeChatRepository{rows: rows}, Enqueuer: enqueuer}).HandleDueReport(context.Background(), time.Date(2022, 3, 4, 10, 0, 0, 0, time.UTC))
+	err := (scheduleService{chats: &fakeChatRepository{rows: rows}, enqueuer: enqueuer}).handleDueReport(context.Background(), time.Date(2022, 3, 4, 10, 0, 0, 0, time.UTC))
 
 	require.NoError(t, err)
 	assert.Equal(t, []queue.Action{BuildOffFromWorkAction(1), BuildOffFromWorkAction(2)}, enqueuer.actions)
@@ -66,18 +66,18 @@ func TestServiceHandleDueReportSetupErrors(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		service Service
-		wantErr string
+		name            string
+		scheduleService scheduleService
+		wantErr         string
 	}{
-		{name: "missing chats", service: Service{Enqueuer: &fakeEnqueuer{}}, wantErr: "chat repository is required"},
-		{name: "missing enqueuer", service: Service{Chats: &fakeChatRepository{}}, wantErr: "enqueuer is required"},
-		{name: "list error", service: Service{Chats: &fakeChatRepository{err: errors.New("boom")}, Enqueuer: &fakeEnqueuer{}}, wantErr: "list due chats: boom"},
+		{name: "missing chats", scheduleService: scheduleService{enqueuer: &fakeEnqueuer{}}, wantErr: "chat repository is required"},
+		{name: "missing enqueuer", scheduleService: scheduleService{chats: &fakeChatRepository{}}, wantErr: "enqueuer is required"},
+		{name: "list error", scheduleService: scheduleService{chats: &fakeChatRepository{err: errors.New("boom")}, enqueuer: &fakeEnqueuer{}}, wantErr: "list due chats: boom"},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := test.service.HandleDueReport(context.Background(), time.Time{})
+			err := test.scheduleService.handleDueReport(context.Background(), time.Time{})
 
 			require.Error(t, err)
 			assert.EqualError(t, err, test.wantErr)
@@ -88,10 +88,10 @@ func TestServiceHandleDueReportSetupErrors(t *testing.T) {
 func TestServiceHandleDueReportWrapsEnqueueError(t *testing.T) {
 	t.Parallel()
 
-	err := (Service{
-		Chats:    &fakeChatRepository{rows: []chat.ChatSetting{{ChatID: 1}}},
-		Enqueuer: &fakeEnqueuer{err: errors.New("boom")},
-	}).HandleDueReport(context.Background(), time.Date(2022, 3, 4, 10, 0, 0, 0, time.UTC))
+	err := (scheduleService{
+		chats:    &fakeChatRepository{rows: []chat.ChatSetting{{ChatID: 1}}},
+		enqueuer: &fakeEnqueuer{err: errors.New("boom")},
+	}).handleDueReport(context.Background(), time.Date(2022, 3, 4, 10, 0, 0, 0, time.UTC))
 
 	require.Error(t, err)
 	assert.EqualError(t, err, "enqueue due off-work report: boom")
@@ -100,17 +100,17 @@ func TestServiceHandleDueReportWrapsEnqueueError(t *testing.T) {
 func TestWindowFromTime(t *testing.T) {
 	t.Parallel()
 
-	window := WindowFromTime(time.Date(2022, 3, 4, 10, 0, 0, 0, time.UTC))
+	view := WindowFromTime(time.Date(2022, 3, 4, 10, 0, 0, 0, time.UTC))
 
-	assert.Equal(t, Window{OffTime: "1000", Weekday: "FRI"}, window)
+	assert.Equal(t, window{OffTime: "1000", Weekday: "FRI"}, view)
 }
 
 func TestWindowFromTimeNormalisesToUTC(t *testing.T) {
 	t.Parallel()
 
-	window := WindowFromTime(time.Date(2022, 3, 4, 18, 0, 0, 0, time.FixedZone("UTC+8", 8*60*60)))
+	view := WindowFromTime(time.Date(2022, 3, 4, 18, 0, 0, 0, time.FixedZone("UTC+8", 8*60*60)))
 
-	assert.Equal(t, Window{OffTime: "1000", Weekday: "FRI"}, window)
+	assert.Equal(t, window{OffTime: "1000", Weekday: "FRI"}, view)
 }
 
 func TestDueChatIDs(t *testing.T) {

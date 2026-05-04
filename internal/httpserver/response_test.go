@@ -43,7 +43,7 @@ func TestWriteResponseLogsWriteError(t *testing.T) {
 
 	writer := &errorResponseWriter{header: make(http.Header)}
 
-	writeResponse(writer, response{StatusCode: http.StatusOK, Message: "ok"})
+	writeResponse(writer, response{statusCode: http.StatusOK, message: "ok"})
 }
 
 func TestWriteStageWebhookResponseIncludesSuccessMessage(t *testing.T) {
@@ -51,7 +51,7 @@ func TestWriteStageWebhookResponseIncludesSuccessMessage(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 
-	writeStageWebhookResponse(recorder, response{StatusCode: http.StatusAccepted, Message: "ok"})
+	writeStageWebhookResponse(recorder, response{statusCode: http.StatusAccepted, message: "ok"})
 
 	assert.Equal(t, http.StatusAccepted, recorder.Code)
 	assert.JSONEq(t, `{"statusCode":202,"message":"ok"}`, recorder.Body.String())

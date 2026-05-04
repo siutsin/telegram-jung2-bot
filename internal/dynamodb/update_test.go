@@ -57,13 +57,13 @@ func TestUpdateItem(t *testing.T) {
 				})
 
 			err := updateItem(context.Background(), dynamoClient, itemUpdateRequest{
-				TableName:        "chats",
-				Key:              map[string]any{"chatId": int64(42)},
-				UpdateExpression: "SET #ot = :ot",
-				ExpressionAttributeNames: map[string]string{
+				tableName:        "chats",
+				key:              map[string]any{"chatId": int64(42)},
+				updateExpression: "SET #ot = :ot",
+				expressionAttributeNames: map[string]string{
 					"#ot": "offTime",
 				},
-				ExpressionAttributeValues: map[string]any{
+				expressionAttributeValues: map[string]any{
 					":ot": "1830",
 				},
 			})

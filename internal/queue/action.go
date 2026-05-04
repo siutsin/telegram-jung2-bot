@@ -72,11 +72,6 @@ type ReceiveMessageResponse struct {
 	Messages []RawMessage
 }
 
-// Event is the Lambda SQS event wrapper consumed by the contract handler.
-type Event struct {
-	Records []RawMessage `json:"Records"`
-}
-
 type Sender interface {
 	SendMessage(ctx context.Context, request SendMessageRequest) error
 }
@@ -85,19 +80,22 @@ type Receiver interface {
 	ReceiveMessage(ctx context.Context, request ReceiveMessageRequest) (ReceiveMessageResponse, error)
 }
 
-type Handler func(ctx context.Context, message RawMessage) error
+type producer struct {
+	queueURL string
+	sender   Sender
+}
 
-type Producer struct {
-	QueueURL string
-	Sender   Sender
+// NewProducer builds a queue producer.
+func NewProducer(queueURL string, sender Sender) producer {
+	return producer{queueURL: queueURL, sender: sender}
 }
 
 // Enqueue sends an action to the queue.
-func (producer Producer) Enqueue(ctx context.Context, action Action) error {
-	if producer.Sender == nil {
+func (p producer) Enqueue(ctx context.Context, action Action) error {
+	if p.sender == nil {
 		return fmt.Errorf("queue sender is required")
 	}
-	err := producer.Sender.SendMessage(ctx, BuildSendMessageRequest(producer.QueueURL, action))
+	err := p.sender.SendMessage(ctx, buildSendMessageRequest(p.queueURL, action))
 	if err != nil {
 		return fmt.Errorf("send SQS message: %w", err)
 	}
@@ -105,25 +103,30 @@ func (producer Producer) Enqueue(ctx context.Context, action Action) error {
 	return nil
 }
 
-type Consumer struct {
-	QueueURL            string
-	Receiver            Receiver
-	MaxNumberOfMessages int
-	WaitTimeSeconds     int
+type consumer struct {
+	queueURL            string
+	receiver            Receiver
+	maxNumberOfMessages int
+	waitTimeSeconds     int
+}
+
+// NewConsumer builds a queue consumer with default receive options.
+func NewConsumer(queueURL string, receiver Receiver) consumer {
+	return consumer{queueURL: queueURL, receiver: receiver}
 }
 
 // Poll receives queue messages and dispatches them to handler.
-func (consumer Consumer) Poll(ctx context.Context, handler Handler) error {
-	if consumer.Receiver == nil {
+func (c consumer) Poll(ctx context.Context, handler func(context.Context, RawMessage) error) error {
+	if c.receiver == nil {
 		return fmt.Errorf("queue receiver is required")
 	}
 	if handler == nil {
 		return fmt.Errorf("queue handler is required")
 	}
-	response, err := consumer.Receiver.ReceiveMessage(ctx, ReceiveMessageRequest{
-		QueueURL:            consumer.QueueURL,
-		MaxNumberOfMessages: maxNumberOfMessages(consumer.MaxNumberOfMessages),
-		WaitTimeSeconds:     waitTimeSeconds(consumer.WaitTimeSeconds),
+	response, err := c.receiver.ReceiveMessage(ctx, ReceiveMessageRequest{
+		QueueURL:            c.queueURL,
+		MaxNumberOfMessages: maxNumberOfMessages(c.maxNumberOfMessages),
+		WaitTimeSeconds:     waitTimeSeconds(c.waitTimeSeconds),
 	})
 	if err != nil {
 		return fmt.Errorf("receive SQS messages: %w", err)
@@ -215,17 +218,6 @@ func DecodeMessage(message RawMessage) (Action, error) {
 	}, nil
 }
 
-// DecodeEvent converts the first record from a contract Lambda SQS event into an
-// action, matching contract SQS.onEvent behaviour. For example, an event with
-// one topTen record becomes the decoded topTen action.
-func DecodeEvent(event Event) (Action, error) {
-	if len(event.Records) == 0 {
-		return Action{}, fmt.Errorf("missing SQS event record")
-	}
-
-	return DecodeMessage(event.Records[0])
-}
-
 // messageBodyText returns the raw body as a plain string.
 // For example, JSON body "\"hello\"" becomes "hello".
 func messageBodyText(body json.RawMessage) string {
@@ -238,10 +230,10 @@ func messageBodyText(body json.RawMessage) string {
 	return string(body)
 }
 
-// BuildSendMessageRequest converts an action into the contract SQS request shape.
+// buildSendMessageRequest converts an action into the contract SQS request shape.
 // For example, chatId "42" becomes a Number attribute, while action stays a
 // String attribute.
-func BuildSendMessageRequest(queueURL string, action Action) SendMessageRequest {
+func buildSendMessageRequest(queueURL string, action Action) SendMessageRequest {
 	attributes := make(map[string]SendMessageAttribute, len(action.Attributes))
 	for name, value := range action.Attributes {
 		dataType := "String"
@@ -261,10 +253,10 @@ func BuildSendMessageRequest(queueURL string, action Action) SendMessageRequest 
 	}
 }
 
-// BuildDeleteMessageRequest converts a consumed raw message into delete params.
+// buildDeleteMessageRequest converts a consumed raw message into delete params.
 // For example, receiptHandle "abc" becomes DeleteMessageRequest{ReceiptHandle:
 // "abc"}.
-func BuildDeleteMessageRequest(queueURL string, message RawMessage) DeleteMessageRequest {
+func buildDeleteMessageRequest(queueURL string, message RawMessage) DeleteMessageRequest {
 	return DeleteMessageRequest{
 		QueueURL:      queueURL,
 		ReceiptHandle: message.ReceiptHandle,

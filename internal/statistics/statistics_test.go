@@ -17,28 +17,28 @@ func TestNormaliseRowsRanksByMessageCount(t *testing.T) {
 	t.Parallel()
 
 	rows := sampleRows()
-	normalised := NormaliseRows(rows, false)
+	normalised := normaliseRows(rows, false)
 
-	require.Len(t, normalised.Rankings, 3)
-	assert.Equal(t, 5, normalised.TotalMessage)
-	assert.Equal(t, int64(1), normalised.Rankings[0].UserID)
-	assert.Equal(t, 3, normalised.Rankings[0].Count)
-	assert.Equal(t, "Ada Lovelace", normalised.Rankings[0].FullName)
-	assert.Equal(t, int64(2), normalised.Rankings[1].UserID)
-	assert.Equal(t, " ", normalised.Rankings[1].FullName)
-	assert.Equal(t, int64(3), normalised.Rankings[2].UserID)
-	assert.Equal(t, " ", normalised.Rankings[2].FullName)
+	require.Len(t, normalised.rankings, 3)
+	assert.Equal(t, 5, normalised.totalMessage)
+	assert.Equal(t, int64(1), normalised.rankings[0].userID)
+	assert.Equal(t, 3, normalised.rankings[0].count)
+	assert.Equal(t, "Ada Lovelace", normalised.rankings[0].fullName)
+	assert.Equal(t, int64(2), normalised.rankings[1].userID)
+	assert.Equal(t, " ", normalised.rankings[1].fullName)
+	assert.Equal(t, int64(3), normalised.rankings[2].userID)
+	assert.Equal(t, " ", normalised.rankings[2].fullName)
 }
 
 func TestNormaliseRowsRanksDiversByLowMessageCount(t *testing.T) {
 	t.Parallel()
 
-	normalised := NormaliseRows(sampleRows(), true)
+	normalised := normaliseRows(sampleRows(), true)
 
 	assert.Equal(t, []int64{2, 3, 1}, []int64{
-		normalised.Rankings[0].UserID,
-		normalised.Rankings[1].UserID,
-		normalised.Rankings[2].UserID,
+		normalised.rankings[0].userID,
+		normalised.rankings[1].userID,
+		normalised.rankings[2].userID,
 	})
 }
 
@@ -65,10 +65,10 @@ func TestGenerateTopTenReport(t *testing.T) {
 func TestTopTenRender(t *testing.T) {
 	t.Parallel()
 
-	report := TopTen(sampleRows())
-	report.Options.Now = now()
+	report := topTen(sampleRows())
+	report.options.Now = now()
 
-	rendered := Render(report)
+	rendered := render(report)
 
 	assert.Contains(t, rendered, "Top 10 冗員s")
 	assert.Contains(t, rendered, "1. Ada Lovelace 60.00%")
@@ -87,10 +87,10 @@ func TestGenerateAllJungReport(t *testing.T) {
 func TestAllJungRender(t *testing.T) {
 	t.Parallel()
 
-	report := AllJung(sampleRows())
-	report.Options.Now = now()
+	report := allJung(sampleRows())
+	report.options.Now = now()
 
-	rendered := Render(report)
+	rendered := render(report)
 
 	assert.Contains(t, rendered, "All 冗員s")
 	assert.Contains(t, rendered, "3.   20.00%")
@@ -116,13 +116,11 @@ func TestGenerateTopDiverReport(t *testing.T) {
 func TestTopDiverUsesOnlyMessageRowsForContractParity(t *testing.T) {
 	t.Parallel()
 
-	report := TopDiver(sampleRows(), []telegram.User{
-		{ID: 1, FirstName: "Ada"},
-		{ID: 4, FirstName: "Silent", LastName: "User"},
-	})
-	report.Options.Now = now()
+	report := topDiver(sampleRows())
 
-	rendered := Render(report)
+	report.options.Now = now()
+
+	rendered := render(report)
 
 	assert.NotContains(t, rendered, "Silent User")
 }
@@ -130,7 +128,7 @@ func TestTopDiverUsesOnlyMessageRowsForContractParity(t *testing.T) {
 func TestRenderReturnsEmptyStringForInvalidReport(t *testing.T) {
 	t.Parallel()
 
-	assert.Empty(t, Render(Report{}))
+	assert.Empty(t, render(reportRequest{}))
 }
 
 func TestGenerateOffFromWorkReport(t *testing.T) {
@@ -195,12 +193,12 @@ func TestDisplayNameMatchesReferenceJoinBehaviour(t *testing.T) {
 func TestBuildBodyWithLimitCountsCharactersInsteadOfBytes(t *testing.T) {
 	t.Parallel()
 
-	normalised := NormaliseRows([]message.Message{
+	normalised := normaliseRows([]message.Message{
 		{ChatTitle: "Group", UserID: 1, FirstName: strings.Repeat("冗", 4), DateCreated: now().Add(-time.Hour)},
 		{ChatTitle: "Group", UserID: 2, FirstName: strings.Repeat("冗", 4), DateCreated: now().Add(-2 * time.Hour)},
 	}, false)
 
-	body := BuildBodyWithLimit(normalised, Options{Now: now()}, 40)
+	body := buildBodyWithLimit(normalised, Options{Now: now()}, 40)
 
 	assert.Contains(t, body, "2. 冗冗冗冗")
 }
@@ -208,7 +206,7 @@ func TestBuildBodyWithLimitCountsCharactersInsteadOfBytes(t *testing.T) {
 func TestBuildDiverBodyLimitsToAvailableRows(t *testing.T) {
 	t.Parallel()
 
-	body := BuildDiverBody(NormaliseRows(sampleRows()[:1], true), Options{Limit: 10, Now: now()})
+	body := buildDiverBody(normaliseRows(sampleRows()[:1], true), Options{Limit: 10, Now: now()})
 
 	assert.Equal(t, "1. Ada Lovelace - a day ago\n", body)
 }

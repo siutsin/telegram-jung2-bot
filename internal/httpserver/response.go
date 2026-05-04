@@ -8,24 +8,24 @@ import (
 
 // writeResponse writes a plain response body.
 func writeResponse(writer http.ResponseWriter, result response) {
-	writer.WriteHeader(result.StatusCode)
-	if result.Message != "" && allowsResponseBody(result.StatusCode) {
-		_, err := writer.Write([]byte(result.Message))
+	writer.WriteHeader(result.statusCode)
+	if result.message != "" && allowsResponseBody(result.statusCode) {
+		_, err := writer.Write([]byte(result.message))
 		if err != nil {
-			logHTTPError("write plain response", result.StatusCode, err)
+			logHTTPError("write plain response", result.statusCode, err)
 		}
 	}
 }
 
 // writeStageWebhookResponse writes the stage-compatible webhook response.
-// For example, response{StatusCode: 200, Message: "ok"} becomes
+// For example, response{statusCode: 200, message: "ok"} becomes
 // {"statusCode":200,"message":"ok"}.
 func writeStageWebhookResponse(writer http.ResponseWriter, result response) {
-	body := map[string]any{"statusCode": result.StatusCode}
-	if result.Message != "" && result.StatusCode < http.StatusInternalServerError {
-		body["message"] = result.Message
+	body := map[string]any{"statusCode": result.statusCode}
+	if result.message != "" && result.statusCode < http.StatusInternalServerError {
+		body["message"] = result.message
 	}
-	writeJSONResponse(writer, result.StatusCode, body)
+	writeJSONResponse(writer, result.statusCode, body)
 }
 
 // writeNamedJSONResponse writes the legacy static route response shape.

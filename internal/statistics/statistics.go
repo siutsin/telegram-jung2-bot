@@ -31,32 +31,32 @@ type Summary struct {
 	MessageCount int
 }
 
-type Report struct {
-	Rows    []message.Message
-	Options Options
+type reportRequest struct {
+	rows    []message.Message
+	options Options
 }
 
-type NormalisedRows struct {
-	TotalMessage int
-	Rankings     []Ranking
+type rowSummary struct {
+	totalMessage int
+	rankings     []userRanking
 }
 
-type Ranking struct {
-	UserID      int64
-	ChatTitle   string
-	FirstName   string
-	LastName    string
-	Username    string
-	FullName    string
-	DateCreated time.Time
-	Count       int
+type userRanking struct {
+	userID      int64
+	chatTitle   string
+	firstName   string
+	lastName    string
+	username    string
+	fullName    string
+	dateCreated time.Time
+	count       int
 }
 
-// NormaliseRows groups rows by user and counts messages.
-// For example, two rows from the same user become one ranking with Count 2.
-func NormaliseRows(rows []message.Message, reverse bool) NormalisedRows {
+// normaliseRows groups rows by user and counts messages.
+// For example, two rows from the same user become one ranking with count 2.
+func normaliseRows(rows []message.Message, reverse bool) rowSummary {
 	tally := make(map[int64]int)
-	firstSeen := make([]Ranking, 0, len(rows))
+	firstSeen := make([]userRanking, 0, len(rows))
 	seen := make(map[int64]bool)
 
 	for _, row := range rows {
@@ -65,30 +65,30 @@ func NormaliseRows(rows []message.Message, reverse bool) NormalisedRows {
 			continue
 		}
 		seen[row.UserID] = true
-		firstSeen = append(firstSeen, Ranking{
-			UserID:      row.UserID,
-			ChatTitle:   row.ChatTitle,
-			FirstName:   row.FirstName,
-			LastName:    row.LastName,
-			Username:    row.Username,
-			FullName:    displayName(row),
-			DateCreated: row.DateCreated,
+		firstSeen = append(firstSeen, userRanking{
+			userID:      row.UserID,
+			chatTitle:   row.ChatTitle,
+			firstName:   row.FirstName,
+			lastName:    row.LastName,
+			username:    row.Username,
+			fullName:    displayName(row),
+			dateCreated: row.DateCreated,
 		})
 	}
 
 	for index := range firstSeen {
-		firstSeen[index].Count = tally[firstSeen[index].UserID]
+		firstSeen[index].count = tally[firstSeen[index].userID]
 	}
 	sort.SliceStable(firstSeen, func(left int, right int) bool {
 		if reverse {
-			return firstSeen[left].Count < firstSeen[right].Count
+			return firstSeen[left].count < firstSeen[right].count
 		}
-		return firstSeen[left].Count > firstSeen[right].Count
+		return firstSeen[left].count > firstSeen[right].count
 	})
 
-	return NormalisedRows{
-		TotalMessage: len(rows),
-		Rankings:     firstSeen,
+	return rowSummary{
+		totalMessage: len(rows),
+		rankings:     firstSeen,
 	}
 }
 
@@ -106,10 +106,10 @@ func GenerateReport(rows []message.Message, options Options) (Summary, error) {
 		options.WindowDays = defaultWindowDays
 	}
 
-	normalisedRows := NormaliseRows(rows, options.Reverse)
-	report := BuildHeader(normalisedRows, options)
-	footer := BuildFooter(normalisedRows, options)
-	report += BuildBodyWithLimit(normalisedRows, options, telegram.ReportLimit)
+	normalisedRows := normaliseRows(rows, options.Reverse)
+	report := buildHeader(normalisedRows, options)
+	footer := buildFooter(normalisedRows, options)
+	report += buildBodyWithLimit(normalisedRows, options, telegram.ReportLimit)
 	report += footer
 	if options.OffFromWork {
 		report = "夠鐘收工~~\n\n" + report
@@ -118,39 +118,39 @@ func GenerateReport(rows []message.Message, options Options) (Summary, error) {
 
 	return Summary{
 		Report:       report,
-		UserCount:    len(normalisedRows.Rankings),
-		MessageCount: normalisedRows.TotalMessage,
+		UserCount:    len(normalisedRows.rankings),
+		MessageCount: normalisedRows.totalMessage,
 	}, nil
 }
 
-// TopTen builds a top-ten report request.
-// For example, 20 messages become Report{Options: Options{Limit: 10}}.
-func TopTen(messages []message.Message) Report {
-	return Report{
-		Rows:    messages,
-		Options: Options{Limit: 10},
+// topTen builds a top-ten report request.
+// For example, 20 messages become Report{options: Options{Limit: 10}}.
+func topTen(messages []message.Message) reportRequest {
+	return reportRequest{
+		rows:    messages,
+		options: Options{Limit: 10},
 	}
 }
 
-// TopDiver builds a top-diver report request.
+// topDiver builds a top-diver report request.
 // For example, messages become a reverse-ranked report with Limit 10.
-func TopDiver(messages []message.Message, participants []telegram.User) Report {
-	return Report{
-		Rows:    messages,
-		Options: Options{Limit: 10, Reverse: true},
+func topDiver(messages []message.Message) reportRequest {
+	return reportRequest{
+		rows:    messages,
+		options: Options{Limit: 10, Reverse: true},
 	}
 }
 
-// AllJung builds an all-users report request.
-// For example, messages become a report with the zero-value Options.
-func AllJung(messages []message.Message) Report {
-	return Report{Rows: messages}
+// allJung builds an all-users report request.
+// For example, messages become a report with the zero-value options.
+func allJung(messages []message.Message) reportRequest {
+	return reportRequest{rows: messages}
 }
 
-// Render renders a report to text.
+// render renders a report to text.
 // For example, a TopTen report becomes the final Telegram message text.
-func Render(report Report) string {
-	summary, err := GenerateReport(report.Rows, report.Options)
+func render(request reportRequest) string {
+	summary, err := GenerateReport(request.rows, request.options)
 	if err != nil {
 		return ""
 	}
@@ -158,10 +158,10 @@ func Render(report Report) string {
 	return summary.Report
 }
 
-// BuildHeader builds the report header text.
+// buildHeader builds the report header text.
 // For example, limit 10 becomes a header starting with "Top 10".
-func BuildHeader(normalisedRows NormalisedRows, options Options) string {
-	chatTitle := normalisedRows.Rankings[0].ChatTitle
+func buildHeader(summary rowSummary, options Options) string {
+	chatTitle := summary.rankings[0].chatTitle
 	limitText := "All"
 	if options.Limit > 0 {
 		limitText = fmt.Sprintf("Top %d", options.Limit)
@@ -177,16 +177,10 @@ func BuildHeader(normalisedRows NormalisedRows, options Options) string {
 	return fmt.Sprintf("圍爐區: %s\n\n%s %s in the last %d days%s\n\n", chatTitle, limitText, personType, options.WindowDays, suffix)
 }
 
-// BuildBody builds the report body text.
-// For example, a normal ranking becomes numbered lines like "1. Name 50.00%".
-func BuildBody(normalisedRows NormalisedRows, options Options) string {
-	return BuildBodyWithLimit(normalisedRows, options, telegram.ReportLimit)
-}
-
-// BuildBodyWithLimit builds the report body within limit.
+// buildBodyWithLimit builds the report body within limit.
 // For example, a small limit truncates the body to "...\n...\n" once it would
 // exceed the rune budget.
-func BuildBodyWithLimit(normalisedRows NormalisedRows, options Options, limit int) string {
+func buildBodyWithLimit(summary rowSummary, options Options, limit int) string {
 	if limit < 0 {
 		limit = 0
 	}
@@ -197,19 +191,19 @@ func BuildBodyWithLimit(normalisedRows NormalisedRows, options Options, limit in
 	}
 	truncated := false
 
-	loopLimit := len(normalisedRows.Rankings)
+	loopLimit := len(summary.rankings)
 	if options.Limit > 0 && options.Limit < loopLimit {
 		loopLimit = options.Limit
 	}
 	for index := range loopLimit {
-		ranking := normalisedRows.Rankings[index]
-		percentage := float64(ranking.Count) / float64(normalisedRows.TotalMessage) * 100
-		item := fmt.Sprintf("%d. %s %.2f%% (%s)\n", index+1, ranking.FullName, percentage, timeAgo(ranking.DateCreated, options.Now))
+		item := summary.rankings[index]
+		percentage := float64(item.count) / float64(summary.totalMessage) * 100
+		line := fmt.Sprintf("%d. %s %.2f%% (%s)\n", index+1, item.fullName, percentage, timeAgo(item.dateCreated, options.Now))
 		if utf8.RuneCountInString(body) >= limit {
 			truncated = true
 			break
 		}
-		body += item
+		body += line
 	}
 	if truncated {
 		return body + "...\n...\n"
@@ -217,19 +211,19 @@ func BuildBodyWithLimit(normalisedRows NormalisedRows, options Options, limit in
 
 	if options.Reverse {
 		body += "\nBy last 上水:\n"
-		body += BuildDiverBody(normalisedRows, options)
+		body += buildDiverBody(summary, options)
 	}
 
 	return body
 }
 
-// BuildDiverBody builds the reverse-ranking detail section.
-// For example, reverse rankings become lines ordered by oldest DateCreated
+// buildDiverBody builds the reverse-ranking detail section.
+// For example, reverse rankings become lines ordered by oldest dateCreated
 // first.
-func BuildDiverBody(normalisedRows NormalisedRows, options Options) string {
-	rankings := append([]Ranking(nil), normalisedRows.Rankings...)
+func buildDiverBody(summary rowSummary, options Options) string {
+	rankings := append([]userRanking(nil), summary.rankings...)
 	sort.SliceStable(rankings, func(left int, right int) bool {
-		return rankings[left].DateCreated.Before(rankings[right].DateCreated)
+		return rankings[left].dateCreated.Before(rankings[right].dateCreated)
 	})
 
 	loopLimit := len(rankings)
@@ -239,23 +233,23 @@ func BuildDiverBody(normalisedRows NormalisedRows, options Options) string {
 
 	var body strings.Builder
 	for index := range loopLimit {
-		ranking := rankings[index]
+		item := rankings[index]
 		body.WriteString(strconv.Itoa(index + 1))
 		body.WriteString(". ")
-		body.WriteString(ranking.FullName)
+		body.WriteString(item.fullName)
 		body.WriteString(" - ")
-		body.WriteString(timeAgo(ranking.DateCreated, options.Now))
+		body.WriteString(timeAgo(item.dateCreated, options.Now))
 		body.WriteByte('\n')
 	}
 
 	return body.String()
 }
 
-// BuildFooter builds the report footer text.
-// For example, TotalMessage 20 becomes a footer starting with
+// buildFooter builds the report footer text.
+// For example, totalMessage 20 becomes a footer starting with
 // "Total messages: 20".
-func BuildFooter(normalisedRows NormalisedRows, options Options) string {
-	footer := fmt.Sprintf("\nTotal messages: %d\n\n", normalisedRows.TotalMessage)
+func buildFooter(summary rowSummary, options Options) string {
+	footer := fmt.Sprintf("\nTotal messages: %d\n\n", summary.totalMessage)
 	if options.Reverse {
 		footer += "between, 深潛會搵唔到 ho chi is\n"
 	}
@@ -292,7 +286,7 @@ May your 冗 power powerful
 }
 
 // displayName returns the preferred ranking display name.
-// For example, FirstName "Ada" and LastName "Lovelace" become "Ada Lovelace".
+// For example, firstName "Ada" and lastName "Lovelace" become "Ada Lovelace".
 func displayName(row message.Message) string {
 	return strings.Join([]string{row.FirstName, row.LastName}, " ")
 }

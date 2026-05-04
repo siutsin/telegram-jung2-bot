@@ -25,7 +25,7 @@ func newMocks(t *testing.T) (*appmock.MockHTTPRunner, *appmock.MockQueueWorker) 
 	return appmock.NewMockHTTPRunner(controller), appmock.NewMockQueueWorker(controller)
 }
 
-func runWithCancel(t *testing.T, application *App, ctx context.Context, cancel context.CancelFunc, started <-chan struct{}) error {
+func runWithCancel(t *testing.T, application *runtimeApp, ctx context.Context, cancel context.CancelFunc, started <-chan struct{}) error {
 	t.Helper()
 
 	done := make(chan error, 1)
@@ -39,7 +39,7 @@ func runWithCancel(t *testing.T, application *App, ctx context.Context, cancel c
 	return <-done
 }
 
-func runAfterStarts(t *testing.T, application *App, ctx context.Context, release func(), started <-chan struct{}, count int) error {
+func runAfterStarts(t *testing.T, application *runtimeApp, ctx context.Context, release func(), started <-chan struct{}, count int) error {
 	t.Helper()
 
 	done := make(chan error, 1)

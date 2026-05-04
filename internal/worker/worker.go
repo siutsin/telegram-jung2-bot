@@ -30,39 +30,43 @@ type SetOffInput struct {
 	Workday   string
 }
 
-type Deleter interface {
+type queueDeleter interface {
 	Delete(ctx context.Context, request queue.DeleteMessageRequest) error
 }
 
-type PollingWorker struct {
-	Consumer queue.Consumer
-	QueueURL string
-	Handlers Handlers
-	Deleter  Deleter
+type queueConsumer interface {
+	Poll(ctx context.Context, handler func(context.Context, queue.RawMessage) error) error
+}
+
+type pollingWorker struct {
+	consumer queueConsumer
+	queueURL string
+	handlers Handlers
+	deleter  queueDeleter
 }
 
 type actionDispatcher func(ctx context.Context, action queue.Action) error
 
 // NewPollingWorker builds a queue worker from the configured queue contracts.
-func NewPollingWorker(queueURL string, receiver queue.Receiver, deleter Deleter, handlers Handlers) (PollingWorker, error) {
+func NewPollingWorker(queueURL string, receiver queue.Receiver, deleter queueDeleter, handlers Handlers) (pollingWorker, error) {
 	if receiver == nil {
-		return PollingWorker{}, fmt.Errorf("queue receiver is required")
+		return pollingWorker{}, fmt.Errorf("queue receiver is required")
 	}
 	if deleter == nil {
-		return PollingWorker{}, fmt.Errorf("queue deleter is required")
+		return pollingWorker{}, fmt.Errorf("queue deleter is required")
 	}
 
-	return PollingWorker{
-		Consumer: queue.Consumer{QueueURL: queueURL, Receiver: receiver},
-		QueueURL: queueURL,
-		Handlers: handlers,
-		Deleter:  deleter,
+	return pollingWorker{
+		consumer: queue.NewConsumer(queueURL, receiver),
+		queueURL: queueURL,
+		handlers: handlers,
+		deleter:  deleter,
 	}, nil
 }
 
 // Run polls the queue until the context is cancelled.
-func (worker PollingWorker) Run(ctx context.Context) error {
-	if worker.Deleter == nil {
+func (worker pollingWorker) Run(ctx context.Context) error {
+	if worker.deleter == nil {
 		return fmt.Errorf("deleter is required")
 	}
 	for {
@@ -71,8 +75,8 @@ func (worker PollingWorker) Run(ctx context.Context) error {
 			return nil
 		default:
 		}
-		err := worker.Consumer.Poll(ctx, func(pollCtx context.Context, message queue.RawMessage) error {
-			return ProcessMessage(pollCtx, worker.QueueURL, message, worker.Handlers, worker.Deleter)
+		err := worker.consumer.Poll(ctx, func(pollCtx context.Context, message queue.RawMessage) error {
+			return processMessage(pollCtx, worker.queueURL, message, worker.handlers, worker.deleter)
 		})
 		if err != nil {
 			return err
@@ -80,9 +84,9 @@ func (worker PollingWorker) Run(ctx context.Context) error {
 	}
 }
 
-// Dispatch routes an action to its handler.
+// dispatch routes an action to its handler.
 // For example, Action{Name: "topTen"} is sent to handlers.TopTen.
-func Dispatch(ctx context.Context, action queue.Action, handlers Handlers) error {
+func dispatch(ctx context.Context, action queue.Action, handlers Handlers) error {
 	dispatcher, ok := actionDispatchers(handlers)[action.Name]
 	if !ok {
 		return nil
@@ -91,20 +95,24 @@ func Dispatch(ctx context.Context, action queue.Action, handlers Handlers) error
 	return dispatcher(ctx, action)
 }
 
-// ProcessMessage decodes, dispatches, and deletes a queue message.
+// processMessage decodes, dispatches, and deletes a queue message.
 // For example, one raw SQS message becomes queue.DecodeMessage(raw), one handler
 // call, and one delete request.
-func ProcessMessage(ctx context.Context, queueURL string, raw queue.RawMessage, handlers Handlers, deleter Deleter) error {
+func processMessage(ctx context.Context, queueURL string, raw queue.RawMessage, handlers Handlers, deleter queueDeleter) error {
 	action, err := queue.DecodeMessage(raw)
 	if err != nil {
 		return err
 	}
-	dispatchErr := Dispatch(ctx, action, handlers)
-	if dispatchErr == nil {
-		err = deleter.Delete(ctx, queue.BuildDeleteMessageRequest(queueURL, raw))
-		if err != nil {
-			return fmt.Errorf("delete SQS message: %w", err)
-		}
+	dispatchErr := dispatch(ctx, action, handlers)
+	if dispatchErr != nil {
+		return dispatchErr
+	}
+	err = deleter.Delete(ctx, queue.DeleteMessageRequest{
+		QueueURL:      queueURL,
+		ReceiptHandle: raw.ReceiptHandle,
+	})
+	if err != nil {
+		return fmt.Errorf("delete SQS message: %w", err)
 	}
 
 	return nil

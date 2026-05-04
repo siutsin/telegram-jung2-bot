@@ -17,14 +17,19 @@ type queueRequester interface {
 	SendMessage(ctx context.Context, params *awssqs.SendMessageInput, optFns ...func(*awssqs.Options)) (*awssqs.SendMessageOutput, error)
 }
 
-// Client adapts the AWS SQS SDK to the queue package contracts.
-type Client struct {
-	Queue queueRequester
+// sqsClient adapts the AWS SQS SDK to the queue package contracts.
+type sqsClient struct {
+	queue queueRequester
+}
+
+// NewClient builds an SQS-backed queue client.
+func NewClient(queue queueRequester) sqsClient {
+	return sqsClient{queue: queue}
 }
 
 // Delete removes a consumed SQS message.
-func (client Client) Delete(ctx context.Context, request DeleteMessageRequest) error {
-	_, err := client.Queue.DeleteMessage(ctx, &awssqs.DeleteMessageInput{
+func (client sqsClient) Delete(ctx context.Context, request DeleteMessageRequest) error {
+	_, err := client.queue.DeleteMessage(ctx, &awssqs.DeleteMessageInput{
 		QueueUrl:      awscore.String(request.QueueURL),
 		ReceiptHandle: awscore.String(request.ReceiptHandle),
 	})
@@ -38,7 +43,7 @@ func (client Client) Delete(ctx context.Context, request DeleteMessageRequest) e
 // ReceiveMessage polls one SQS batch.
 // For example, one AWS message becomes one RawMessage with JSON body text and
 // decoded attributes.
-func (client Client) ReceiveMessage(ctx context.Context, request ReceiveMessageRequest) (ReceiveMessageResponse, error) {
+func (client sqsClient) ReceiveMessage(ctx context.Context, request ReceiveMessageRequest) (ReceiveMessageResponse, error) {
 	maxMessages, err := toInt32(request.MaxNumberOfMessages, "maxNumberOfMessages")
 	if err != nil {
 		return ReceiveMessageResponse{}, err
@@ -48,7 +53,7 @@ func (client Client) ReceiveMessage(ctx context.Context, request ReceiveMessageR
 		return ReceiveMessageResponse{}, err
 	}
 
-	output, err := client.Queue.ReceiveMessage(ctx, &awssqs.ReceiveMessageInput{
+	output, err := client.queue.ReceiveMessage(ctx, &awssqs.ReceiveMessageInput{
 		QueueUrl:              awscore.String(request.QueueURL),
 		MaxNumberOfMessages:   maxMessages,
 		MessageAttributeNames: []string{"All"},
@@ -75,8 +80,8 @@ func (client Client) ReceiveMessage(ctx context.Context, request ReceiveMessageR
 }
 
 // SendMessage sends a queue action to SQS.
-func (client Client) SendMessage(ctx context.Context, request SendMessageRequest) error {
-	_, err := client.Queue.SendMessage(ctx, &awssqs.SendMessageInput{
+func (client sqsClient) SendMessage(ctx context.Context, request SendMessageRequest) error {
+	_, err := client.queue.SendMessage(ctx, &awssqs.SendMessageInput{
 		QueueUrl:          awscore.String(request.QueueURL),
 		MessageBody:       awscore.String(request.MessageBody),
 		MessageAttributes: encodeQueueAttributes(request.MessageAttributes),
