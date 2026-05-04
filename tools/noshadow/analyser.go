@@ -10,15 +10,17 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
-// Analyser reports declarations that shadow names from an outer scope.
-var Analyser = NewAnalyser(Options{})
-
 // Options configures the noshadow analyser.
 type Options struct {
-	Ctx   bool
-	Err   bool
+	// Ctx allows shadow declarations named ctx.
+	Ctx bool
+	// Err allows shadow declarations named err.
+	Err bool
+	// Found allows shadow declarations named found.
 	Found bool
-	OK    bool
+	// OK allows shadow declarations named ok.
+	OK bool
+	// TestT allows test helper subtests to shadow *testing.T parameters named t.
 	TestT bool
 }
 
@@ -52,14 +54,16 @@ func NewAnalyser(options Options) *analysis.Analyzer {
 	}
 }
 
+// run reports all shadow declarations not allowed by options.
 func run(pass *analysis.Pass, options Options) (any, error) {
 	reported := make(map[types.Object]bool)
 	reportExplicitDefinitions(pass, reported, options)
 	reportImplicitDefinitions(pass, reported, options)
 
-	return nil, nil //nolint:nilnil // analysis.Analyzer uses nil result with nil error for result-free analysers.
+	return nil, nil //nolint:nilnil // analysis analysers use nil result with nil error when they export no result.
 }
 
+// reportExplicitDefinitions checks objects recorded directly in TypesInfo.Defs.
 func reportExplicitDefinitions(pass *analysis.Pass, reported map[types.Object]bool, options Options) {
 	for identifier, object := range pass.TypesInfo.Defs {
 		if shouldSkipObject(pass, object, reported, options) {
@@ -70,6 +74,7 @@ func reportExplicitDefinitions(pass *analysis.Pass, reported map[types.Object]bo
 	}
 }
 
+// isAllowedShadow reports whether options allow this object's shadow by name and type.
 func isAllowedShadow(pass *analysis.Pass, object types.Object, options Options) bool {
 	switch object.Name() {
 	case "ctx":
@@ -87,6 +92,7 @@ func isAllowedShadow(pass *analysis.Pass, object types.Object, options Options) 
 	}
 }
 
+// isAllowedTestT reports whether a shadow named t is an allowed *testing.T in a test file.
 func isAllowedTestT(pass *analysis.Pass, object types.Object, options Options) bool {
 	if !options.TestT || object.Name() != "t" || !isTestingT(object.Type()) {
 		return false
@@ -96,6 +102,7 @@ func isAllowedTestT(pass *analysis.Pass, object types.Object, options Options) b
 	return strings.HasSuffix(position.Filename, "_test.go")
 }
 
+// isTestingT reports whether the type is *testing.T.
 func isTestingT(objectType types.Type) bool {
 	pointer, ok := objectType.(*types.Pointer)
 	if !ok {
@@ -111,6 +118,7 @@ func isTestingT(objectType types.Type) bool {
 	return object.Name() == "T" && object.Pkg() != nil && object.Pkg().Path() == "testing"
 }
 
+// reportImplicitDefinitions checks implicit objects such as type-switch variables.
 func reportImplicitDefinitions(pass *analysis.Pass, reported map[types.Object]bool, options Options) {
 	reportedPositions := make(map[token.Pos]bool)
 	for _, object := range pass.TypesInfo.Implicits {
@@ -123,10 +131,12 @@ func reportImplicitDefinitions(pass *analysis.Pass, reported map[types.Object]bo
 	}
 }
 
+// shouldSkipObject reports whether an object is irrelevant or already handled.
 func shouldSkipObject(pass *analysis.Pass, object types.Object, reported map[types.Object]bool, options Options) bool {
 	return object == nil || object.Name() == "_" || reported[object] || isAllowedShadow(pass, object, options)
 }
 
+// reportIfShadowed emits a diagnostic if object shadows an outer declaration.
 func reportIfShadowed(
 	pass *analysis.Pass,
 	reported map[types.Object]bool,
@@ -142,6 +152,7 @@ func reportIfShadowed(
 	pass.Reportf(position, "%q shadows declaration at %s", object.Name(), formatPosition(pass.Fset, shadowed.Pos()))
 }
 
+// findShadowed returns the nearest outer declaration with the same name.
 func findShadowed(object types.Object) types.Object {
 	scope := object.Parent()
 	if scope == nil {
@@ -158,6 +169,7 @@ func findShadowed(object types.Object) types.Object {
 	return nil
 }
 
+// formatPosition formats valid positions and predeclared identifiers for diagnostics.
 func formatPosition(fileSet *token.FileSet, position token.Pos) string {
 	if !position.IsValid() {
 		return "predeclared identifier"

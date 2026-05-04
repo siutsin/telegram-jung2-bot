@@ -1,3 +1,4 @@
+// Command noshadow runs the noshadow analyser as a standalone checker.
 package main
 
 import (
@@ -6,6 +7,7 @@ import (
 	"github.com/siutsin/telegram-jung2-bot/tools/noshadow"
 )
 
+// main runs the standalone singlechecker entrypoint.
 func main() {
-	singlechecker.Main(noshadow.Analyser)
+	singlechecker.Main(noshadow.NewAnalyser(noshadow.Options{}))
 }

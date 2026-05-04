@@ -12,6 +12,7 @@ func init() {
 	register.Plugin("noshadow", newPlugin)
 }
 
+// newPlugin decodes golangci-lint settings and returns a noshadow plugin.
 func newPlugin(rawSettings any) (register.LinterPlugin, error) {
 	decodedSettings, err := register.DecodeSettings[settings](rawSettings)
 	if err != nil {
@@ -21,6 +22,7 @@ func newPlugin(rawSettings any) (register.LinterPlugin, error) {
 	return plugin{settings: decodedSettings}, nil
 }
 
+// settings contains the noshadow golangci-lint configuration.
 type settings struct {
 	Ctx   bool `json:"ctx" mapstructure:"ctx"`
 	Err   bool `json:"err" mapstructure:"err"`
@@ -29,10 +31,12 @@ type settings struct {
 	TestT bool `json:"testT" mapstructure:"testT"`
 }
 
+// plugin adapts noshadow to the golangci-lint module plugin API.
 type plugin struct {
 	settings settings
 }
 
+// Required by golangci-lint; returns the configured noshadow checker.
 func (lintPlugin plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 	return []*analysis.Analyzer{noshadow.NewAnalyser(noshadow.Options{
 		Ctx:   lintPlugin.settings.Ctx,
@@ -43,6 +47,7 @@ func (lintPlugin plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 	})}, nil
 }
 
+// GetLoadMode asks golangci-lint to load type information for noshadow.
 func (plugin) GetLoadMode() string {
 	return register.LoadModeTypesInfo
 }

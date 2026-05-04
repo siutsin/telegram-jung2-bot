@@ -3,5 +3,8 @@ name: golangci-lint-custom
 destination: ./bin
 plugins:
   - module: github.com/siutsin/telegram-jung2-bot
+    import: github.com/siutsin/telegram-jung2-bot/tools/gobritannia/golangci
+    path: .
+  - module: github.com/siutsin/telegram-jung2-bot
     import: github.com/siutsin/telegram-jung2-bot/tools/noshadow/golangci
     path: .
