@@ -23,11 +23,13 @@ go_test(
         "//internal/chat:chat",
         "//internal/command:command",
         "//internal/message:message",
+        "//internal/mock:mock",
         "//internal/queue:queue",
         "//internal/schedule:schedule",
         "//internal/telegram:telegram",
         "//vendor/github.com/stretchr/testify/assert:assert",
         "//vendor/github.com/stretchr/testify/require:require",
+        "//vendor/go.uber.org/mock/gomock:gomock",
         ":httpserver",
     ],
 )

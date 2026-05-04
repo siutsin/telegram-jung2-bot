@@ -44,7 +44,7 @@ while IFS=$'\t' read -r target binary; do
   if [[ -f "$profile_path" ]]; then
     {
       rg '^internal/' "$profile_path" || true
-    } | rg -v '_test\.go:' | sed \
+    } | rg -v '(_test\.go:|^internal/mock/)' | sed \
       "s#^internal/#$repo_root/internal/#" \
       >> "$coverage_file"
   fi

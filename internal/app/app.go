@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -58,11 +59,21 @@ func (app *App) Run(ctx context.Context) error {
 	componentErrs := make(chan error, 2)
 	group.Go(func() error {
 		err := normaliseHTTPServeError(app.httpServer.ListenAndServe())
+		if err != nil {
+			slog.Error("http server stopped", "err", err)
+		} else {
+			slog.Debug("http server stopped")
+		}
 		componentErrs <- err
 		return err
 	})
 	group.Go(func() error {
 		err := normaliseWorkerRunError(app.queueWorker.Run(groupCtx), groupCtx)
+		if err != nil {
+			slog.Error("queue worker stopped", "err", err)
+		} else {
+			slog.Debug("queue worker stopped")
+		}
 		componentErrs <- err
 		return err
 	})
@@ -71,14 +82,19 @@ func (app *App) Run(ctx context.Context) error {
 
 	select {
 	case <-ctx.Done():
+		slog.Debug("application context cancelled")
 		cancel()
 	case componentErr = <-componentErrs:
+		if componentErr != nil {
+			slog.Error("application component failed", "err", componentErr)
+		}
 		cancel()
 	}
 
 	shutdownErr := shutdownHTTP(app.httpServer, app.shutdownTimeout)
 	waitErr := group.Wait()
 	if shutdownErr != nil {
+		slog.Error("application shutdown failed", "err", shutdownErr)
 		return shutdownErr
 	}
 	if componentErr != nil {
@@ -93,11 +109,13 @@ func shutdownHTTP(httpServer HTTPRunner, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
+	slog.Debug("shutting down HTTP server", "timeout", timeout)
 	err := httpServer.Shutdown(ctx)
 	if err != nil {
 		return fmt.Errorf("shutdown HTTP server: %w", err)
 	}
 
+	slog.Debug("HTTP server shutdown complete")
 	return nil
 }
 
