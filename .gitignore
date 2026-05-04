@@ -8,7 +8,6 @@
 
 # Go
 /bin/
-/pkg/
 *.test
 *.out
 coverage/

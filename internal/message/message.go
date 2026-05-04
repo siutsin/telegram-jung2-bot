@@ -30,9 +30,9 @@ type Message struct {
 	TTL         int64
 }
 
-// UpdateExpression describes the contract DynamoDB update request shape without
+// updateExpression describes the contract DynamoDB update request shape without
 // depending on the AWS SDK.
-type UpdateExpression struct {
+type updateExpression struct {
 	TableName                 string
 	Key                       map[string]any
 	UpdateExpression          string
@@ -88,78 +88,65 @@ func TTL(now time.Time, retention time.Duration) int64 {
 // BuildSaveUpdate builds the contract DynamoDB update shape for a message row.
 // For example, a message with username and firstName adds only those non-empty
 // fields to the SET clause.
-func BuildSaveUpdate(tableName string, message Message) UpdateExpression {
+func BuildSaveUpdate(tableName string, message Message) updateExpression {
 	attributeNames := make(map[string]string)
 	attributeValues := make(map[string]any)
 	assignments := make([]string, 0, 6)
 
-	assignments = addStringAttribute(assignments, attributeNames, attributeValues, "chatTitle", message.ChatTitle)
-	assignments = addIntAttribute(assignments, attributeNames, attributeValues, "userId", message.UserID)
-	assignments = addStringAttribute(assignments, attributeNames, attributeValues, "username", message.Username)
-	assignments = addStringAttribute(assignments, attributeNames, attributeValues, "firstName", message.FirstName)
-	assignments = addStringAttribute(assignments, attributeNames, attributeValues, "lastName", message.LastName)
-	assignments = addIntAttribute(assignments, attributeNames, attributeValues, "ttl", message.TTL)
+	attributes := []struct {
+		name  string
+		value any
+	}{
+		{name: "chatTitle", value: message.ChatTitle},
+		{name: "userId", value: message.UserID},
+		{name: "username", value: message.Username},
+		{name: "firstName", value: message.FirstName},
+		{name: "lastName", value: message.LastName},
+		{name: "ttl", value: message.TTL},
+	}
+	for _, attribute := range attributes {
+		assignments = addAttribute(assignments, attributeNames, attributeValues, attribute.name, attribute.value)
+	}
 
-	return UpdateExpression{
+	return updateExpression{
 		TableName: tableName,
 		Key: map[string]any{
 			"chatId":      message.ChatID,
 			"dateCreated": FormatDateCreated(message.DateCreated),
 		},
-		UpdateExpression:          "SET " + joinAssignments(assignments),
+		UpdateExpression:          "SET " + strings.Join(assignments, ", "),
 		ExpressionAttributeNames:  attributeNames,
 		ExpressionAttributeValues: attributeValues,
 	}
 }
 
-// addStringAttribute adds a non-empty string attribute to an update.
+// addAttribute adds a non-zero contract attribute to an update.
 // For example, "username", "alice" appends "#username = :username".
-func addStringAttribute(
+func addAttribute(
 	assignments []string,
 	names map[string]string,
 	values map[string]any,
-	attribute string,
-	value string,
+	name string,
+	value any,
 ) []string {
-	if value == "" {
+	if isZeroAttributeValue(value) {
 		return assignments
 	}
 
-	placeholder := "#" + attribute
-	valuePlaceholder := ":" + attribute
-	names[placeholder] = attribute
+	placeholder := "#" + name
+	valuePlaceholder := ":" + name
+	names[placeholder] = name
 	values[valuePlaceholder] = value
 	return append(assignments, placeholder+" = "+valuePlaceholder)
 }
 
-// addIntAttribute adds a non-zero integer attribute to an update.
-// For example, "userId", 42 appends "#userId = :userId".
-func addIntAttribute(
-	assignments []string,
-	names map[string]string,
-	values map[string]any,
-	attribute string,
-	value int64,
-) []string {
-	if value == 0 {
-		return assignments
+func isZeroAttributeValue(value any) bool {
+	switch typedValue := value.(type) {
+	case string:
+		return typedValue == ""
+	case int64:
+		return typedValue == 0
+	default:
+		return value == nil
 	}
-
-	placeholder := "#" + attribute
-	valuePlaceholder := ":" + attribute
-	names[placeholder] = attribute
-	values[valuePlaceholder] = value
-	return append(assignments, placeholder+" = "+valuePlaceholder)
-}
-
-// joinAssignments joins update assignments with commas.
-// For example, ["#a = :a", "#b = :b"] becomes "#a = :a, #b = :b".
-func joinAssignments(assignments []string) string {
-	var result strings.Builder
-	result.WriteString(assignments[0])
-	for _, assignment := range assignments[1:] {
-		result.WriteString(", " + assignment)
-	}
-
-	return result.String()
 }

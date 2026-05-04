@@ -112,8 +112,25 @@ func TestBuildSaveUpdateOmitsMissingOptionalAttributes(t *testing.T) {
 	assert.Equal(t, map[string]any{":ttl": int64(1554691104)}, update.ExpressionAttributeValues)
 }
 
-func TestJoinAssignmentsHandlesSingleAssignment(t *testing.T) {
-	assert.Equal(t, "#ttl = :ttl", joinAssignments([]string{"#ttl = :ttl"}))
+func TestIsZeroAttributeValue(t *testing.T) {
+	tests := []struct {
+		name  string
+		value any
+		want  bool
+	}{
+		{name: "empty string", value: "", want: true},
+		{name: "string", value: "value", want: false},
+		{name: "zero int64", value: int64(0), want: true},
+		{name: "int64", value: int64(1), want: false},
+		{name: "nil", value: nil, want: true},
+		{name: "unknown", value: true, want: false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, isZeroAttributeValue(tc.value))
+		})
+	}
 }
 
 func mustParseTime(t *testing.T) time.Time {

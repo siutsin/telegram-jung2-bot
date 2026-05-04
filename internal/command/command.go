@@ -149,14 +149,14 @@ func ActionFor(command Command, chat ChatContext) (queue.Action, error) {
 		action.Attributes["chatTitle"] = chat.ChatTitle
 		action.Attributes["userId"] = strconv.FormatInt(chat.UserID, 10)
 	case SetOffFromWorkTimeUTC:
-		offTime, workday, parseErr := parseSetOffFromWorkTimeArgs(command.Args)
+		offTime, workdayList, parseErr := parseSetOffFromWorkTimeArgs(command.Args)
 		if parseErr != nil {
 			return queue.Action{}, parseErr
 		}
 		action.Attributes["chatTitle"] = chat.ChatTitle
 		action.Attributes["userId"] = strconv.FormatInt(chat.UserID, 10)
 		action.Attributes["offTime"] = offTime
-		action.Attributes["workday"] = workday
+		action.Attributes["workday"] = workdayList
 	}
 
 	return action, nil
@@ -164,7 +164,7 @@ func ActionFor(command Command, chat ChatContext) (queue.Action, error) {
 
 // parseSetOffFromWorkTimeArgs validates and normalises contract command args.
 // For example, "1830 MON,MON,TUE" becomes offTime "1830" and workday "MON,TUE".
-func parseSetOffFromWorkTimeArgs(args string) (offTime string, workday string, err error) {
+func parseSetOffFromWorkTimeArgs(args string) (offTime string, workdayList string, err error) {
 	parts := strings.Split(args, " ")
 	if len(parts) != 2 {
 		return "", "", fmt.Errorf("%s requires off time and workday list", SetOffFromWorkTimeUTC)
@@ -175,12 +175,12 @@ func parseSetOffFromWorkTimeArgs(args string) (offTime string, workday string, e
 		return "", "", fmt.Errorf("invalid off time %q", offTime)
 	}
 
-	workday, err = normaliseWorkdayList(parts[1])
+	workdayList, err = normaliseWorkdayList(parts[1])
 	if err != nil {
 		return "", "", err
 	}
 
-	return offTime, workday, nil
+	return offTime, workdayList, nil
 }
 
 // canonicalName restores the contract command casing.

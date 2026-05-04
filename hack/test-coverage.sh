@@ -43,10 +43,10 @@ while IFS=$'\t' read -r target binary; do
 
   if [[ -f "$profile_path" ]]; then
     {
-      rg '^internal/' "$profile_path" || true
-    } | rg -v '(_test\.go:|^internal/mock/)' | sed \
-      "s#^internal/#$repo_root/internal/#" \
-      >> "$coverage_file"
+      rg '^(internal|tools)/' "$profile_path" || true
+    } | {
+      rg -v '(_test\.go:|^internal/mock/)' || true
+    } | sed -E "s#^(internal|tools)/#$repo_root/\\1/#" >> "$coverage_file"
   fi
 done < <(
   printf '%s\n' "$build_json" | python3 -c '

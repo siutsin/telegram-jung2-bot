@@ -122,10 +122,10 @@ func TestNewRoutesContractWebhookAndHealthPaths(t *testing.T) {
 	mocks.expectSaveWebhookState()
 	handler := newHandler(serverDeps{Dependencies: dependencies, Stage: "dev"})
 
-	health := httptest.NewRecorder()
-	handler.ServeHTTP(health, httptest.NewRequest(http.MethodGet, "/jung2bot/dev/ping", nil))
-	assert.Equal(t, http.StatusOK, health.Code)
-	assert.JSONEq(t, `{"health":"ok"}`, health.Body.String())
+	healthRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(healthRecorder, httptest.NewRequest(http.MethodGet, "/jung2bot/dev/ping", nil))
+	assert.Equal(t, http.StatusOK, healthRecorder.Code)
+	assert.JSONEq(t, `{"health":"ok"}`, healthRecorder.Body.String())
 
 	webhook := httptest.NewRecorder()
 	handler.ServeHTTP(webhook, httptest.NewRequest(http.MethodPost, "/jung2bot/dev/", strings.NewReader(`{"message":{"chat":{"id":123,"title":"Group","type":"group"},"text":"hi"}}`)))

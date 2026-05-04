@@ -6,7 +6,7 @@ This package stores generated mocks used by internal package tests.
 
 It:
 
-- centralizes generated GoMock files
+- centralises generated GoMock files
 - keeps generated mocks out of package-local test files
 
 It does not own runtime behaviour.

@@ -71,8 +71,8 @@ func (worker PollingWorker) Run(ctx context.Context) error {
 			return nil
 		default:
 		}
-		err := worker.Consumer.Poll(ctx, func(ctx context.Context, message queue.RawMessage) error {
-			return ProcessMessage(ctx, worker.QueueURL, message, worker.Handlers, worker.Deleter)
+		err := worker.Consumer.Poll(ctx, func(pollCtx context.Context, message queue.RawMessage) error {
+			return ProcessMessage(pollCtx, worker.QueueURL, message, worker.Handlers, worker.Deleter)
 		})
 		if err != nil {
 			return err
@@ -135,7 +135,7 @@ func withChatID(handler func(ctx context.Context, chatID int64) error, actionNam
 			return err
 		}
 
-		return requiredHandler(ctx, chatID(action))
+		return requiredHandler(ctx, actionChatID(action))
 	}
 }
 
@@ -148,7 +148,7 @@ func withChatIDAndTitle(handler func(ctx context.Context, chatID int64, chatTitl
 			return err
 		}
 
-		return requiredHandler(ctx, chatID(action), action.Attributes["chatTitle"])
+		return requiredHandler(ctx, actionChatID(action), action.Attributes["chatTitle"])
 	}
 }
 
@@ -162,7 +162,7 @@ func withAdminFields(handler func(ctx context.Context, chatID int64, chatTitle s
 			return err
 		}
 
-		return requiredHandler(ctx, chatID(action), action.Attributes["chatTitle"], userID(action))
+		return requiredHandler(ctx, actionChatID(action), action.Attributes["chatTitle"], actionUserID(action))
 	}
 }
 
@@ -177,9 +177,9 @@ func withSetOffInput(handler func(ctx context.Context, input SetOffInput) error,
 		}
 
 		return requiredHandler(ctx, SetOffInput{
-			ChatID:    chatID(action),
+			ChatID:    actionChatID(action),
 			ChatTitle: action.Attributes["chatTitle"],
-			UserID:    userID(action),
+			UserID:    actionUserID(action),
 			OffTime:   action.Attributes["offTime"],
 			Workday:   action.Attributes["workday"],
 		})
@@ -200,15 +200,15 @@ func withTimeString(handler func(ctx context.Context, timeString string) error, 
 	}
 }
 
-// chatID parses the chat ID from action attributes.
+// actionChatID parses the chat ID from action attributes.
 // For example, Attributes["chatId"]="42" becomes 42.
-func chatID(action queue.Action) int64 {
+func actionChatID(action queue.Action) int64 {
 	return parseInt(action.Attributes["chatId"])
 }
 
-// userID parses the user ID from action attributes.
+// actionUserID parses the user ID from action attributes.
 // For example, Attributes["userId"]="7" becomes 7.
-func userID(action queue.Action) int64 {
+func actionUserID(action queue.Action) int64 {
 	return parseInt(action.Attributes["userId"])
 }
 
@@ -224,11 +224,11 @@ func parseInt(raw string) int64 {
 }
 
 // requireHandler returns a configured handler for an action.
-func requireHandler[T any](handler T, action string) (T, error) {
+func requireHandler[T any](handler T, actionName string) (T, error) {
 	value := reflect.ValueOf(handler)
 	if !value.IsValid() || value.IsNil() {
 		var zero T
-		return zero, fmt.Errorf("missing handler for %s", action)
+		return zero, fmt.Errorf("missing handler for %s", actionName)
 	}
 
 	return handler, nil

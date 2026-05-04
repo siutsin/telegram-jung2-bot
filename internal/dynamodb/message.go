@@ -34,9 +34,9 @@ func (client MessageClient) Save(ctx context.Context, tableName string, row mess
 
 // QueryByChat loads message rows for one chat.
 func (client MessageClient) QueryByChat(ctx context.Context, tableName string, chatID int64, since time.Time) ([]message.Message, error) {
-	return collectPages(ctx, func(ctx context.Context, startKey map[string]any) (page[message.Message], error) {
+	return collectPages(ctx, func(pageCtx context.Context, startKey map[string]any) (page[message.Message], error) {
 		queryRequest := queryMessagesRequest(tableName, chatID, since, startKey)
-		output, err := client.dynamo.Query(ctx, &awsdynamodb.QueryInput{
+		output, err := client.dynamo.Query(pageCtx, &awsdynamodb.QueryInput{
 			TableName:                 awscore.String(queryRequest.TableName),
 			ExclusiveStartKey:         encodeDynamoValues(queryRequest.ExclusiveStartKey),
 			KeyConditionExpression:    awscore.String(queryRequest.KeyConditionExpression),
@@ -49,9 +49,9 @@ func (client MessageClient) QueryByChat(ctx context.Context, tableName string, c
 
 		rows := make([]message.Message, 0, len(output.Items))
 		for _, item := range output.Items {
-			row, err := decodeMessage(item)
-			if err != nil {
-				return page[message.Message]{}, err
+			row, decodeErr := decodeMessage(item)
+			if decodeErr != nil {
+				return page[message.Message]{}, decodeErr
 			}
 			rows = append(rows, row)
 		}

@@ -20,21 +20,21 @@ func TestDispatchRoutesActions(t *testing.T) {
 		action     queue.Action
 		wantCalled string
 	}{
-		{name: "jung help", action: action(queue.ActionJungHelp), wantCalled: "junghelp"},
-		{name: "top ten", action: action(queue.ActionTopTen), wantCalled: "topten"},
-		{name: "top diver", action: action(queue.ActionTopDiver), wantCalled: "topdiver"},
-		{name: "all jung", action: action(queue.ActionAllJung), wantCalled: "alljung"},
-		{name: "off from work", action: action(queue.ActionOffFromWork), wantCalled: "offFromWork"},
-		{name: "enable", action: action(queue.ActionEnableAllJung), wantCalled: "enableAllJung"},
-		{name: "disable", action: action(queue.ActionDisableAllJung), wantCalled: "disableAllJung"},
-		{name: "set off", action: action(queue.ActionSetOffWorkTime), wantCalled: "setOffFromWorkTimeUTC"},
+		{name: "jung help", action: testAction(queue.ActionJungHelp), wantCalled: "junghelp"},
+		{name: "top ten", action: testAction(queue.ActionTopTen), wantCalled: "topten"},
+		{name: "top diver", action: testAction(queue.ActionTopDiver), wantCalled: "topdiver"},
+		{name: "all jung", action: testAction(queue.ActionAllJung), wantCalled: "alljung"},
+		{name: "off from work", action: testAction(queue.ActionOffFromWork), wantCalled: "offFromWork"},
+		{name: "enable", action: testAction(queue.ActionEnableAllJung), wantCalled: "enableAllJung"},
+		{name: "disable", action: testAction(queue.ActionDisableAllJung), wantCalled: "disableAllJung"},
+		{name: "set off", action: testAction(queue.ActionSetOffWorkTime), wantCalled: "setOffFromWorkTimeUTC"},
 		{name: "on off", action: queue.Action{Name: queue.ActionOnOffFromWork, Attributes: map[string]string{"timeString": "2022-03-04T10:00:00Z"}}, wantCalled: "onOffFromWork"},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			calls := make([]string, 0, 1)
-			err := Dispatch(context.Background(), test.action, handlers(&calls, nil))
+			err := Dispatch(context.Background(), test.action, testHandlers(&calls, nil))
 
 			require.NoError(t, err)
 			assert.Equal(t, []string{test.wantCalled}, calls)
@@ -95,8 +95,8 @@ func TestPollingWorkerProcessesAndDeletesMessages(t *testing.T) {
 	}
 	deleter := &fakeDeleter{}
 	receiver := &workerReceiver{response: queue.ReceiveMessageResponse{Messages: []queue.RawMessage{raw}}}
-	handlerSet := handlers(nil, nil)
-	handlerSet.TopTen = func(ctx context.Context, chatID int64) error {
+	handlerSet := testHandlers(nil, nil)
+	handlerSet.TopTen = func(handlerCtx context.Context, chatID int64) error {
 		cancel()
 		return nil
 	}
@@ -135,8 +135,8 @@ func TestPollingWorkerContinuesAfterMessageFailure(t *testing.T) {
 	}
 	deleter := &fakeDeleter{}
 	receiver := &workerReceiver{response: queue.ReceiveMessageResponse{Messages: rawMessages}}
-	handlerSet := handlers(nil, nil)
-	handlerSet.TopTen = func(ctx context.Context, chatID int64) error {
+	handlerSet := testHandlers(nil, nil)
+	handlerSet.TopTen = func(handlerCtx context.Context, chatID int64) error {
 		if calls.Add(1) == 1 {
 			return errors.New("boom")
 		}
@@ -194,13 +194,13 @@ func TestDispatchPassesSetOffInput(t *testing.T) {
 	t.Parallel()
 
 	var input SetOffInput
-	handlerSet := handlers(nil, nil)
-	handlerSet.SetOffWorkTime = func(ctx context.Context, received SetOffInput) error {
+	handlerSet := testHandlers(nil, nil)
+	handlerSet.SetOffWorkTime = func(handlerCtx context.Context, received SetOffInput) error {
 		input = received
 		return nil
 	}
 
-	err := Dispatch(context.Background(), action(queue.ActionSetOffWorkTime), handlerSet)
+	err := Dispatch(context.Background(), testAction(queue.ActionSetOffWorkTime), handlerSet)
 
 	require.NoError(t, err)
 	assert.Equal(t, SetOffInput{
@@ -223,28 +223,28 @@ func TestDispatchPassesHelpAndAdminFields(t *testing.T) {
 	var disableChatID int64
 	var disableChatTitle string
 	var disableUserID int64
-	handlerSet := handlers(nil, nil)
-	handlerSet.JungHelp = func(ctx context.Context, chatID int64, chatTitle string) error {
+	handlerSet := testHandlers(nil, nil)
+	handlerSet.JungHelp = func(handlerCtx context.Context, chatID int64, chatTitle string) error {
 		helpChatID = chatID
 		helpChatTitle = chatTitle
 		return nil
 	}
-	handlerSet.EnableAllJung = func(ctx context.Context, chatID int64, chatTitle string, userID int64) error {
+	handlerSet.EnableAllJung = func(handlerCtx context.Context, chatID int64, chatTitle string, userID int64) error {
 		enableChatID = chatID
 		enableChatTitle = chatTitle
 		enableUserID = userID
 		return nil
 	}
-	handlerSet.DisableAllJung = func(ctx context.Context, chatID int64, chatTitle string, userID int64) error {
+	handlerSet.DisableAllJung = func(handlerCtx context.Context, chatID int64, chatTitle string, userID int64) error {
 		disableChatID = chatID
 		disableChatTitle = chatTitle
 		disableUserID = userID
 		return nil
 	}
 
-	require.NoError(t, Dispatch(context.Background(), action(queue.ActionJungHelp), handlerSet))
-	require.NoError(t, Dispatch(context.Background(), action(queue.ActionEnableAllJung), handlerSet))
-	require.NoError(t, Dispatch(context.Background(), action(queue.ActionDisableAllJung), handlerSet))
+	require.NoError(t, Dispatch(context.Background(), testAction(queue.ActionJungHelp), handlerSet))
+	require.NoError(t, Dispatch(context.Background(), testAction(queue.ActionEnableAllJung), handlerSet))
+	require.NoError(t, Dispatch(context.Background(), testAction(queue.ActionDisableAllJung), handlerSet))
 
 	assert.Equal(t, int64(123), helpChatID)
 	assert.Equal(t, "Group", helpChatTitle)
@@ -259,7 +259,7 @@ func TestDispatchPassesHelpAndAdminFields(t *testing.T) {
 func TestDispatchReturnsHandlerError(t *testing.T) {
 	t.Parallel()
 
-	err := Dispatch(context.Background(), action(queue.ActionTopTen), handlers(nil, errors.New("boom")))
+	err := Dispatch(context.Background(), testAction(queue.ActionTopTen), testHandlers(nil, errors.New("boom")))
 
 	require.Error(t, err)
 	assert.EqualError(t, err, "boom")
@@ -268,7 +268,7 @@ func TestDispatchReturnsHandlerError(t *testing.T) {
 func TestDispatchDropsUnsupportedAction(t *testing.T) {
 	t.Parallel()
 
-	err := Dispatch(context.Background(), queue.Action{Name: "nope"}, handlers(nil, nil))
+	err := Dispatch(context.Background(), queue.Action{Name: "nope"}, testHandlers(nil, nil))
 
 	require.NoError(t, err)
 }
@@ -276,7 +276,7 @@ func TestDispatchDropsUnsupportedAction(t *testing.T) {
 func TestDispatchReturnsErrorForMissingHandler(t *testing.T) {
 	t.Parallel()
 
-	err := Dispatch(context.Background(), action(queue.ActionTopTen), Handlers{})
+	err := Dispatch(context.Background(), testAction(queue.ActionTopTen), Handlers{})
 
 	require.Error(t, err)
 	assert.EqualError(t, err, "missing handler for topten")
@@ -294,7 +294,7 @@ func TestProcessMessageDeletesAfterSuccessfulDispatch(t *testing.T) {
 		},
 	}
 
-	err := ProcessMessage(context.Background(), "queue-url", raw, handlers(nil, nil), deleter)
+	err := ProcessMessage(context.Background(), "queue-url", raw, testHandlers(nil, nil), deleter)
 
 	require.NoError(t, err)
 	assert.Equal(t, []queue.DeleteMessageRequest{{QueueURL: "queue-url", ReceiptHandle: "receipt"}}, deleter.requests)
@@ -308,7 +308,7 @@ func TestProcessMessageKeepsMessageAndContinuesOnDispatchFailure(t *testing.T) {
 		"action": mustAttribute(t, `{"StringValue":"topten"}`),
 	}}
 
-	err := ProcessMessage(context.Background(), "queue-url", raw, handlers(nil, errors.New("boom")), deleter)
+	err := ProcessMessage(context.Background(), "queue-url", raw, testHandlers(nil, errors.New("boom")), deleter)
 
 	require.NoError(t, err)
 	assert.Empty(t, deleter.requests)
@@ -317,7 +317,7 @@ func TestProcessMessageKeepsMessageAndContinuesOnDispatchFailure(t *testing.T) {
 func TestProcessMessageDropsMessageWithoutAction(t *testing.T) {
 	t.Parallel()
 
-	err := ProcessMessage(context.Background(), "queue-url", queue.RawMessage{}, handlers(nil, nil), &fakeDeleter{})
+	err := ProcessMessage(context.Background(), "queue-url", queue.RawMessage{}, testHandlers(nil, nil), &fakeDeleter{})
 
 	require.NoError(t, err)
 }
@@ -329,13 +329,13 @@ func TestProcessMessageReturnsDeleteError(t *testing.T) {
 		"action": mustAttribute(t, `{"StringValue":"topten"}`),
 	}}
 
-	err := ProcessMessage(context.Background(), "queue-url", raw, handlers(nil, nil), &fakeDeleter{err: errors.New("boom")})
+	err := ProcessMessage(context.Background(), "queue-url", raw, testHandlers(nil, nil), &fakeDeleter{err: errors.New("boom")})
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "delete SQS message")
 }
 
-func action(name string) queue.Action {
+func testAction(name string) queue.Action {
 	return queue.Action{
 		Name: name,
 		Attributes: map[string]string{
@@ -348,7 +348,7 @@ func action(name string) queue.Action {
 	}
 }
 
-func handlers(calls *[]string, err error) Handlers {
+func testHandlers(calls *[]string, err error) Handlers {
 	record := func(name string) error {
 		if calls != nil {
 			*calls = append(*calls, name)
@@ -357,31 +357,31 @@ func handlers(calls *[]string, err error) Handlers {
 	}
 
 	return Handlers{
-		JungHelp: func(ctx context.Context, chatID int64, chatTitle string) error {
+		JungHelp: func(handlerCtx context.Context, chatID int64, chatTitle string) error {
 			return record("junghelp")
 		},
-		TopTen: func(ctx context.Context, chatID int64) error {
+		TopTen: func(handlerCtx context.Context, chatID int64) error {
 			return record("topten")
 		},
-		TopDiver: func(ctx context.Context, chatID int64) error {
+		TopDiver: func(handlerCtx context.Context, chatID int64) error {
 			return record("topdiver")
 		},
-		AllJung: func(ctx context.Context, chatID int64) error {
+		AllJung: func(handlerCtx context.Context, chatID int64) error {
 			return record("alljung")
 		},
-		OffFromWork: func(ctx context.Context, chatID int64) error {
+		OffFromWork: func(handlerCtx context.Context, chatID int64) error {
 			return record("offFromWork")
 		},
-		EnableAllJung: func(ctx context.Context, chatID int64, chatTitle string, userID int64) error {
+		EnableAllJung: func(handlerCtx context.Context, chatID int64, chatTitle string, userID int64) error {
 			return record("enableAllJung")
 		},
-		DisableAllJung: func(ctx context.Context, chatID int64, chatTitle string, userID int64) error {
+		DisableAllJung: func(handlerCtx context.Context, chatID int64, chatTitle string, userID int64) error {
 			return record("disableAllJung")
 		},
-		SetOffWorkTime: func(ctx context.Context, input SetOffInput) error {
+		SetOffWorkTime: func(handlerCtx context.Context, input SetOffInput) error {
 			return record("setOffFromWorkTimeUTC")
 		},
-		OnOffFromWork: func(ctx context.Context, timeString string) error {
+		OnOffFromWork: func(handlerCtx context.Context, timeString string) error {
 			return record("onOffFromWork")
 		},
 	}

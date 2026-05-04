@@ -299,8 +299,8 @@ func displayName(row message.Message) string {
 
 // timeAgo formats a relative timestamp.
 // For example, a timestamp two hours ago becomes "2 hours ago".
-func timeAgo(dateCreated time.Time, now time.Time) string {
-	duration := now.Sub(dateCreated)
+func timeAgo(dateCreated time.Time, referenceTime time.Time) string {
+	duration := referenceTime.Sub(dateCreated)
 	future := duration < 0
 	if future {
 		duration = -duration

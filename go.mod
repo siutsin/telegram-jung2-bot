@@ -8,7 +8,11 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.57.3
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.42.27
 	github.com/caarlos0/env/v11 v11.4.1
+	github.com/golangci/plugin-module-register v0.1.2
 	github.com/stretchr/testify v1.11.1
+	go.uber.org/mock v0.6.0
+	golang.org/x/sync v0.20.0
+	golang.org/x/tools v0.44.0
 )
 
 require (
@@ -27,7 +31,6 @@ require (
 	github.com/aws/smithy-go v1.25.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	go.uber.org/mock v0.6.0 // indirect
-	golang.org/x/sync v0.20.0 // indirect
+	golang.org/x/mod v0.35.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

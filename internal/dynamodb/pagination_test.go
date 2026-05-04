@@ -68,7 +68,7 @@ func TestCollectPages(t *testing.T) {
 			run: func(t *testing.T) ([]string, error) {
 				ctx, cancel := context.WithCancel(context.Background())
 				cancel()
-				return collectPages(ctx, func(ctx context.Context, startKey map[string]any) (page[string], error) {
+				return collectPages(ctx, func(pageCtx context.Context, startKey map[string]any) (page[string], error) {
 					t.Fatal("fetch should not run after context cancellation")
 					return page[string]{}, nil
 				})

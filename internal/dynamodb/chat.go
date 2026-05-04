@@ -55,8 +55,8 @@ func (client ChatClient) Save(ctx context.Context, tableName string, settings ch
 
 // ListEnabled scans stored chat rows for scheduling.
 func (client ChatClient) ListEnabled(ctx context.Context, tableName string) ([]chat.ChatSetting, error) {
-	return collectPages(ctx, func(ctx context.Context, startKey map[string]any) (page[chat.ChatSetting], error) {
-		output, err := client.dynamo.Scan(ctx, &awsdynamodb.ScanInput{
+	return collectPages(ctx, func(pageCtx context.Context, startKey map[string]any) (page[chat.ChatSetting], error) {
+		output, err := client.dynamo.Scan(pageCtx, &awsdynamodb.ScanInput{
 			TableName:         awscore.String(tableName),
 			ExclusiveStartKey: encodeDynamoValues(startKey),
 		})
@@ -84,8 +84,8 @@ func (client ChatClient) SaveStatistics(ctx context.Context, tableName string, c
 func (client ChatClient) DueChatIDs(ctx context.Context, tableName string, timestamp time.Time) ([]int64, error) {
 	window := schedule.WindowFromTime(timestamp)
 	scanRequest := scanDueChatsRequest(tableName, window.OffTime, window.Weekday)
-	return collectPages(ctx, func(ctx context.Context, startKey map[string]any) (page[int64], error) {
-		output, err := client.dynamo.Scan(ctx, &awsdynamodb.ScanInput{
+	return collectPages(ctx, func(pageCtx context.Context, startKey map[string]any) (page[int64], error) {
+		output, err := client.dynamo.Scan(pageCtx, &awsdynamodb.ScanInput{
 			TableName:                 awscore.String(scanRequest.TableName),
 			ExclusiveStartKey:         encodeDynamoValues(startKey),
 			FilterExpression:          awscore.String(scanRequest.FilterExpression),
