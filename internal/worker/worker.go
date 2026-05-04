@@ -99,13 +99,12 @@ func ProcessMessage(ctx context.Context, queueURL string, raw queue.RawMessage, 
 	if err != nil {
 		return err
 	}
-	err = Dispatch(ctx, action, handlers)
-	if err != nil {
-		return err
-	}
-	err = deleter.Delete(ctx, queue.BuildDeleteMessageRequest(queueURL, raw))
-	if err != nil {
-		return fmt.Errorf("delete SQS message: %w", err)
+	dispatchErr := Dispatch(ctx, action, handlers)
+	if dispatchErr == nil {
+		err = deleter.Delete(ctx, queue.BuildDeleteMessageRequest(queueURL, raw))
+		if err != nil {
+			return fmt.Errorf("delete SQS message: %w", err)
+		}
 	}
 
 	return nil

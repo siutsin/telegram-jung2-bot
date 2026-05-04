@@ -45,6 +45,7 @@ flowchart TD
 
 - action dispatch is table-driven
 - unknown actions are ignored
+- handler errors keep the message undeleted but do not stop polling
 
 ## Scope
 
@@ -61,5 +62,4 @@ Worker creation or execution fails when:
 - the queue receiver is missing
 - the queue deleter is missing
 - message decode fails
-- a handler fails
 - queue delete fails

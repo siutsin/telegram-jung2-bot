@@ -83,8 +83,8 @@ used to verify behaviour until production adapter parity is complete.
 - `make lint` runs `gofmt` checks, `go vet`, `golangci-lint`, `shellcheck`,
   `typos`, and `markdownlint-cli2`.
 - `make lint-fix` applies supported formatting/lint fixes.
-- `make mock` regenerates centralised GoMock code under `internal/mock/` via
-  `go generate`.
+- `make mock` removes old generated mocks, then regenerates centralised GoMock
+  code under `internal/mock/` via `go generate`.
 - `make install-buck2` installs or updates Buck2 for the local platform.
 - Use Buck2's official `prelude//go/tools/gobuckify:gobuckify` target for Go
   vendor BUCK generation through `make vendor`; do not reintroduce a custom

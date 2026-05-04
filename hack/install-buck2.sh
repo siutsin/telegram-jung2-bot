@@ -26,9 +26,9 @@ fi
 install_dir="${HOME}/.cargo/bin"
 mkdir -p "${install_dir}"
 
-artifact="buck2-${cpu}-${platform}.zst"
-url="https://github.com/facebook/buck2/releases/download/latest/${artifact}"
-tmp="${TMPDIR:-/tmp}/${artifact}"
+archive="buck2-${cpu}-${platform}.zst"
+url="https://github.com/facebook/buck2/releases/download/latest/${archive}"
+tmp="${TMPDIR:-/tmp}/${archive}"
 
 echo "Downloading ${url}"
 curl -fL "${url}" -o "${tmp}"

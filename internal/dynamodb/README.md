@@ -29,13 +29,13 @@ This package depends on:
 
 ```mermaid
 flowchart TD
-    row[Message or query input] --> client[MessageClient]
+    row[Message or query input] --> client[message adapter]
     client --> request[DynamoDB request]
     request --> dynamo[DynamoDB]
     dynamo --> decode[Decoded message rows]
 ```
 
-- `MessageClient` saves message rows and queries stored message history.
+- the message adapter saves message rows and queries stored message history.
 - Query methods keep following `LastEvaluatedKey` until DynamoDB is done.
 
 ### Chat flow
@@ -47,19 +47,19 @@ flowchart TD
     parse --> setting[ChatSetting]
 ```
 
-- `ChatClient.Get` uses the strict `chat.ParseRow` path.
+- the chat adapter `Get` path uses the strict `chat.ParseRow` path.
 - schedule-facing scans use the permissive `chat.FromScheduleRow` path.
 
 ### Scale-up flow
 
 ```mermaid
 flowchart TD
-    scaleUp[ScaleUpper.ScaleUp] --> describe[DescribeTable]
-    describe --> build[BuildScaleUpRequest]
-    build --> update[UpdateTable]
+    scaleUp[scale-up adapter] --> describe[DescribeTable]
+    describe --> target[choose read capacity]
+    target --> update[UpdateTable]
 ```
 
-- `ScaleUpper` reads current throughput, builds the target request, then updates the table.
+- the scale-up adapter reads current throughput, chooses the target read capacity, then updates the table.
 - some known DynamoDB scale-up errors are ignored to match the reference behaviour.
 
 ## Scope
@@ -70,6 +70,30 @@ This package owns:
 - DynamoDB request encoding
 - DynamoDB item decoding
 - pagination loops
+
+## Public API
+
+- `NewMessageClient` returns `MessageClient`
+- `NewChatClient` returns `ChatClient`
+- `NewScaleUpper` returns `ScaleUpper`
+
+## Files
+
+- `chat.go`: chat read, write, statistics, and due-chat adapter
+- `client.go`: adapter types, constructors, and the private DynamoDB SDK interface
+- `codec.go`: DynamoDB value encoding and decoding
+- `message.go`: message save and query adapter
+- `pagination.go`: shared paginated fetch loop
+- `scale.go`: table read-capacity scale-up adapter
+- `update.go`: shared `UpdateItem` bridge
+
+## Internal helpers
+
+- `collectPages` stays generic because the same pagination flow is reused for
+  message rows, chat settings, and chat IDs.
+- `updateContractUpdate` is the bridge from SDK-free update shapes returned by
+  `internal/message` and `internal/chat` to the final DynamoDB `UpdateItem`
+  call.
 
 ## Validation
 
@@ -83,5 +107,4 @@ Calls fail when:
 
 These do not fail:
 
-- invalid `DesiredRead` in scale-up, which falls back to the current read capacity
 - known ignorable scale-up errors

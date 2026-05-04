@@ -213,7 +213,7 @@ type fakeMessageClient struct {
 	rows []message.Message
 }
 
-func (client *fakeMessageClient) QueryByChat(ctx context.Context, tableName string, chatID int64, since time.Time, until time.Time) ([]message.Message, error) {
+func (client *fakeMessageClient) QueryByChat(ctx context.Context, tableName string, chatID int64, since time.Time) ([]message.Message, error) {
 	return append([]message.Message(nil), client.rows...), nil
 }
 

@@ -38,29 +38,12 @@ func TestParseRowAppliesContractDefaults(t *testing.T) {
 func TestParseRowUsesStoredValues(t *testing.T) {
 	enabled := false
 	mask := workday.Mon | workday.Fri
+	row := storedRow(&enabled, &mask)
 
-	settings, err := ParseRow(Row{
-		ChatID:        123,
-		ChatTitle:     "title",
-		DateCreated:   "2019-03-16T02:26:19+08:00",
-		TTL:           1558349640,
-		EnableAllJung: &enabled,
-		OffTime:       "1800",
-		Workday:       &mask,
-	})
+	settings, err := ParseRow(row)
 	require.NoError(t, err)
 
-	assert.Equal(t, ChatSetting{
-		ChatID:        123,
-		ChatTitle:     "title",
-		DateCreated:   mustParseTime(t, "2019-03-16T02:26:19+08:00"),
-		TTL:           1558349640,
-		EnableAllJung: false,
-		OffTime:       "1800",
-		Workday:       workday.Workdays(mask),
-		HasOffTime:    true,
-		HasWorkday:    true,
-	}, settings)
+	assert.Equal(t, storedSettingFromRow(t, row, enabled, workday.Workdays(mask)), settings)
 }
 
 func TestParseRowRejectsMalformedValues(t *testing.T) {
@@ -170,9 +153,9 @@ func TestBuildUpdatePreservesContractShape(t *testing.T) {
 func TestFilterDuePreservesContractDefaults(t *testing.T) {
 	rows := []ChatSetting{
 		{ChatID: 1},
-		{ChatID: 2, OffTime: "1000", HasOffTime: true, Workday: workday.Workdays(workday.Mon), HasWorkday: true},
-		{ChatID: 3, OffTime: "1000", HasOffTime: true, Workday: workday.Workdays(workday.Tue), HasWorkday: true},
-		{ChatID: 4, OffTime: "1800", HasOffTime: true, Workday: workday.Workdays(workday.Mon), HasWorkday: true},
+		dueSetting(2, "1000", workday.Workdays(workday.Mon)),
+		dueSetting(3, "1000", workday.Workdays(workday.Tue)),
+		dueSetting(4, "1800", workday.Workdays(workday.Mon)),
 		{ChatID: 5, OffTime: "1000", HasOffTime: true},
 	}
 
@@ -197,6 +180,44 @@ func TestFilterDueRejectsMissingSettingsOutsideContractDefault(t *testing.T) {
 
 			assert.Empty(t, due)
 		})
+	}
+}
+
+func storedRow(enabled *bool, mask *int) Row {
+	return Row{
+		ChatID:        123,
+		ChatTitle:     "title",
+		DateCreated:   "2019-03-16T02:26:19+08:00",
+		TTL:           1558349640,
+		EnableAllJung: enabled,
+		OffTime:       "1800",
+		Workday:       mask,
+	}
+}
+
+func storedSettingFromRow(t *testing.T, row Row, enabled bool, mask workday.Workdays) ChatSetting {
+	t.Helper()
+
+	return ChatSetting{
+		ChatID:        row.ChatID,
+		ChatTitle:     row.ChatTitle,
+		DateCreated:   mustParseTime(t, row.DateCreated),
+		TTL:           row.TTL,
+		EnableAllJung: enabled,
+		OffTime:       row.OffTime,
+		Workday:       mask,
+		HasOffTime:    true,
+		HasWorkday:    true,
+	}
+}
+
+func dueSetting(chatID int64, offTime string, mask workday.Workdays) ChatSetting {
+	return ChatSetting{
+		ChatID:     chatID,
+		OffTime:    offTime,
+		HasOffTime: true,
+		Workday:    mask,
+		HasWorkday: true,
 	}
 }
 

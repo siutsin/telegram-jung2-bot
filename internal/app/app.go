@@ -57,12 +57,12 @@ func (app *App) Run(ctx context.Context) error {
 	group, groupCtx := errgroup.WithContext(runCtx)
 	componentErrs := make(chan error, 2)
 	group.Go(func() error {
-		err := normalizeHTTPServeError(app.httpServer.ListenAndServe())
+		err := normaliseHTTPServeError(app.httpServer.ListenAndServe())
 		componentErrs <- err
 		return err
 	})
 	group.Go(func() error {
-		err := normalizeWorkerRunError(app.queueWorker.Run(groupCtx), groupCtx)
+		err := normaliseWorkerRunError(app.queueWorker.Run(groupCtx), groupCtx)
 		componentErrs <- err
 		return err
 	})
@@ -110,8 +110,8 @@ func shutdownTimeout(options Options) time.Duration {
 	return 10 * time.Second
 }
 
-// normalizeHTTPServeError hides the expected server-closed stop result.
-func normalizeHTTPServeError(err error) error {
+// normaliseHTTPServeError hides the expected server-closed stop result.
+func normaliseHTTPServeError(err error) error {
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}
@@ -119,8 +119,8 @@ func normalizeHTTPServeError(err error) error {
 	return err
 }
 
-// normalizeWorkerRunError hides expected context-driven worker shutdown.
-func normalizeWorkerRunError(err error, ctx context.Context) error {
+// normaliseWorkerRunError hides expected context-driven worker shutdown.
+func normaliseWorkerRunError(err error, ctx context.Context) error {
 	if err == nil {
 		return nil
 	}

@@ -89,19 +89,16 @@ func TTL(now time.Time, retention time.Duration) int64 {
 // For example, a message with username and firstName adds only those non-empty
 // fields to the SET clause.
 func BuildSaveUpdate(tableName string, message Message) UpdateExpression {
-	attributeNames := map[string]string{
-		"#ttl": "ttl",
-	}
-	attributeValues := map[string]any{
-		":ttl": message.TTL,
-	}
-	assignments := []string{"#ttl = :ttl"}
+	attributeNames := make(map[string]string)
+	attributeValues := make(map[string]any)
+	assignments := make([]string, 0, 6)
 
 	assignments = addStringAttribute(assignments, attributeNames, attributeValues, "chatTitle", message.ChatTitle)
 	assignments = addIntAttribute(assignments, attributeNames, attributeValues, "userId", message.UserID)
 	assignments = addStringAttribute(assignments, attributeNames, attributeValues, "username", message.Username)
 	assignments = addStringAttribute(assignments, attributeNames, attributeValues, "firstName", message.FirstName)
 	assignments = addStringAttribute(assignments, attributeNames, attributeValues, "lastName", message.LastName)
+	assignments = addIntAttribute(assignments, attributeNames, attributeValues, "ttl", message.TTL)
 
 	return UpdateExpression{
 		TableName: tableName,

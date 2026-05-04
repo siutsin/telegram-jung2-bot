@@ -45,6 +45,7 @@ flowchart TD
 This package owns:
 
 - workday bit constants
+- shared weekday and all-day masks
 - bitmask validation
 - list parsing
 - day matching

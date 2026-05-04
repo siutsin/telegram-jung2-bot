@@ -63,6 +63,9 @@ linters:
   exclusions:
     # Generated Go should still be linted loosely enough to avoid constant churn.
     generated: lax
+    paths:
+      # Generated mocks are regenerated from package-local interfaces.
+      - ^internal/mock/
     rules:
       # Test files legitimately repeat fixtures and request payloads that would be noisy elsewhere.
       - path: (.+)_test\.go
@@ -89,7 +92,5 @@ formatters:
     # Generated files are left out of formatter enforcement for the same reason as lint.
     generated: lax
     paths:
-      # Skip external or example trees that are not part of the maintained service code.
-      - third_party$
-      - builtin$
-      - examples$
+      # Generated mocks are regenerated from package-local interfaces.
+      - ^internal/mock/

@@ -80,6 +80,8 @@ func (service Service) HandleDueReport(ctx context.Context, timestamp time.Time)
 // WindowFromTime converts a timestamp into a contract schedule window.
 // For example, 2025-01-06 18:30 UTC becomes OffTime "1830" and Weekday "MON".
 func WindowFromTime(timestamp time.Time) Window {
+	timestamp = timestamp.UTC()
+
 	return Window{
 		OffTime: timestamp.Format("1504"),
 		Weekday: weekdayToken(timestamp.Weekday()),

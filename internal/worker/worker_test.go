@@ -112,7 +112,7 @@ func TestPollingWorkerProcessesAndDeletesMessages(t *testing.T) {
 	assert.Equal(t, []queue.DeleteMessageRequest{{QueueURL: "queue-url", ReceiptHandle: "receipt"}}, deleter.requests)
 }
 
-func TestPollingWorkerReturnsMessageFailure(t *testing.T) {
+func TestPollingWorkerContinuesAfterMessageFailure(t *testing.T) {
 	t.Parallel()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -151,8 +151,7 @@ func TestPollingWorkerReturnsMessageFailure(t *testing.T) {
 		Deleter:  deleter,
 	}).Run(ctx)
 
-	require.Error(t, err)
-	require.EqualError(t, err, "boom")
+	require.NoError(t, err)
 	assert.Equal(t, int32(2), calls.Load())
 	require.Len(t, deleter.requests, 1)
 	assert.Equal(t, "queue-url", deleter.requests[0].QueueURL)
@@ -301,7 +300,7 @@ func TestProcessMessageDeletesAfterSuccessfulDispatch(t *testing.T) {
 	assert.Equal(t, []queue.DeleteMessageRequest{{QueueURL: "queue-url", ReceiptHandle: "receipt"}}, deleter.requests)
 }
 
-func TestProcessMessageKeepsMessageOnDispatchFailure(t *testing.T) {
+func TestProcessMessageKeepsMessageAndContinuesOnDispatchFailure(t *testing.T) {
 	t.Parallel()
 
 	deleter := &fakeDeleter{}
@@ -311,7 +310,7 @@ func TestProcessMessageKeepsMessageOnDispatchFailure(t *testing.T) {
 
 	err := ProcessMessage(context.Background(), "queue-url", raw, handlers(nil, errors.New("boom")), deleter)
 
-	require.Error(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, deleter.requests)
 }
 

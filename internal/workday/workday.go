@@ -18,7 +18,12 @@ const (
 	Sat
 )
 
-const allDaysMask = Sun | Mon | Tue | Wed | Thu | Fri | Sat
+const (
+	// Weekdays is the default Monday to Friday mask.
+	Weekdays = Workdays(Mon | Tue | Wed | Thu | Fri)
+	// AllDays is the mask containing every known day bit.
+	AllDays = Workdays(Sun | Mon | Tue | Wed | Thu | Fri | Sat)
+)
 
 // Workdays is the validated stored bitmask for enabled workdays.
 type Workdays int
@@ -36,7 +41,7 @@ var dayBits = map[string]int{
 // Parse validates a stored workday bitmask.
 // For example, 6 becomes MON|TUE, while 128 is rejected.
 func Parse(mask int) (Workdays, error) {
-	if mask < 0 || mask&^allDaysMask != 0 {
+	if mask < 0 || mask&^int(AllDays) != 0 {
 		return 0, fmt.Errorf("invalid workday mask %d", mask)
 	}
 
