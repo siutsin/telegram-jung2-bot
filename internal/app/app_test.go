@@ -3,41 +3,54 @@ package app
 import (
 	"context"
 	"errors"
-	"sync"
+	"net/http"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	gomock "go.uber.org/mock/gomock"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	appmock "github.com/siutsin/telegram-jung2-bot/internal/mock"
 )
 
 func TestRunStartsProcessesAndCancelsWorker(t *testing.T) {
 	t.Parallel()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	httpServer := newBlockingHTTPServer()
-	queueWorker := &fakeQueueWorker{}
+	started := make(chan struct{})
+	shutdown := make(chan struct{})
+	var shutdownCalled atomic.Bool
+	var workerCancelled atomic.Bool
+	httpServer, queueWorker := newMocks(t)
+	httpServer.EXPECT().ListenAndServe().DoAndReturn(func() error {
+		close(started)
+		<-shutdown
+		return nil
+	})
+	httpServer.EXPECT().Shutdown(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+		shutdownCalled.Store(true)
+		close(shutdown)
+		return nil
+	})
+	queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+		<-ctx.Done()
+		workerCancelled.Store(true)
+		return nil
+	})
 	application := New(httpServer, queueWorker, Options{ShutdownTimeout: time.Second})
-	done := make(chan error, 1)
 
-	go func() {
-		done <- application.Run(ctx)
-	}()
-
-	<-httpServer.started
-	cancel()
-
-	require.NoError(t, <-done)
-	require.Eventually(t, httpServer.shutdownCalled.Load, time.Second, time.Millisecond)
-	require.Eventually(t, queueWorker.cancelled.Load, time.Second, time.Millisecond)
+	require.NoError(t, runWithCancel(t, application, ctx, cancel, started))
+	require.Eventually(t, shutdownCalled.Load, time.Second, time.Millisecond)
+	require.Eventually(t, workerCancelled.Load, time.Second, time.Millisecond)
 }
 
 func TestNewSetsDependencies(t *testing.T) {
 	t.Parallel()
 
-	httpServer := &fakeHTTPServer{}
-	queueWorker := &fakeQueueWorker{}
+	httpServer, queueWorker := newMocks(t)
 	application := New(httpServer, queueWorker, Options{ShutdownTimeout: time.Second})
 
 	assert.Same(t, httpServer, application.httpServer)
@@ -48,33 +61,33 @@ func TestNewSetsDependencies(t *testing.T) {
 func TestRunRequiresProcesses(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name        string
-		application *App
-		wantErr     string
-	}{
-		{name: "missing HTTP server", application: &App{}, wantErr: "http server is required"},
-		{name: "missing queue worker", application: &App{httpServer: &fakeHTTPServer{}}, wantErr: "queue worker is required"},
-	}
+	t.Run("missing HTTP server", func(t *testing.T) {
+		err := (&App{}).Run(context.Background())
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			err := test.application.Run(context.Background())
+		require.Error(t, err)
+		assert.EqualError(t, err, "http server is required")
+	})
 
-			require.Error(t, err)
-			assert.EqualError(t, err, test.wantErr)
-		})
-	}
+	t.Run("missing queue worker", func(t *testing.T) {
+		httpServer, _ := newMocks(t)
+		err := (&App{httpServer: httpServer}).Run(context.Background())
+
+		require.Error(t, err)
+		assert.EqualError(t, err, "queue worker is required")
+	})
 }
 
 func TestRunReturnsHTTPServerError(t *testing.T) {
 	t.Parallel()
 
-	application := &App{
-		httpServer:      &fakeHTTPServer{listenErr: errors.New("boom")},
-		queueWorker:     &fakeQueueWorker{},
-		shutdownTimeout: time.Second,
-	}
+	httpServer, queueWorker := newMocks(t)
+	httpServer.EXPECT().ListenAndServe().Return(errors.New("boom"))
+	httpServer.EXPECT().Shutdown(gomock.Any()).Return(nil)
+	queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+		<-ctx.Done()
+		return nil
+	})
+	application := New(httpServer, queueWorker, Options{ShutdownTimeout: time.Second})
 
 	err := application.Run(context.Background())
 	require.Error(t, err)
@@ -84,11 +97,18 @@ func TestRunReturnsHTTPServerError(t *testing.T) {
 func TestRunReturnsQueueWorkerError(t *testing.T) {
 	t.Parallel()
 
-	application := &App{
-		httpServer:      newBlockingHTTPServer(),
-		queueWorker:     &fakeQueueWorker{err: errors.New("boom")},
-		shutdownTimeout: time.Second,
-	}
+	shutdown := make(chan struct{})
+	httpServer, queueWorker := newMocks(t)
+	httpServer.EXPECT().ListenAndServe().DoAndReturn(func() error {
+		<-shutdown
+		return nil
+	})
+	httpServer.EXPECT().Shutdown(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+		close(shutdown)
+		return nil
+	})
+	queueWorker.EXPECT().Run(gomock.Any()).Return(errors.New("boom"))
+	application := New(httpServer, queueWorker, Options{ShutdownTimeout: time.Second})
 
 	err := application.Run(context.Background())
 	require.Error(t, err)
@@ -98,11 +118,14 @@ func TestRunReturnsQueueWorkerError(t *testing.T) {
 func TestRunReturnsNilWhenComponentStopsCleanly(t *testing.T) {
 	t.Parallel()
 
-	application := &App{
-		httpServer:      &fakeHTTPServer{},
-		queueWorker:     &fakeQueueWorker{},
-		shutdownTimeout: time.Second,
-	}
+	httpServer, queueWorker := newMocks(t)
+	httpServer.EXPECT().ListenAndServe().Return(nil)
+	httpServer.EXPECT().Shutdown(gomock.Any()).Return(nil)
+	queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+		<-ctx.Done()
+		return nil
+	})
+	application := New(httpServer, queueWorker, Options{ShutdownTimeout: time.Second})
 
 	require.NoError(t, application.Run(context.Background()))
 }
@@ -110,42 +133,72 @@ func TestRunReturnsNilWhenComponentStopsCleanly(t *testing.T) {
 func TestRunReturnsShutdownErrorAfterComponentFailure(t *testing.T) {
 	t.Parallel()
 
-	application := &App{
-		httpServer:      &fakeHTTPServer{shutdownErr: errors.New("shutdown boom")},
-		queueWorker:     &fakeQueueWorker{err: errors.New("worker boom")},
-		shutdownTimeout: time.Second,
-	}
+	shutdown := make(chan struct{})
+	httpServer, queueWorker := newMocks(t)
+	httpServer.EXPECT().ListenAndServe().DoAndReturn(func() error {
+		<-shutdown
+		return nil
+	})
+	httpServer.EXPECT().Shutdown(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+		close(shutdown)
+		return errors.New("shutdown boom")
+	})
+	queueWorker.EXPECT().Run(gomock.Any()).Return(errors.New("worker boom"))
+	application := New(httpServer, queueWorker, Options{ShutdownTimeout: time.Second})
 
 	err := application.Run(context.Background())
 	require.Error(t, err)
 	assert.EqualError(t, err, "shutdown HTTP server: shutdown boom")
 }
 
-// Cancellation is the daemon's normal shutdown path, so this test keeps the
-// HTTP and worker teardown contract explicit.
-func TestRunShutsDownHTTPServerOnContextCancellation(t *testing.T) {
+func TestRunIgnoresExpectedHTTPServerClosed(t *testing.T) {
 	t.Parallel()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	httpServer := newBlockingHTTPServer()
-	queueWorker := &fakeQueueWorker{}
-	application := &App{
-		httpServer:      httpServer,
-		queueWorker:     queueWorker,
-		shutdownTimeout: time.Millisecond,
-	}
-	done := make(chan error, 1)
+	started := make(chan struct{})
+	shutdown := make(chan struct{})
+	httpServer, queueWorker := newMocks(t)
+	httpServer.EXPECT().ListenAndServe().DoAndReturn(func() error {
+		close(started)
+		<-shutdown
+		return http.ErrServerClosed
+	})
+	httpServer.EXPECT().Shutdown(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+		close(shutdown)
+		return nil
+	})
+	queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+		<-ctx.Done()
+		return nil
+	})
+	application := New(httpServer, queueWorker, Options{ShutdownTimeout: time.Millisecond})
 
-	go func() {
-		done <- application.Run(ctx)
-	}()
+	require.NoError(t, runWithCancel(t, application, ctx, cancel, started))
+}
 
-	<-httpServer.started
-	cancel()
+func TestRunIgnoresExpectedWorkerCancellation(t *testing.T) {
+	t.Parallel()
 
-	require.NoError(t, <-done)
-	require.Eventually(t, httpServer.shutdownCalled.Load, time.Second, time.Millisecond)
-	require.Eventually(t, queueWorker.cancelled.Load, time.Second, time.Millisecond)
+	ctx, cancel := context.WithCancel(context.Background())
+	started := make(chan struct{})
+	shutdown := make(chan struct{})
+	httpServer, queueWorker := newMocks(t)
+	httpServer.EXPECT().ListenAndServe().DoAndReturn(func() error {
+		close(started)
+		<-shutdown
+		return nil
+	})
+	httpServer.EXPECT().Shutdown(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+		close(shutdown)
+		return nil
+	})
+	queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+		<-ctx.Done()
+		return ctx.Err()
+	})
+	application := New(httpServer, queueWorker, Options{ShutdownTimeout: time.Millisecond})
+
+	require.NoError(t, runWithCancel(t, application, ctx, cancel, started))
 }
 
 // A shutdown failure must win over cancellation so operators see the real stop
@@ -154,25 +207,129 @@ func TestRunReturnsShutdownError(t *testing.T) {
 	t.Parallel()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	httpServer := newBlockingHTTPServer()
-	httpServer.shutdownErr = errors.New("boom")
-	application := &App{
-		httpServer:      httpServer,
-		queueWorker:     &fakeQueueWorker{},
-		shutdownTimeout: time.Millisecond,
-	}
-	done := make(chan error, 1)
-
-	go func() {
-		done <- application.Run(ctx)
-	}()
-
-	<-httpServer.started
-	cancel()
-
-	err := <-done
+	started := make(chan struct{})
+	shutdown := make(chan struct{})
+	httpServer, queueWorker := newMocks(t)
+	httpServer.EXPECT().ListenAndServe().DoAndReturn(func() error {
+		close(started)
+		<-shutdown
+		return nil
+	})
+	httpServer.EXPECT().Shutdown(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+		close(shutdown)
+		return errors.New("boom")
+	})
+	queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+		<-ctx.Done()
+		return nil
+	})
+	application := New(httpServer, queueWorker, Options{ShutdownTimeout: time.Millisecond})
+	err := runWithCancel(t, application, ctx, cancel, started)
 	require.Error(t, err)
 	assert.EqualError(t, err, "shutdown HTTP server: boom")
+}
+
+// Repeated single-instance shutdown runs give the race detector multiple real
+// lifecycle interleavings without inventing unsupported multi-server usage.
+func TestRunHandlesRepeatedConcurrentShutdownInterleavings(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		run  func(t *testing.T, application *App, httpServer *appmock.MockHTTPRunner, queueWorker *appmock.MockQueueWorker)
+	}{
+		{
+			name: "context cancellation",
+			run: func(t *testing.T, application *App, httpServer *appmock.MockHTTPRunner, queueWorker *appmock.MockQueueWorker) {
+				ctx, cancel := context.WithCancel(context.Background())
+				started := make(chan struct{}, 2)
+				shutdown := make(chan struct{})
+				httpServer.EXPECT().ListenAndServe().DoAndReturn(func() error {
+					started <- struct{}{}
+					<-shutdown
+					return nil
+				})
+				httpServer.EXPECT().Shutdown(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+					close(shutdown)
+					return nil
+				})
+				queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+					started <- struct{}{}
+					<-ctx.Done()
+					return nil
+				})
+
+				err := runAfterStarts(t, application, ctx, func() {
+					cancel()
+				}, started, 2)
+				require.NoError(t, err)
+			},
+		},
+		{
+			name: "worker stops first",
+			run: func(t *testing.T, application *App, httpServer *appmock.MockHTTPRunner, queueWorker *appmock.MockQueueWorker) {
+				ctx := context.Background()
+				started := make(chan struct{}, 2)
+				shutdown := make(chan struct{})
+				workerRelease := make(chan struct{})
+				httpServer.EXPECT().ListenAndServe().DoAndReturn(func() error {
+					started <- struct{}{}
+					<-shutdown
+					return nil
+				})
+				httpServer.EXPECT().Shutdown(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+					close(shutdown)
+					return nil
+				})
+				queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+					started <- struct{}{}
+					<-workerRelease
+					return errors.New("boom")
+				})
+
+				err := runAfterStarts(t, application, ctx, func() {
+					close(workerRelease)
+				}, started, 2)
+				require.Error(t, err)
+				assert.EqualError(t, err, "boom")
+			},
+		},
+		{
+			name: "http stops first",
+			run: func(t *testing.T, application *App, httpServer *appmock.MockHTTPRunner, queueWorker *appmock.MockQueueWorker) {
+				ctx := context.Background()
+				started := make(chan struct{}, 2)
+				httpRelease := make(chan struct{})
+				httpServer.EXPECT().ListenAndServe().DoAndReturn(func() error {
+					started <- struct{}{}
+					<-httpRelease
+					return errors.New("boom")
+				})
+				httpServer.EXPECT().Shutdown(gomock.Any()).Return(nil)
+				queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
+					started <- struct{}{}
+					<-ctx.Done()
+					return nil
+				})
+
+				err := runAfterStarts(t, application, ctx, func() {
+					close(httpRelease)
+				}, started, 2)
+				require.Error(t, err)
+				assert.EqualError(t, err, "boom")
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			for range 100 {
+				httpServer, queueWorker := newMocks(t)
+				application := New(httpServer, queueWorker, Options{ShutdownTimeout: time.Millisecond})
+				test.run(t, application, httpServer, queueWorker)
+			}
+		})
+	}
 }
 
 func TestShutdownTimeoutUsesFallback(t *testing.T) {
@@ -181,79 +338,40 @@ func TestShutdownTimeoutUsesFallback(t *testing.T) {
 	assert.Equal(t, 10*time.Second, shutdownTimeout(Options{}))
 }
 
-type fakeHTTPServer struct {
-	mu             sync.Mutex
-	started        chan struct{}
-	startedOnce    sync.Once
-	shutdown       chan struct{}
-	shutdownOnce   sync.Once
-	listenBlocks   bool
-	listenErr      error
-	shutdownCalled atomic.Bool
-	shutdownErr    error
+func newMocks(t *testing.T) (*appmock.MockHTTPRunner, *appmock.MockQueueWorker) {
+	t.Helper()
+
+	controller := gomock.NewController(t)
+
+	return appmock.NewMockHTTPRunner(controller), appmock.NewMockQueueWorker(controller)
 }
 
-func newBlockingHTTPServer() *fakeHTTPServer {
-	return &fakeHTTPServer{
-		started:      make(chan struct{}),
-		shutdown:     make(chan struct{}),
-		listenBlocks: true,
+func runWithCancel(t *testing.T, application *App, ctx context.Context, cancel context.CancelFunc, started <-chan struct{}) error {
+	t.Helper()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- application.Run(ctx)
+	}()
+
+	<-started
+	cancel()
+
+	return <-done
+}
+
+func runAfterStarts(t *testing.T, application *App, ctx context.Context, release func(), started <-chan struct{}, count int) error {
+	t.Helper()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- application.Run(ctx)
+	}()
+
+	for range count {
+		<-started
 	}
-}
+	release()
 
-func (server *fakeHTTPServer) ListenAndServe() error {
-	server.startedOnce.Do(func() {
-		close(server.startedChan())
-	})
-	if server.listenBlocks {
-		<-server.shutdownChan()
-	}
-
-	return server.listenErr
-}
-
-func (server *fakeHTTPServer) Shutdown(ctx context.Context) error {
-	server.shutdownCalled.Store(true)
-	server.shutdownOnce.Do(func() {
-		close(server.shutdownChan())
-	})
-	return server.shutdownErr
-}
-
-// startedChan returns the startup signal channel.
-func (server *fakeHTTPServer) startedChan() chan struct{} {
-	server.mu.Lock()
-	defer server.mu.Unlock()
-
-	if server.started == nil {
-		server.started = make(chan struct{})
-	}
-
-	return server.started
-}
-
-// shutdownChan returns the shutdown signal channel.
-func (server *fakeHTTPServer) shutdownChan() chan struct{} {
-	server.mu.Lock()
-	defer server.mu.Unlock()
-
-	if server.shutdown == nil {
-		server.shutdown = make(chan struct{})
-	}
-
-	return server.shutdown
-}
-
-type fakeQueueWorker struct {
-	err       error
-	cancelled atomic.Bool
-}
-
-func (worker *fakeQueueWorker) Run(ctx context.Context) error {
-	if worker.err != nil {
-		return worker.err
-	}
-	<-ctx.Done()
-	worker.cancelled.Store(true)
-	return nil
+	return <-done
 }

@@ -1,4 +1,4 @@
-.PHONY: build coverage test ci vendor lint lint-fix install-buck2 clean
+.PHONY: build coverage test ci vendor lint lint-fix mock install-buck2 clean
 
 TEST_TARGETS := //...
 TEST_MODIFIERS := -m toolchains//:race
@@ -26,6 +26,9 @@ lint:
 
 lint-fix:
 	./hack/lint.sh fix
+
+mock:
+	go generate ./internal/app
 
 install-buck2:
 	./hack/install-buck2.sh

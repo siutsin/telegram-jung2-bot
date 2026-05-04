@@ -1,0 +1,11 @@
+go_library(
+    name = "mock",
+    srcs = glob(["*.go"], exclude = ["*_test.go"]),
+    deps = [
+        "//vendor/go.uber.org/mock/gomock:gomock",
+    ],
+    package_name = "github.com/siutsin/telegram-jung2-bot/internal/mock",
+    visibility = [
+        "//internal/...",
+    ],
+)
