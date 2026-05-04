@@ -2,6 +2,9 @@ package httpserver
 
 import (
 	"context"
+	"io"
+	"log/slog"
+	"os"
 	"testing"
 	"time"
 
@@ -12,6 +15,11 @@ import (
 	mock "github.com/siutsin/telegram-jung2-bot/internal/mock"
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
 )
+
+func TestMain(m *testing.M) {
+	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	os.Exit(m.Run())
+}
 
 type httpserverMocks struct {
 	messages   *mock.MockMessageSaver
