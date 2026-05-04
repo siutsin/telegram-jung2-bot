@@ -98,7 +98,7 @@ Applies supported lint fixes.
 make mock
 ```
 
-Regenerates centralized GoMock code under `internal/mock/` via `go generate`.
+Regenerates centralised GoMock code under `internal/mock/` via `go generate`.
 
 ```bash
 make vendor

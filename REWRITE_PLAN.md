@@ -185,7 +185,7 @@ complete. It must be removed before the final cleanup gate.
 - [x] Keep `make build` and `make test` cache-friendly by making vendoring an
   explicit `make vendor` step instead of a prerequisite for every build/test
   run.
-- [x] Keep test selection centralized in `make test`; `make coverage` reuses
+- [x] Keep test selection centralised in `make test`; `make coverage` reuses
   the same Buck test target set and race mode instead of discovering its own
   test graph.
 - [x] Keep CI minimal and ordered: `make ci` now runs `make vendor`, then
