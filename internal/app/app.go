@@ -3,9 +3,15 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 )
+
+//go:generate sh -c "GOFLAGS=-mod=mod go run go.uber.org/mock/mockgen -source=app.go -destination=../mock/app_mock.go -package=mock"
 
 type HTTPRunner interface {
 	ListenAndServe() error
@@ -48,30 +54,38 @@ func (app *App) Run(ctx context.Context) error {
 
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	group, groupCtx := errgroup.WithContext(runCtx)
+	componentErrs := make(chan error, 2)
+	group.Go(func() error {
+		err := normalizeHTTPServeError(app.httpServer.ListenAndServe())
+		componentErrs <- err
+		return err
+	})
+	group.Go(func() error {
+		err := normalizeWorkerRunError(app.queueWorker.Run(groupCtx), groupCtx)
+		componentErrs <- err
+		return err
+	})
 
-	errs := make(chan error, 2)
-	go func() {
-		errs <- app.httpServer.ListenAndServe()
-	}()
-	go func() {
-		errs <- app.queueWorker.Run(runCtx)
-	}()
+	var componentErr error
 
 	select {
 	case <-ctx.Done():
 		cancel()
-		return shutdownHTTP(app.httpServer, app.shutdownTimeout)
-	case err := <-errs:
+	case componentErr = <-componentErrs:
 		cancel()
-		shutdownErr := shutdownHTTP(app.httpServer, app.shutdownTimeout)
-		if shutdownErr != nil {
-			return shutdownErr
-		}
-		if err != nil {
-			return err
-		}
-		return nil
 	}
+
+	shutdownErr := shutdownHTTP(app.httpServer, app.shutdownTimeout)
+	waitErr := group.Wait()
+	if shutdownErr != nil {
+		return shutdownErr
+	}
+	if componentErr != nil {
+		return componentErr
+	}
+
+	return waitErr
 }
 
 // shutdownHTTP stops the HTTP server with a timeout.
@@ -94,4 +108,25 @@ func shutdownTimeout(options Options) time.Duration {
 	}
 
 	return 10 * time.Second
+}
+
+// normalizeHTTPServeError hides the expected server-closed stop result.
+func normalizeHTTPServeError(err error) error {
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
+	}
+
+	return err
+}
+
+// normalizeWorkerRunError hides expected context-driven worker shutdown.
+func normalizeWorkerRunError(err error, ctx context.Context) error {
+	if err == nil {
+		return nil
+	}
+	if ctx.Err() != nil && (errors.Is(err, ctx.Err()) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) {
+		return nil
+	}
+
+	return err
 }

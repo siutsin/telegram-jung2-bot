@@ -83,7 +83,17 @@ used to verify behaviour until production adapter parity is complete.
 - `make lint` runs `gofmt` checks, `go vet`, `golangci-lint`, `shellcheck`,
   `typos`, and `markdownlint-cli2`.
 - `make lint-fix` applies supported formatting/lint fixes.
+- `make mock` regenerates centralized GoMock code under `internal/mock/` via
+  `go generate`.
 - `make install-buck2` installs or updates Buck2 for the local platform.
 - Use Buck2's official `prelude//go/tools/gobuckify:gobuckify` target for Go
   vendor BUCK generation through `make vendor`; do not reintroduce a custom
   generator.
+
+## Test Guidance
+
+- If a package contains real concurrent logic such as goroutines, channels,
+  cancellation coordination, `errgroup`, `sync`, or shared mutable state, its
+  tests must exercise that concurrency so the race detector can observe it.
+- Do not invent concurrency tests for pure parsing, validation, formatting, or
+  data-shaping packages just to satisfy the race detector.

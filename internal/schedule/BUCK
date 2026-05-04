@@ -8,7 +8,6 @@ go_library(
         "//internal/workday:workday",
     ],
     visibility = [
-        "//cmd:",
         "//internal/...",
     ],
 )

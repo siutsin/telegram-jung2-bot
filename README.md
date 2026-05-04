@@ -95,6 +95,12 @@ make lint-fix
 Applies supported lint fixes.
 
 ```bash
+make mock
+```
+
+Regenerates centralized GoMock code under `internal/mock/` via `go generate`.
+
+```bash
 make vendor
 ```
 

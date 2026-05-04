@@ -3,7 +3,6 @@ go_library(
     srcs = glob(["*.go"], exclude = ["*_test.go"]),
     package_name = "github.com/siutsin/telegram-jung2-bot/internal/workday",
     visibility = [
-        "//cmd:",
         "//internal/...",
     ],
 )
