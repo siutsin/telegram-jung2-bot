@@ -33,16 +33,16 @@ func parseGroupMessage(payload []byte) (*telegram.Message, response, bool) {
 	update, err := telegram.ParseUpdate(payload)
 	if err != nil {
 		slog.Warn("decode Telegram update", "err", err)
-		return nil, response{StatusCode: 500, Message: "decode Telegram update"}, false
+		return nil, response{statusCode: 500, message: "decode Telegram update"}, false
 	}
 	if update.Message == nil {
-		return nil, response{StatusCode: 204, Message: "edited_message or non-group"}, false
+		return nil, response{statusCode: 204, message: "edited_message or non-group"}, false
 	}
 	if update.Message.Chat.Type == "" {
-		return nil, response{StatusCode: 500, Message: "decode Telegram update"}, false
+		return nil, response{statusCode: 500, message: "decode Telegram update"}, false
 	}
 	if !strings.Contains(update.Message.Chat.Type, "group") {
-		return nil, response{StatusCode: 204, Message: "edited_message or non-group"}, false
+		return nil, response{statusCode: 204, message: "edited_message or non-group"}, false
 	}
 
 	return update.Message, response{}, true
@@ -55,12 +55,12 @@ func saveWebhookState(ctx context.Context, telegramMessage telegram.Message, now
 	err := saveWebhookMessage(ctx, telegramMessage, now, dependencies)
 	if err != nil {
 		slog.Error("save webhook message", "err", err)
-		return response{StatusCode: 500, Message: "save message"}, false
+		return response{statusCode: 500, message: "save message"}, false
 	}
 	err = saveWebhookChat(ctx, telegramMessage, now, dependencies)
 	if err != nil {
 		slog.Error("save webhook chat", "err", err)
-		return response{StatusCode: 500, Message: "save chat"}, false
+		return response{statusCode: 500, message: "save chat"}, false
 	}
 
 	return response{}, true
@@ -90,7 +90,7 @@ func enqueueWebhookCommands(ctx context.Context, telegramMessage telegram.Messag
 		}
 	}
 
-	return response{StatusCode: 200}
+	return response{statusCode: 200}
 }
 
 // enqueueWebhookCommand converts one parsed command into queue work.
@@ -106,7 +106,7 @@ func enqueueWebhookCommand(ctx context.Context, telegramMessage telegram.Message
 		err = dependencies.Enqueuer.Enqueue(ctx, action)
 		if err != nil {
 			slog.Error("enqueue webhook command", "action", action.Name, "err", err)
-			return response{StatusCode: 500, Message: "enqueue command"}, false
+			return response{statusCode: 500, message: "enqueue command"}, false
 		}
 		return response{}, true
 	}
@@ -116,7 +116,7 @@ func enqueueWebhookCommand(ctx context.Context, telegramMessage telegram.Message
 	err = sendInvalidSetOffReply(ctx, telegramMessage, dependencies)
 	if err != nil {
 		slog.Error("reply invalid set-off command", "err", err)
-		return response{StatusCode: 500, Message: "reply invalid command"}, false
+		return response{statusCode: 500, message: "reply invalid command"}, false
 	}
 
 	return response{}, true
@@ -124,7 +124,7 @@ func enqueueWebhookCommand(ctx context.Context, telegramMessage telegram.Message
 
 // shouldIgnoreCommandError reports whether a command error should be skipped.
 func shouldIgnoreCommandError(parsedCommand command.Command) bool {
-	return parsedCommand.Name != command.SetOffFromWorkTimeUTC
+	return !command.IsSetOffWorkTime(parsedCommand)
 }
 
 // sendInvalidSetOffReply sends the contract reply for invalid off-work input.

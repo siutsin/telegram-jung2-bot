@@ -9,11 +9,11 @@ import (
 )
 
 type itemUpdateRequest struct {
-	TableName                 string
-	Key                       map[string]any
-	UpdateExpression          string
-	ExpressionAttributeNames  map[string]string
-	ExpressionAttributeValues map[string]any
+	tableName                 string
+	key                       map[string]any
+	updateExpression          string
+	expressionAttributeNames  map[string]string
+	expressionAttributeValues map[string]any
 }
 
 // updateItem applies a contract update expression in DynamoDB.
@@ -21,11 +21,11 @@ type itemUpdateRequest struct {
 // with DynamoDB-encoded key and values.
 func updateItem(ctx context.Context, dynamoClient dynamoRequester, updateRequest itemUpdateRequest) error {
 	_, err := dynamoClient.UpdateItem(ctx, &awsdynamodb.UpdateItemInput{
-		TableName:                 awscore.String(updateRequest.TableName),
-		Key:                       encodeDynamoValues(updateRequest.Key),
-		UpdateExpression:          awscore.String(updateRequest.UpdateExpression),
-		ExpressionAttributeNames:  updateRequest.ExpressionAttributeNames,
-		ExpressionAttributeValues: encodeDynamoValues(updateRequest.ExpressionAttributeValues),
+		TableName:                 awscore.String(updateRequest.tableName),
+		Key:                       encodeDynamoValues(updateRequest.key),
+		UpdateExpression:          awscore.String(updateRequest.updateExpression),
+		ExpressionAttributeNames:  updateRequest.expressionAttributeNames,
+		ExpressionAttributeValues: encodeDynamoValues(updateRequest.expressionAttributeValues),
 	})
 	if err != nil {
 		return fmt.Errorf("update DynamoDB item: %w", err)
@@ -49,10 +49,10 @@ func updateContractUpdate(
 	expressionAttributeValues map[string]any,
 ) error {
 	return updateItem(ctx, dynamoClient, itemUpdateRequest{
-		ExpressionAttributeNames:  expressionAttributeNames,
-		ExpressionAttributeValues: expressionAttributeValues,
-		Key:                       key,
-		TableName:                 tableName,
-		UpdateExpression:          updateExpression,
+		expressionAttributeNames:  expressionAttributeNames,
+		expressionAttributeValues: expressionAttributeValues,
+		key:                       key,
+		tableName:                 tableName,
+		updateExpression:          updateExpression,
 	})
 }

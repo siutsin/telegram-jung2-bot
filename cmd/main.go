@@ -50,7 +50,7 @@ func run(ctx context.Context) error {
 	}
 
 	dynamoClient := newDynamoClient(awsConfig, loadedConfig.AWSEndpointURL)
-	queueClient := queue.Client{Queue: newSQSClient(awsConfig, loadedConfig.AWSEndpointURL)}
+	queueClient := queue.NewClient(newSQSClient(awsConfig, loadedConfig.AWSEndpointURL))
 	telegramClient := newTelegramClient(loadedConfig)
 	messageClient := dynamodb.NewMessageClient(dynamoClient)
 	chatClient := dynamodb.NewChatClient(dynamoClient)
@@ -139,7 +139,7 @@ func newHTTPServer(
 		MessageTable: loadedConfig.MessageTable,
 		Chats:        chats,
 		Messages:     messages,
-		Enqueuer:     queue.Producer{QueueURL: loadedConfig.EventQueueURL, Sender: sender},
+		Enqueuer:     queue.NewProducer(loadedConfig.EventQueueURL, sender),
 		Messenger:    messenger,
 		ScaleUpper:   scaleUpper,
 		Now:          time.Now,
@@ -154,7 +154,12 @@ func newHTTPServer(
 }
 
 // newQueueWorker builds the production queue worker.
-func newQueueWorker(queueURL string, queueClient queue.Client, actions service.Service) (worker.PollingWorker, error) {
+func newQueueWorker(queueURL string, queueClient interface {
+	queue.Receiver
+	Delete(ctx context.Context, request queue.DeleteMessageRequest) error
+}, actions service.Service) (interface {
+	Run(ctx context.Context) error
+}, error) {
 	return worker.NewPollingWorker(
 		queueURL,
 		queueClient,

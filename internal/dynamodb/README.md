@@ -91,9 +91,10 @@ This package owns:
 
 - `collectPages` stays generic because the same pagination flow is reused for
   message rows, chat settings, and chat IDs.
-- `updateContractUpdate` is the bridge from SDK-free update shapes returned by
-  `internal/message` and `internal/chat` to the final DynamoDB `UpdateItem`
-  call.
+- `buildMessageSaveUpdate` preserves the legacy `buildExpression` message
+  persistence shape from `legacy/src/dynamodb.js`.
+- `updateContractUpdate` is the bridge from SDK-free update shapes to the final
+  DynamoDB `UpdateItem` call.
 
 ## Validation
 

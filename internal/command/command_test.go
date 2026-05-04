@@ -48,7 +48,7 @@ func TestParseAll(t *testing.T) {
 		{
 			name:     "set off work args",
 			text:     "/setOffFromWorkTimeUTC 1830 MON,TUE",
-			commands: []Command{{Name: SetOffFromWorkTimeUTC, Args: "1830 MON,TUE"}},
+			commands: []Command{{Name: setOffWorkTime, Args: "1830 MON,TUE"}},
 		},
 		{
 			name:     "command inside text",
@@ -68,12 +68,12 @@ func TestParseAll(t *testing.T) {
 		{
 			name:     "legacy set off prefix match",
 			text:     "/setOffFromWorkTimeUTC123 1830 MON",
-			commands: []Command{{Name: SetOffFromWorkTimeUTC, Args: "1830 MON"}},
+			commands: []Command{{Name: setOffWorkTime, Args: "1830 MON"}},
 		},
 		{
 			name:     "mention stripped",
 			text:     "/setOffFromWorkTimeUTC@jung2bot 1830 MON,TUE",
-			commands: []Command{{Name: SetOffFromWorkTimeUTC, Args: "1830 MON,TUE"}},
+			commands: []Command{{Name: setOffWorkTime, Args: "1830 MON,TUE"}},
 		},
 		{
 			name:     "unknown command",
@@ -143,7 +143,7 @@ func TestActionForMapsStableNames(t *testing.T) {
 		{commandName: allJung, actionName: queue.ActionAllJung, body: queue.BodyAllJung},
 		{commandName: enableAllJung, actionName: queue.ActionEnableAllJung, body: queue.BodyEnableAllJung},
 		{commandName: disableAllJung, actionName: queue.ActionDisableAllJung, body: queue.BodyDisableAllJung},
-		{commandName: SetOffFromWorkTimeUTC, actionName: queue.ActionSetOffWorkTime, body: queue.BodySetOffWorkTime},
+		{commandName: setOffWorkTime, actionName: queue.ActionSetOffWorkTime, body: queue.BodySetOffWorkTime},
 	}
 
 	for _, test := range tests {
@@ -201,7 +201,7 @@ func TestActionForPreservesContractAttributeShapes(t *testing.T) {
 		},
 		{
 			name:     "setOffFromWorkTimeUTC",
-			command:  Command{Name: SetOffFromWorkTimeUTC, Args: "1830 MON,MON,TUE"},
+			command:  Command{Name: setOffWorkTime, Args: "1830 MON,MON,TUE"},
 			wantBody: queue.BodySetOffWorkTime,
 			attributes: map[string]string{
 				"chatId":    "123",
@@ -276,7 +276,7 @@ func TestActionForRejectsUnsupportedCommand(t *testing.T) {
 }
 
 func TestActionForRejectsInvalidSetOffFromWorkTimeArgs(t *testing.T) {
-	_, err := ActionFor(Command{Name: SetOffFromWorkTimeUTC, Args: "9999 MON"}, ChatContext{})
+	_, err := ActionFor(Command{Name: setOffWorkTime, Args: "9999 MON"}, ChatContext{})
 	require.Error(t, err)
 }
 

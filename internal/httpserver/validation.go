@@ -23,8 +23,8 @@ func validate(dependencies Dependencies) error {
 // maxBodyBytes returns the configured body size limit.
 // For example, 0 falls back to 1 MiB.
 func maxBodyBytes(dependencies serverDeps) int64 {
-	if dependencies.MaxBodyBytes > 0 {
-		return dependencies.MaxBodyBytes
+	if dependencies.maxBodyBytes > 0 {
+		return dependencies.maxBodyBytes
 	}
 
 	return 1 << 20

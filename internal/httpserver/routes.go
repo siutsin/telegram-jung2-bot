@@ -18,7 +18,7 @@ func newHandler(dependencies serverDeps) http.Handler {
 	registerRoute(mux, http.MethodPost, "/webhook", func(writer http.ResponseWriter, request *http.Request) {
 		writeResponse(writer, webhookResponse(writer, request, dependencies))
 	})
-	if dependencies.Stage != "" {
+	if dependencies.stage != "" {
 		registerStageRoutes(mux, dependencies)
 	}
 
@@ -27,7 +27,7 @@ func newHandler(dependencies serverDeps) http.Handler {
 
 // registerStageRoutes wires the contract-compatible stage-prefixed routes.
 func registerStageRoutes(mux *http.ServeMux, dependencies serverDeps) {
-	stagePrefix := "/jung2bot/" + strings.Trim(dependencies.Stage, "/")
+	stagePrefix := "/jung2bot/" + strings.Trim(dependencies.stage, "/")
 	registerRoute(mux, http.MethodGet, stagePrefix+"/ping", func(writer http.ResponseWriter, request *http.Request) {
 		writeNamedJSONResponse(writer, http.StatusOK, "health", "ok")
 	})
@@ -91,7 +91,7 @@ func webhookResponse(writer http.ResponseWriter, request *http.Request, dependen
 	body, err := readRequestBody(writer, request, maxBodyBytes(dependencies))
 	if err != nil {
 		slog.Warn("read webhook request body", "err", err)
-		return response{StatusCode: http.StatusBadRequest, Message: "read request body"}
+		return response{statusCode: http.StatusBadRequest, message: "read request body"}
 	}
 
 	return handleWebhook(request.Context(), body, dependencies.Dependencies)

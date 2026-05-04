@@ -12,7 +12,7 @@ import (
 	"github.com/siutsin/telegram-jung2-bot/internal/workday"
 )
 
-type Window struct {
+type window struct {
 	OffTime string
 	Weekday string
 }
@@ -23,31 +23,31 @@ type SettingChange struct {
 	Update  chat.UpdateExpression
 }
 
-type ChatLister interface {
+type chatListStore interface {
 	ListEnabled(ctx context.Context, tableName string) ([]chat.ChatSetting, error)
 }
 
-type Enqueuer interface {
+type actionEnqueuer interface {
 	Enqueue(ctx context.Context, action queue.Action) error
 }
 
-type Scheduler interface {
+type chatScheduler interface {
 	Sync(ctx context.Context, settings chat.ChatSetting) error
 }
 
-type Service struct {
-	ChatTable string
-	Chats     ChatLister
-	Enqueuer  Enqueuer
-	Scheduler Scheduler
+type scheduleService struct {
+	chatTable string
+	chats     chatListStore
+	enqueuer  actionEnqueuer
+	scheduler chatScheduler
 }
 
-// SyncChat syncs one chat's schedule state.
-func (service Service) SyncChat(ctx context.Context, settings chat.ChatSetting) error {
-	if service.Scheduler == nil {
+// syncChat syncs one chat's schedule state.
+func (schedule scheduleService) syncChat(ctx context.Context, settings chat.ChatSetting) error {
+	if schedule.scheduler == nil {
 		return fmt.Errorf("scheduler is required")
 	}
-	err := service.Scheduler.Sync(ctx, settings)
+	err := schedule.scheduler.Sync(ctx, settings)
 	if err != nil {
 		return fmt.Errorf("sync chat schedule: %w", err)
 	}
@@ -55,20 +55,20 @@ func (service Service) SyncChat(ctx context.Context, settings chat.ChatSetting) 
 	return nil
 }
 
-// HandleDueReport enqueues reports due at timestamp.
-func (service Service) HandleDueReport(ctx context.Context, timestamp time.Time) error {
-	if service.Chats == nil {
+// handleDueReport enqueues reports due at timestamp.
+func (schedule scheduleService) handleDueReport(ctx context.Context, timestamp time.Time) error {
+	if schedule.chats == nil {
 		return fmt.Errorf("chat repository is required")
 	}
-	if service.Enqueuer == nil {
+	if schedule.enqueuer == nil {
 		return fmt.Errorf("enqueuer is required")
 	}
-	rows, err := service.Chats.ListEnabled(ctx, service.ChatTable)
+	rows, err := schedule.chats.ListEnabled(ctx, schedule.chatTable)
 	if err != nil {
 		return fmt.Errorf("list due chats: %w", err)
 	}
 	for _, chatID := range DueChatIDs(rows, timestamp) {
-		err = service.Enqueuer.Enqueue(ctx, BuildOffFromWorkAction(chatID))
+		err = schedule.enqueuer.Enqueue(ctx, BuildOffFromWorkAction(chatID))
 		if err != nil {
 			return fmt.Errorf("enqueue due off-work report: %w", err)
 		}
@@ -79,10 +79,10 @@ func (service Service) HandleDueReport(ctx context.Context, timestamp time.Time)
 
 // WindowFromTime converts a timestamp into a contract schedule window.
 // For example, 2025-01-06 18:30 UTC becomes OffTime "1830" and Weekday "MON".
-func WindowFromTime(timestamp time.Time) Window {
+func WindowFromTime(timestamp time.Time) window {
 	timestamp = timestamp.UTC()
 
-	return Window{
+	return window{
 		OffTime: timestamp.Format("1504"),
 		Weekday: weekdayToken(timestamp.Weekday()),
 	}
@@ -91,8 +91,8 @@ func WindowFromTime(timestamp time.Time) Window {
 // DueChatIDs returns chat IDs due for a scheduled report.
 // For example, chats due at Monday 18:30 become just their chat ID list.
 func DueChatIDs(rows []chat.ChatSetting, timestamp time.Time) []int64 {
-	window := WindowFromTime(timestamp)
-	due := chat.FilterDue(rows, window.OffTime, window.Weekday)
+	scheduleWindow := WindowFromTime(timestamp)
+	due := chat.FilterDue(rows, scheduleWindow.OffTime, scheduleWindow.Weekday)
 	chatIDs := make([]int64, 0, len(due))
 	for _, settings := range due {
 		chatIDs = append(chatIDs, settings.ChatID)

@@ -14,7 +14,7 @@ import (
 func TestClientReceiveMessageSupportsContractAttributes(t *testing.T) {
 	t.Parallel()
 
-	response, err := (Client{Queue: &fakeSQSAPI{
+	client := NewClient(&fakeSQSAPI{
 		receiveOutput: &awssqs.ReceiveMessageOutput{
 			Messages: []sqstypes.Message{
 				{
@@ -27,7 +27,8 @@ func TestClientReceiveMessageSupportsContractAttributes(t *testing.T) {
 				},
 			},
 		},
-	}}).ReceiveMessage(context.Background(), ReceiveMessageRequest{
+	})
+	response, err := client.ReceiveMessage(context.Background(), ReceiveMessageRequest{
 		MaxNumberOfMessages: 10,
 		QueueURL:            "queue-url",
 		WaitTimeSeconds:     20,
@@ -44,7 +45,8 @@ func TestClientSendMessageEncodesAttributes(t *testing.T) {
 
 	queueAPI := &fakeSQSAPI{}
 
-	err := (Client{Queue: queueAPI}).SendMessage(context.Background(), SendMessageRequest{
+	client := NewClient(queueAPI)
+	err := client.SendMessage(context.Background(), SendMessageRequest{
 		QueueURL:    "queue-url",
 		MessageBody: BodyTopTen,
 		MessageAttributes: map[string]SendMessageAttribute{
@@ -63,7 +65,8 @@ func TestClientDeleteRemovesConsumedMessage(t *testing.T) {
 
 	queueAPI := &fakeSQSAPI{}
 
-	err := (Client{Queue: queueAPI}).Delete(context.Background(), DeleteMessageRequest{
+	client := NewClient(queueAPI)
+	err := client.Delete(context.Background(), DeleteMessageRequest{
 		QueueURL:      "queue-url",
 		ReceiptHandle: "receipt",
 	})

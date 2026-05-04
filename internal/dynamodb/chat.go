@@ -15,10 +15,10 @@ import (
 )
 
 type dueChatScanRequest struct {
-	TableName                 string
-	FilterExpression          string
-	ExpressionAttributeNames  map[string]string
-	ExpressionAttributeValues map[string]any
+	tableName                 string
+	filterExpression          string
+	expressionAttributeNames  map[string]string
+	expressionAttributeValues map[string]any
 }
 
 // Get loads one stored chat row.
@@ -86,11 +86,11 @@ func (client ChatClient) DueChatIDs(ctx context.Context, tableName string, times
 	scanRequest := scanDueChatsRequest(tableName, window.OffTime, window.Weekday)
 	return collectPages(ctx, func(pageCtx context.Context, startKey map[string]any) (page[int64], error) {
 		output, err := client.dynamo.Scan(pageCtx, &awsdynamodb.ScanInput{
-			TableName:                 awscore.String(scanRequest.TableName),
+			TableName:                 awscore.String(scanRequest.tableName),
 			ExclusiveStartKey:         encodeDynamoValues(startKey),
-			FilterExpression:          awscore.String(scanRequest.FilterExpression),
-			ExpressionAttributeNames:  scanRequest.ExpressionAttributeNames,
-			ExpressionAttributeValues: encodeDynamoValues(scanRequest.ExpressionAttributeValues),
+			FilterExpression:          awscore.String(scanRequest.filterExpression),
+			ExpressionAttributeNames:  scanRequest.expressionAttributeNames,
+			ExpressionAttributeValues: encodeDynamoValues(scanRequest.expressionAttributeValues),
 		})
 		if err != nil {
 			return page[int64]{}, fmt.Errorf("scan due chats: %w", err)
@@ -137,10 +137,10 @@ func scanDueChatsRequest(tableName string, offTime string, weekday string) dueCh
 	}
 
 	return dueChatScanRequest{
-		TableName:                tableName,
-		FilterExpression:         filterExpression,
-		ExpressionAttributeNames: names,
-		ExpressionAttributeValues: map[string]any{
+		tableName:                tableName,
+		filterExpression:         filterExpression,
+		expressionAttributeNames: names,
+		expressionAttributeValues: map[string]any{
 			":ot": offTime,
 		},
 	}
@@ -150,16 +150,16 @@ func scanDueChatsRequest(tableName string, offTime string, weekday string) dueCh
 // For example, userCount 5 and messageCount 20 stores messagePerUser as 4.
 func buildChatCountUpdate(tableName string, chatID int64, userCount int, messageCount int, now time.Time) itemUpdateRequest {
 	return itemUpdateRequest{
-		TableName:        tableName,
-		Key:              map[string]any{"chatId": chatID},
-		UpdateExpression: "SET #uc = :uc, #mc = :mc, #mpu = :mpu, #ct = :ct",
-		ExpressionAttributeNames: map[string]string{
+		tableName:        tableName,
+		key:              map[string]any{"chatId": chatID},
+		updateExpression: "SET #uc = :uc, #mc = :mc, #mpu = :mpu, #ct = :ct",
+		expressionAttributeNames: map[string]string{
 			"#uc":  "userCount",
 			"#mc":  "messageCount",
 			"#mpu": "messagePerUser",
 			"#ct":  "countTimestamp",
 		},
-		ExpressionAttributeValues: map[string]any{
+		expressionAttributeValues: map[string]any{
 			":uc":  userCount,
 			":mc":  messageCount,
 			":mpu": float64(messageCount) / float64(userCount),

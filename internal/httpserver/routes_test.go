@@ -65,7 +65,7 @@ func TestNewRejectsUnsupportedMethods(t *testing.T) {
 			_, dependencies := newMockDependencies(t)
 			handler := newHandler(serverDeps{
 				Dependencies: dependencies,
-				Stage:        tc.stage,
+				stage:        tc.stage,
 			})
 			recorder := httptest.NewRecorder()
 			handler.ServeHTTP(recorder, httptest.NewRequest(tc.method, tc.path, nil))
@@ -96,7 +96,7 @@ func TestNewRejectsOversizedWebhookBody(t *testing.T) {
 	t.Parallel()
 
 	_, dependencies := newMockDependencies(t)
-	handler := newHandler(serverDeps{Dependencies: dependencies, MaxBodyBytes: 1})
+	handler := newHandler(serverDeps{Dependencies: dependencies, maxBodyBytes: 1})
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/webhook", strings.NewReader("{}")))
 
@@ -120,7 +120,7 @@ func TestNewRoutesContractWebhookAndHealthPaths(t *testing.T) {
 
 	mocks, dependencies := newMockDependencies(t)
 	mocks.expectSaveWebhookState()
-	handler := newHandler(serverDeps{Dependencies: dependencies, Stage: "dev"})
+	handler := newHandler(serverDeps{Dependencies: dependencies, stage: "dev"})
 
 	healthRecorder := httptest.NewRecorder()
 	handler.ServeHTTP(healthRecorder, httptest.NewRequest(http.MethodGet, "/jung2bot/dev/ping", nil))
@@ -156,7 +156,7 @@ func TestNewContractWebhookPathMatching(t *testing.T) {
 			t.Parallel()
 
 			_, dependencies := newMockDependencies(t)
-			handler := newHandler(serverDeps{Dependencies: dependencies, Stage: "dev"})
+			handler := newHandler(serverDeps{Dependencies: dependencies, stage: "dev"})
 			recorder := httptest.NewRecorder()
 			handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, tc.path, strings.NewReader(`{}`)))
 
@@ -170,7 +170,7 @@ func TestNewRoutesContractOffFromWork(t *testing.T) {
 
 	mocks, dependencies := newMockDependencies(t)
 	mocks.expectEnqueue(nil)
-	handler := newHandler(serverDeps{Dependencies: dependencies, Stage: "dev"})
+	handler := newHandler(serverDeps{Dependencies: dependencies, stage: "dev"})
 	recorder := httptest.NewRecorder()
 
 	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/jung2bot/dev/onOffFromWork?timeString=2026-05-02T12:00:00Z", nil))
@@ -187,7 +187,7 @@ func TestNewContractOffFromWorkReturnsServerError(t *testing.T) {
 
 	mocks, dependencies := newMockDependencies(t)
 	mocks.expectEnqueue(errors.New("boom"))
-	handler := newHandler(serverDeps{Dependencies: dependencies, Stage: "dev"})
+	handler := newHandler(serverDeps{Dependencies: dependencies, stage: "dev"})
 	recorder := httptest.NewRecorder()
 
 	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/jung2bot/dev/onOffFromWork", nil))
@@ -202,7 +202,7 @@ func TestNewRoutesContractScaleUp(t *testing.T) {
 	mocks, dependencies := newMockDependencies(t)
 	mocks.expectScaleUp(nil)
 	dependencies.ScaleUpper = mocks.scaleUpper
-	handler := newHandler(serverDeps{Dependencies: dependencies, Stage: "dev"})
+	handler := newHandler(serverDeps{Dependencies: dependencies, stage: "dev"})
 	recorder := httptest.NewRecorder()
 
 	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/jung2bot/dev/onScaleUp", nil))
@@ -242,7 +242,7 @@ func TestNewContractScaleUpFailures(t *testing.T) {
 			if tc.withScaleUpper {
 				dependencies.ScaleUpper = mocks.scaleUpper
 			}
-			handler := newHandler(serverDeps{Dependencies: dependencies, Stage: "dev"})
+			handler := newHandler(serverDeps{Dependencies: dependencies, stage: "dev"})
 			recorder := httptest.NewRecorder()
 			handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/jung2bot/dev/onScaleUp", nil))
 
@@ -256,7 +256,7 @@ func TestNewContractWebhookSuppressesInternalErrorMessage(t *testing.T) {
 	t.Parallel()
 
 	_, dependencies := newMockDependencies(t)
-	handler := newHandler(serverDeps{Dependencies: dependencies, Stage: "dev"})
+	handler := newHandler(serverDeps{Dependencies: dependencies, stage: "dev"})
 	recorder := httptest.NewRecorder()
 
 	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/jung2bot/dev/", strings.NewReader(`{bad json`)))

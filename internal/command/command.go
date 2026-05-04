@@ -11,9 +11,6 @@ import (
 	"github.com/siutsin/telegram-jung2-bot/internal/workday"
 )
 
-// SetOffFromWorkTimeUTC is the only command name needed outside this package.
-const SetOffFromWorkTimeUTC = "setOffFromWorkTimeUTC"
-
 const (
 	jungHelp       = "jungHelp"
 	topTen         = "topTen"
@@ -21,6 +18,7 @@ const (
 	allJung        = "allJung"
 	enableAllJung  = "enableAllJung"
 	disableAllJung = "disableAllJung"
+	setOffWorkTime = "setOffFromWorkTimeUTC"
 )
 
 var commandDefinitions = []commandDefinition{
@@ -55,9 +53,9 @@ var commandDefinitions = []commandDefinition{
 		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(disableAllJung)),
 	},
 	{
-		Name:   SetOffFromWorkTimeUTC,
+		Name:   setOffWorkTime,
 		Action: queue.Action{Name: queue.ActionSetOffWorkTime, Body: queue.BodySetOffWorkTime},
-		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(SetOffFromWorkTimeUTC)),
+		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(setOffWorkTime)),
 	},
 }
 
@@ -100,15 +98,25 @@ func ParseAll(text string) []Command {
 
 // commandFromMatch builds a command from a regexp match.
 // For example, "/setOffFromWorkTimeUTC@jung2bot 1830 MON,TUE" becomes
-// Command{Name: SetOffFromWorkTimeUTC, Args: "1830 MON,TUE"}.
+// Command{Name: "setOffFromWorkTimeUTC", Args: "1830 MON,TUE"}.
 func commandFromMatch(text string, match []int) Command {
 	name := canonicalName(strings.TrimPrefix(text[match[0]:match[1]], "/"))
 	args := commandArgs(text[match[1]:])
-	if name == SetOffFromWorkTimeUTC {
+	if isSetOffWorkTime(name) {
 		args = setOffCommandArgs(text[match[0]:])
 	}
 
 	return Command{Name: name, Args: args}
+}
+
+// IsSetOffWorkTime reports whether the command is the off-work schedule update
+// command.
+func IsSetOffWorkTime(command Command) bool {
+	return isSetOffWorkTime(command.Name)
+}
+
+func isSetOffWorkTime(name string) bool {
+	return strings.EqualFold(name, setOffWorkTime)
 }
 
 func setOffCommandArgs(raw string) string {
@@ -148,7 +156,7 @@ func ActionFor(command Command, chat ChatContext) (queue.Action, error) {
 	case enableAllJung, disableAllJung:
 		action.Attributes["chatTitle"] = chat.ChatTitle
 		action.Attributes["userId"] = strconv.FormatInt(chat.UserID, 10)
-	case SetOffFromWorkTimeUTC:
+	case setOffWorkTime:
 		offTime, workdayList, parseErr := parseSetOffFromWorkTimeArgs(command.Args)
 		if parseErr != nil {
 			return queue.Action{}, parseErr
@@ -167,7 +175,7 @@ func ActionFor(command Command, chat ChatContext) (queue.Action, error) {
 func parseSetOffFromWorkTimeArgs(args string) (offTime string, workdayList string, err error) {
 	parts := strings.Split(args, " ")
 	if len(parts) != 2 {
-		return "", "", fmt.Errorf("%s requires off time and workday list", SetOffFromWorkTimeUTC)
+		return "", "", fmt.Errorf("%s requires off time and workday list", setOffWorkTime)
 	}
 
 	offTime = parts[0]

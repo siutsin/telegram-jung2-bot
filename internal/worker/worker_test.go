@@ -34,7 +34,7 @@ func TestDispatchRoutesActions(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			calls := make([]string, 0, 1)
-			err := Dispatch(context.Background(), test.action, testHandlers(&calls, nil))
+			err := dispatch(context.Background(), test.action, testHandlers(&calls, nil))
 
 			require.NoError(t, err)
 			assert.Equal(t, []string{test.wantCalled}, calls)
@@ -52,11 +52,9 @@ func TestNewPollingWorkerBuildsWorker(t *testing.T) {
 	queueWorker, err := NewPollingWorker("queue-url", receiver, deleter, handlers)
 
 	require.NoError(t, err)
-	assert.Equal(t, "queue-url", queueWorker.QueueURL)
-	assert.Equal(t, "queue-url", queueWorker.Consumer.QueueURL)
-	assert.Equal(t, receiver, queueWorker.Consumer.Receiver)
-	assert.Equal(t, deleter, queueWorker.Deleter)
-	assert.Equal(t, handlers, queueWorker.Handlers)
+	assert.Equal(t, "queue-url", queueWorker.queueURL)
+	assert.Equal(t, deleter, queueWorker.deleter)
+	assert.Equal(t, handlers, queueWorker.handlers)
 }
 
 func TestNewPollingWorkerRequiresQueueContracts(t *testing.T) {
@@ -65,7 +63,7 @@ func TestNewPollingWorkerRequiresQueueContracts(t *testing.T) {
 	tests := []struct {
 		name     string
 		receiver queue.Receiver
-		deleter  Deleter
+		deleter  queueDeleter
 		wantErr  string
 	}{
 		{name: "missing receiver", deleter: &fakeDeleter{}, wantErr: "queue receiver is required"},
@@ -101,32 +99,24 @@ func TestPollingWorkerProcessesAndDeletesMessages(t *testing.T) {
 		return nil
 	}
 
-	err := (PollingWorker{
-		Consumer: queue.Consumer{QueueURL: "queue-url", Receiver: receiver},
-		QueueURL: "queue-url",
-		Handlers: handlerSet,
-		Deleter:  deleter,
+	err := (pollingWorker{
+		consumer: queue.NewConsumer("queue-url", receiver),
+		queueURL: "queue-url",
+		handlers: handlerSet,
+		deleter:  deleter,
 	}).Run(ctx)
 
 	require.NoError(t, err)
 	assert.Equal(t, []queue.DeleteMessageRequest{{QueueURL: "queue-url", ReceiptHandle: "receipt"}}, deleter.requests)
 }
 
-func TestPollingWorkerContinuesAfterMessageFailure(t *testing.T) {
+func TestPollingWorkerReturnsMessageFailure(t *testing.T) {
 	t.Parallel()
 
-	ctx, cancel := context.WithCancel(context.Background())
 	var calls atomic.Int32
 	rawMessages := []queue.RawMessage{
 		{
 			ReceiptHandle: "one",
-			MessageAttributes: map[string]queue.MessageAttribute{
-				"action": mustAttribute(t, `{"StringValue":"topten"}`),
-				"chatId": mustAttribute(t, `{"StringValue":"123"}`),
-			},
-		},
-		{
-			ReceiptHandle: "two",
 			MessageAttributes: map[string]queue.MessageAttribute{
 				"action": mustAttribute(t, `{"StringValue":"topten"}`),
 				"chatId": mustAttribute(t, `{"StringValue":"123"}`),
@@ -137,31 +127,27 @@ func TestPollingWorkerContinuesAfterMessageFailure(t *testing.T) {
 	receiver := &workerReceiver{response: queue.ReceiveMessageResponse{Messages: rawMessages}}
 	handlerSet := testHandlers(nil, nil)
 	handlerSet.TopTen = func(handlerCtx context.Context, chatID int64) error {
-		if calls.Add(1) == 1 {
-			return errors.New("boom")
-		}
-		cancel()
-		return nil
+		calls.Add(1)
+		return errors.New("boom")
 	}
 
-	err := (PollingWorker{
-		Consumer: queue.Consumer{QueueURL: "queue-url", Receiver: receiver},
-		QueueURL: "queue-url",
-		Handlers: handlerSet,
-		Deleter:  deleter,
-	}).Run(ctx)
+	err := (pollingWorker{
+		consumer: queue.NewConsumer("queue-url", receiver),
+		queueURL: "queue-url",
+		handlers: handlerSet,
+		deleter:  deleter,
+	}).Run(context.Background())
 
-	require.NoError(t, err)
-	assert.Equal(t, int32(2), calls.Load())
-	require.Len(t, deleter.requests, 1)
-	assert.Equal(t, "queue-url", deleter.requests[0].QueueURL)
-	assert.Contains(t, []string{"one", "two"}, deleter.requests[0].ReceiptHandle)
+	require.Error(t, err)
+	require.EqualError(t, err, "boom")
+	assert.Equal(t, int32(1), calls.Load())
+	assert.Empty(t, deleter.requests)
 }
 
 func TestPollingWorkerRequiresDeleter(t *testing.T) {
 	t.Parallel()
 
-	err := (PollingWorker{}).Run(context.Background())
+	err := (pollingWorker{}).Run(context.Background())
 
 	require.Error(t, err)
 	assert.EqualError(t, err, "deleter is required")
@@ -170,9 +156,9 @@ func TestPollingWorkerRequiresDeleter(t *testing.T) {
 func TestPollingWorkerReturnsPollError(t *testing.T) {
 	t.Parallel()
 
-	err := (PollingWorker{
-		Consumer: queue.Consumer{Receiver: &workerReceiver{err: errors.New("boom")}},
-		Deleter:  &fakeDeleter{},
+	err := (pollingWorker{
+		consumer: queue.NewConsumer("", &workerReceiver{err: errors.New("boom")}),
+		deleter:  &fakeDeleter{},
 	}).Run(context.Background())
 
 	require.Error(t, err)
@@ -185,7 +171,7 @@ func TestPollingWorkerStopsOnCancelledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	err := (PollingWorker{Deleter: &fakeDeleter{}}).Run(ctx)
+	err := (pollingWorker{deleter: &fakeDeleter{}}).Run(ctx)
 
 	require.NoError(t, err)
 }
@@ -200,7 +186,7 @@ func TestDispatchPassesSetOffInput(t *testing.T) {
 		return nil
 	}
 
-	err := Dispatch(context.Background(), testAction(queue.ActionSetOffWorkTime), handlerSet)
+	err := dispatch(context.Background(), testAction(queue.ActionSetOffWorkTime), handlerSet)
 
 	require.NoError(t, err)
 	assert.Equal(t, SetOffInput{
@@ -242,9 +228,9 @@ func TestDispatchPassesHelpAndAdminFields(t *testing.T) {
 		return nil
 	}
 
-	require.NoError(t, Dispatch(context.Background(), testAction(queue.ActionJungHelp), handlerSet))
-	require.NoError(t, Dispatch(context.Background(), testAction(queue.ActionEnableAllJung), handlerSet))
-	require.NoError(t, Dispatch(context.Background(), testAction(queue.ActionDisableAllJung), handlerSet))
+	require.NoError(t, dispatch(context.Background(), testAction(queue.ActionJungHelp), handlerSet))
+	require.NoError(t, dispatch(context.Background(), testAction(queue.ActionEnableAllJung), handlerSet))
+	require.NoError(t, dispatch(context.Background(), testAction(queue.ActionDisableAllJung), handlerSet))
 
 	assert.Equal(t, int64(123), helpChatID)
 	assert.Equal(t, "Group", helpChatTitle)
@@ -259,16 +245,16 @@ func TestDispatchPassesHelpAndAdminFields(t *testing.T) {
 func TestDispatchReturnsHandlerError(t *testing.T) {
 	t.Parallel()
 
-	err := Dispatch(context.Background(), testAction(queue.ActionTopTen), testHandlers(nil, errors.New("boom")))
+	err := dispatch(context.Background(), testAction(queue.ActionTopTen), testHandlers(nil, errors.New("boom")))
 
 	require.Error(t, err)
-	assert.EqualError(t, err, "boom")
+	require.EqualError(t, err, "boom")
 }
 
 func TestDispatchDropsUnsupportedAction(t *testing.T) {
 	t.Parallel()
 
-	err := Dispatch(context.Background(), queue.Action{Name: "nope"}, testHandlers(nil, nil))
+	err := dispatch(context.Background(), queue.Action{Name: "nope"}, testHandlers(nil, nil))
 
 	require.NoError(t, err)
 }
@@ -276,7 +262,7 @@ func TestDispatchDropsUnsupportedAction(t *testing.T) {
 func TestDispatchReturnsErrorForMissingHandler(t *testing.T) {
 	t.Parallel()
 
-	err := Dispatch(context.Background(), testAction(queue.ActionTopTen), Handlers{})
+	err := dispatch(context.Background(), testAction(queue.ActionTopTen), Handlers{})
 
 	require.Error(t, err)
 	assert.EqualError(t, err, "missing handler for topten")
@@ -294,13 +280,13 @@ func TestProcessMessageDeletesAfterSuccessfulDispatch(t *testing.T) {
 		},
 	}
 
-	err := ProcessMessage(context.Background(), "queue-url", raw, testHandlers(nil, nil), deleter)
+	err := processMessage(context.Background(), "queue-url", raw, testHandlers(nil, nil), deleter)
 
 	require.NoError(t, err)
 	assert.Equal(t, []queue.DeleteMessageRequest{{QueueURL: "queue-url", ReceiptHandle: "receipt"}}, deleter.requests)
 }
 
-func TestProcessMessageKeepsMessageAndContinuesOnDispatchFailure(t *testing.T) {
+func TestProcessMessageKeepsMessageAndReturnsDispatchFailure(t *testing.T) {
 	t.Parallel()
 
 	deleter := &fakeDeleter{}
@@ -308,16 +294,17 @@ func TestProcessMessageKeepsMessageAndContinuesOnDispatchFailure(t *testing.T) {
 		"action": mustAttribute(t, `{"StringValue":"topten"}`),
 	}}
 
-	err := ProcessMessage(context.Background(), "queue-url", raw, testHandlers(nil, errors.New("boom")), deleter)
+	err := processMessage(context.Background(), "queue-url", raw, testHandlers(nil, errors.New("boom")), deleter)
 
-	require.NoError(t, err)
+	require.Error(t, err)
+	require.EqualError(t, err, "boom")
 	assert.Empty(t, deleter.requests)
 }
 
 func TestProcessMessageDropsMessageWithoutAction(t *testing.T) {
 	t.Parallel()
 
-	err := ProcessMessage(context.Background(), "queue-url", queue.RawMessage{}, testHandlers(nil, nil), &fakeDeleter{})
+	err := processMessage(context.Background(), "queue-url", queue.RawMessage{}, testHandlers(nil, nil), &fakeDeleter{})
 
 	require.NoError(t, err)
 }
@@ -329,7 +316,7 @@ func TestProcessMessageReturnsDeleteError(t *testing.T) {
 		"action": mustAttribute(t, `{"StringValue":"topten"}`),
 	}}
 
-	err := ProcessMessage(context.Background(), "queue-url", raw, testHandlers(nil, nil), &fakeDeleter{err: errors.New("boom")})
+	err := processMessage(context.Background(), "queue-url", raw, testHandlers(nil, nil), &fakeDeleter{err: errors.New("boom")})
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "delete SQS message")

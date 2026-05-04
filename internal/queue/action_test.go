@@ -18,16 +18,16 @@ func TestProducerEnqueueSendsContractRequest(t *testing.T) {
 	sender := &fakeSender{}
 	action := Action{Body: BodyTopTen, Attributes: map[string]string{"action": ActionTopTen}}
 
-	err := (Producer{QueueURL: "queue-url", Sender: sender}).Enqueue(context.Background(), action)
+	err := (NewProducer("queue-url", sender)).Enqueue(context.Background(), action)
 
 	require.NoError(t, err)
-	assert.Equal(t, []SendMessageRequest{BuildSendMessageRequest("queue-url", action)}, sender.requests)
+	assert.Equal(t, []SendMessageRequest{buildSendMessageRequest("queue-url", action)}, sender.requests)
 }
 
 func TestProducerEnqueueRequiresSender(t *testing.T) {
 	t.Parallel()
 
-	err := (Producer{}).Enqueue(context.Background(), Action{})
+	err := (producer{}).Enqueue(context.Background(), Action{})
 
 	require.Error(t, err)
 	assert.EqualError(t, err, "queue sender is required")
@@ -36,7 +36,7 @@ func TestProducerEnqueueRequiresSender(t *testing.T) {
 func TestProducerEnqueueWrapsSenderError(t *testing.T) {
 	t.Parallel()
 
-	err := (Producer{Sender: &fakeSender{err: errors.New("boom")}}).Enqueue(context.Background(), Action{})
+	err := (producer{sender: &fakeSender{err: errors.New("boom")}}).Enqueue(context.Background(), Action{})
 
 	require.Error(t, err)
 	assert.EqualError(t, err, "send SQS message: boom")
@@ -50,7 +50,7 @@ func TestConsumerPollReceivesAndHandlesMessages(t *testing.T) {
 	handled := make([]string, 0, len(rawMessages))
 	var mutex sync.Mutex
 
-	err := (Consumer{QueueURL: "queue-url", Receiver: receiver}).Poll(context.Background(), func(ctx context.Context, message RawMessage) error {
+	err := (NewConsumer("queue-url", receiver)).Poll(context.Background(), func(ctx context.Context, message RawMessage) error {
 		mutex.Lock()
 		handled = append(handled, message.ReceiptHandle)
 		mutex.Unlock()
@@ -68,7 +68,7 @@ func TestConsumerPollUsesConfiguredReceiveOptions(t *testing.T) {
 
 	receiver := &fakeReceiver{}
 
-	err := (Consumer{QueueURL: "queue-url", Receiver: receiver, MaxNumberOfMessages: 2, WaitTimeSeconds: 5}).Poll(context.Background(), func(ctx context.Context, message RawMessage) error {
+	err := (consumer{queueURL: "queue-url", receiver: receiver, maxNumberOfMessages: 2, waitTimeSeconds: 5}).Poll(context.Background(), func(ctx context.Context, message RawMessage) error {
 		return nil
 	})
 
@@ -79,7 +79,7 @@ func TestConsumerPollUsesConfiguredReceiveOptions(t *testing.T) {
 func TestConsumerPollRequiresReceiver(t *testing.T) {
 	t.Parallel()
 
-	err := (Consumer{}).Poll(context.Background(), func(ctx context.Context, message RawMessage) error { return nil })
+	err := (consumer{}).Poll(context.Background(), func(ctx context.Context, message RawMessage) error { return nil })
 
 	require.Error(t, err)
 	assert.EqualError(t, err, "queue receiver is required")
@@ -88,7 +88,7 @@ func TestConsumerPollRequiresReceiver(t *testing.T) {
 func TestConsumerPollRequiresHandler(t *testing.T) {
 	t.Parallel()
 
-	err := (Consumer{Receiver: &fakeReceiver{}}).Poll(context.Background(), nil)
+	err := (consumer{receiver: &fakeReceiver{}}).Poll(context.Background(), nil)
 
 	require.Error(t, err)
 	assert.EqualError(t, err, "queue handler is required")
@@ -97,7 +97,7 @@ func TestConsumerPollRequiresHandler(t *testing.T) {
 func TestConsumerPollWrapsReceiveError(t *testing.T) {
 	t.Parallel()
 
-	err := (Consumer{Receiver: &fakeReceiver{err: errors.New("boom")}}).Poll(context.Background(), func(ctx context.Context, message RawMessage) error { return nil })
+	err := (consumer{receiver: &fakeReceiver{err: errors.New("boom")}}).Poll(context.Background(), func(ctx context.Context, message RawMessage) error { return nil })
 
 	require.Error(t, err)
 	assert.EqualError(t, err, "receive SQS messages: boom")
@@ -106,7 +106,7 @@ func TestConsumerPollWrapsReceiveError(t *testing.T) {
 func TestConsumerPollReturnsHandlerError(t *testing.T) {
 	t.Parallel()
 
-	err := (Consumer{Receiver: &fakeReceiver{response: ReceiveMessageResponse{Messages: []RawMessage{{}}}}}).Poll(context.Background(), func(ctx context.Context, message RawMessage) error {
+	err := (consumer{receiver: &fakeReceiver{response: ReceiveMessageResponse{Messages: []RawMessage{{}}}}}).Poll(context.Background(), func(ctx context.Context, message RawMessage) error {
 		return errors.New("boom")
 	})
 
@@ -169,36 +169,6 @@ func TestDecodeMessagePrefersLowerCaseStringValue(t *testing.T) {
 
 	assert.Equal(t, ActionAllJung, action.Name)
 	assert.Equal(t, ActionAllJung, action.Attributes["action"])
-}
-
-func TestDecodeEventUsesFirstContractRecord(t *testing.T) {
-	t.Parallel()
-
-	var event Event
-	require.NoError(t, json.Unmarshal([]byte(`{
-		"Records": [{
-			"receiptHandle": "receipt",
-			"messageAttributes": {
-				"action": {"stringValue": "topten"},
-				"chatId": {"stringValue": "123"}
-			}
-		}]
-	}`), &event))
-
-	action, err := DecodeEvent(event)
-	require.NoError(t, err)
-
-	assert.Equal(t, ActionTopTen, action.Name)
-	assert.Equal(t, "123", action.Attributes["chatId"])
-}
-
-func TestDecodeEventRejectsMissingRecords(t *testing.T) {
-	t.Parallel()
-
-	_, err := DecodeEvent(Event{})
-
-	require.Error(t, err)
-	assert.EqualError(t, err, "missing SQS event record")
 }
 
 func TestMessageAttributeRejectsMalformedJSON(t *testing.T) {
@@ -270,7 +240,7 @@ func TestBuildSendMessageRequest(t *testing.T) {
 		},
 	}
 
-	request := BuildSendMessageRequest("queue-url", action)
+	request := buildSendMessageRequest("queue-url", action)
 
 	assert.Equal(t, "queue-url", request.QueueURL)
 	assert.Equal(t, BodySetOffWorkTime, request.MessageBody)
@@ -281,7 +251,7 @@ func TestBuildSendMessageRequest(t *testing.T) {
 }
 
 func TestBuildDeleteMessageRequest(t *testing.T) {
-	request := BuildDeleteMessageRequest("queue-url", RawMessage{ReceiptHandle: "receipt"})
+	request := buildDeleteMessageRequest("queue-url", RawMessage{ReceiptHandle: "receipt"})
 
 	assert.Equal(t, DeleteMessageRequest{QueueURL: "queue-url", ReceiptHandle: "receipt"}, request)
 }

@@ -22,7 +22,7 @@ func TestJungHelpSendsMarkdownHelp(t *testing.T) {
 
 	messenger := &fakeMessenger{}
 	service := testService()
-	service.Messenger = messenger
+	service.messenger = messenger
 
 	err := service.JungHelp(context.Background(), 123, "Group")
 
@@ -55,14 +55,14 @@ func TestNewBuildsService(t *testing.T) {
 		sender,
 	)
 
-	assert.Equal(t, chatStore, service.ChatMaintainer)
-	assert.Equal(t, "chats", service.ChatTable)
-	assert.Equal(t, messageClient, service.MessageQuerier)
-	assert.Equal(t, "messages", service.MessageTable)
-	assert.Equal(t, messenger, service.Messenger)
-	assert.Equal(t, now, service.Now())
-	assert.Equal(t, "queue-url", service.QueueURL)
-	assert.Equal(t, sender, service.Sender)
+	assert.Equal(t, chatStore, service.chatMaintainer)
+	assert.Equal(t, "chats", service.chatTable)
+	assert.Equal(t, messageClient, service.messageQuerier)
+	assert.Equal(t, "messages", service.messageTable)
+	assert.Equal(t, messenger, service.messenger)
+	assert.Equal(t, now, service.nowFunc())
+	assert.Equal(t, "queue-url", service.queueURL)
+	assert.Equal(t, sender, service.sender)
 }
 
 func TestOnOffFromWorkEnqueuesDueChats(t *testing.T) {
@@ -70,8 +70,8 @@ func TestOnOffFromWorkEnqueuesDueChats(t *testing.T) {
 
 	sender := &fakeSender{}
 	service := testService()
-	service.ChatMaintainer = &fakeChatStore{dueChatIDs: []int64{123}}
-	service.Sender = sender
+	service.chatMaintainer = &fakeChatStore{dueChatIDs: []int64{123}}
+	service.sender = sender
 
 	err := service.OnOffFromWork(context.Background(), "2026-05-01T18:00:00+01:00")
 
@@ -97,8 +97,8 @@ func TestTopTenIgnoresTelegramStatusErrors(t *testing.T) {
 	messenger := &fakeMessenger{err: errors.New("telegram API returned HTTP 403")}
 	chatStore := &fakeChatStore{}
 	service := testService()
-	service.ChatMaintainer = chatStore
-	service.MessageQuerier = &fakeMessageClient{
+	service.chatMaintainer = chatStore
+	service.messageQuerier = &fakeMessageClient{
 		rows: []message.Message{
 			{
 				ChatID:      123,
@@ -110,8 +110,8 @@ func TestTopTenIgnoresTelegramStatusErrors(t *testing.T) {
 			},
 		},
 	}
-	service.Messenger = messenger
-	service.Now = func() time.Time { return now }
+	service.messenger = messenger
+	service.nowFunc = func() time.Time { return now }
 
 	err := service.TopTen(context.Background(), 123)
 
@@ -125,8 +125,8 @@ func TestSetOffWorkTimeUsesWorkerInput(t *testing.T) {
 	messenger := &fakeMessenger{}
 	chatStore := &fakeChatStore{}
 	service := testService()
-	service.ChatMaintainer = chatStore
-	service.Messenger = messenger
+	service.chatMaintainer = chatStore
+	service.messenger = messenger
 
 	err := service.SetOffWorkTime(context.Background(), worker.SetOffInput{
 		ChatID:    123,
@@ -163,16 +163,16 @@ func statisticsChatCountUpdate(now time.Time) chat.UpdateExpression {
 
 func testService() Service {
 	return Service{
-		ChatMaintainer: &fakeChatStore{},
-		ChatTable:      "chats",
-		MessageQuerier: &fakeMessageClient{},
-		MessageTable:   "messages",
-		Messenger:      &fakeMessenger{},
-		Now: func() time.Time {
+		chatMaintainer: &fakeChatStore{},
+		chatTable:      "chats",
+		messageQuerier: &fakeMessageClient{},
+		messageTable:   "messages",
+		messenger:      &fakeMessenger{},
+		nowFunc: func() time.Time {
 			return time.Date(2026, 5, 2, 12, 0, 0, 0, time.UTC)
 		},
-		QueueURL: "https://example.com/queue",
-		Sender:   &fakeSender{},
+		queueURL: "https://example.com/queue",
+		sender:   &fakeSender{},
 	}
 }
 

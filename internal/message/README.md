@@ -9,7 +9,6 @@ It:
 - converts Telegram messages into stored rows
 - formats and parses `dateCreated`
 - computes message TTL
-- builds message update shapes
 
 It does not talk to DynamoDB directly.
 
@@ -27,13 +26,10 @@ This package depends on:
 flowchart TD
     telegram[Telegram message] --> fromTelegram[FromTelegram]
     fromTelegram --> stored[Message]
-    stored --> build[BuildSaveUpdate]
-    build --> update[DynamoDB update shape]
+    stored --> adapter[DynamoDB adapter]
 ```
 
 - `FromTelegram` builds the stored message row
-- `BuildSaveUpdate` turns that row into the DynamoDB update shape
-- `BuildSaveUpdate` preserves the legacy assignment order with `ttl` last
 
 ### Date flow
 
@@ -54,7 +50,6 @@ This package owns:
 - message models
 - `dateCreated` formatting
 - TTL calculation
-- message update shapes
 
 ## Validation
 

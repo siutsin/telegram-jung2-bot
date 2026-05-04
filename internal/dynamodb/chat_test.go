@@ -304,10 +304,10 @@ func TestScanDueChatsRequest(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			scanRequest := scanDueChatsRequest("chats", test.offTime, test.weekday)
 
-			assert.Equal(t, "chats", scanRequest.TableName)
-			assert.Equal(t, test.wantFilter, scanRequest.FilterExpression)
-			assert.Equal(t, test.wantNames, scanRequest.ExpressionAttributeNames)
-			assert.Equal(t, test.wantValues, scanRequest.ExpressionAttributeValues)
+			assert.Equal(t, "chats", scanRequest.tableName)
+			assert.Equal(t, test.wantFilter, scanRequest.filterExpression)
+			assert.Equal(t, test.wantNames, scanRequest.expressionAttributeNames)
+			assert.Equal(t, test.wantValues, scanRequest.expressionAttributeValues)
 		})
 	}
 }
@@ -319,10 +319,10 @@ func TestBuildChatCountUpdate(t *testing.T) {
 	updateRequest := buildChatCountUpdate("chats", 123, 2, 5, now)
 
 	assert.Equal(t, itemUpdateRequest{
-		TableName:                 "chats",
-		Key:                       map[string]any{"chatId": int64(123)},
-		UpdateExpression:          "SET #uc = :uc, #mc = :mc, #mpu = :mpu, #ct = :ct",
-		ExpressionAttributeNames:  map[string]string{"#uc": "userCount", "#mc": "messageCount", "#mpu": "messagePerUser", "#ct": "countTimestamp"},
-		ExpressionAttributeValues: map[string]any{":uc": 2, ":mc": 5, ":mpu": 2.5, ":ct": "2026-05-02T20:30:00+08:00"},
+		tableName:                 "chats",
+		key:                       map[string]any{"chatId": int64(123)},
+		updateExpression:          "SET #uc = :uc, #mc = :mc, #mpu = :mpu, #ct = :ct",
+		expressionAttributeNames:  map[string]string{"#uc": "userCount", "#mc": "messageCount", "#mpu": "messagePerUser", "#ct": "countTimestamp"},
+		expressionAttributeValues: map[string]any{":uc": 2, ":mc": 5, ":mpu": 2.5, ":ct": "2026-05-02T20:30:00+08:00"},
 	}, updateRequest)
 }

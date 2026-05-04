@@ -13,14 +13,14 @@ It does not load env vars or assemble production dependencies.
 
 ## Flow
 
-### App creation flow
+### runtimeApp creation flow
 
 ```mermaid
 flowchart TD
     httpServer[HTTPRunner] --> newApp[New]
     queueWorker[QueueWorker] --> newApp
     opts[Options] --> newApp
-    httpServer --> app[App]
+    httpServer --> app[runtimeApp]
     queueWorker --> app
 ```
 
@@ -31,8 +31,8 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    ctx[Context] --> run[App.Run]
-    app[App] --> run
+    ctx[Context] --> run[runtimeApp.Run]
+    app[runtimeApp] --> run
     run --> serve[HTTP server]
     run --> poll[Queue worker]
     serve --> stop[Shutdown HTTP server]

@@ -62,7 +62,7 @@ func TestRunRequiresProcesses(t *testing.T) {
 	t.Parallel()
 
 	t.Run("missing HTTP server", func(t *testing.T) {
-		err := (&App{}).Run(context.Background())
+		err := (&runtimeApp{}).Run(context.Background())
 
 		require.Error(t, err)
 		assert.EqualError(t, err, "http server is required")
@@ -70,7 +70,7 @@ func TestRunRequiresProcesses(t *testing.T) {
 
 	t.Run("missing queue worker", func(t *testing.T) {
 		httpServer, _ := newMocks(t)
-		err := (&App{httpServer: httpServer}).Run(context.Background())
+		err := (&runtimeApp{httpServer: httpServer}).Run(context.Background())
 
 		require.Error(t, err)
 		assert.EqualError(t, err, "queue worker is required")
@@ -236,11 +236,11 @@ func TestRunHandlesRepeatedConcurrentShutdownInterleavings(t *testing.T) {
 
 	tests := []struct {
 		name string
-		run  func(t *testing.T, application *App, httpServer *appmock.MockHTTPRunner, queueWorker *appmock.MockQueueWorker)
+		run  func(t *testing.T, application *runtimeApp, httpServer *appmock.MockHTTPRunner, queueWorker *appmock.MockQueueWorker)
 	}{
 		{
 			name: "context cancellation",
-			run: func(t *testing.T, application *App, httpServer *appmock.MockHTTPRunner, queueWorker *appmock.MockQueueWorker) {
+			run: func(t *testing.T, application *runtimeApp, httpServer *appmock.MockHTTPRunner, queueWorker *appmock.MockQueueWorker) {
 				ctx, cancel := context.WithCancel(context.Background())
 				started := make(chan struct{}, 2)
 				shutdown := make(chan struct{})
@@ -267,7 +267,7 @@ func TestRunHandlesRepeatedConcurrentShutdownInterleavings(t *testing.T) {
 		},
 		{
 			name: "worker stops first",
-			run: func(t *testing.T, application *App, httpServer *appmock.MockHTTPRunner, queueWorker *appmock.MockQueueWorker) {
+			run: func(t *testing.T, application *runtimeApp, httpServer *appmock.MockHTTPRunner, queueWorker *appmock.MockQueueWorker) {
 				ctx := context.Background()
 				started := make(chan struct{}, 2)
 				shutdown := make(chan struct{})
@@ -296,7 +296,7 @@ func TestRunHandlesRepeatedConcurrentShutdownInterleavings(t *testing.T) {
 		},
 		{
 			name: "http stops first",
-			run: func(t *testing.T, application *App, httpServer *appmock.MockHTTPRunner, queueWorker *appmock.MockQueueWorker) {
+			run: func(t *testing.T, application *runtimeApp, httpServer *appmock.MockHTTPRunner, queueWorker *appmock.MockQueueWorker) {
 				ctx := context.Background()
 				started := make(chan struct{}, 2)
 				httpRelease := make(chan struct{})
