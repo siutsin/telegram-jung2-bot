@@ -128,11 +128,11 @@ func newTelegramClient(loadedConfig config.Config) telegram.Client {
 // newHTTPServer builds the production HTTP server.
 func newHTTPServer(
 	loadedConfig config.Config,
-	chats httpserver.ChatSaver,
-	messages httpserver.MessageSaver,
+	chats dynamodb.ChatClient,
+	messages dynamodb.MessageClient,
 	sender queue.Sender,
-	messenger httpserver.Messenger,
-	scaleUpper httpserver.ScaleUpper,
+	messenger telegram.Client,
+	scaleUpper dynamodb.ScaleUpper,
 ) (*http.Server, error) {
 	dependencies := httpserver.Dependencies{
 		ChatTable:    loadedConfig.ChatIDTable,

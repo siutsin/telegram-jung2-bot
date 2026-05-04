@@ -3,6 +3,7 @@ package dynamodb
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	awscore "github.com/aws/aws-sdk-go-v2/aws"
@@ -40,6 +41,7 @@ func (service ScaleUpper) ScaleUp(ctx context.Context) error {
 	})
 	if err != nil {
 		if isIgnoredScaleUpError(err) {
+			slog.Warn("ignore DynamoDB scale-up error", "table", service.tableName, "err", err)
 			return nil
 		}
 		return fmt.Errorf("update DynamoDB table: %w", err)
