@@ -9,7 +9,7 @@ It:
 - groups rows by user
 - sorts rankings
 - builds report header, body, and footer
-- truncates rendered output to the Telegram-safe limit
+- truncates final rendered output to the Telegram-safe limit
 
 It does not query message storage or send Telegram messages.
 
@@ -32,7 +32,7 @@ flowchart TD
 ```
 
 - rows are grouped and counted first
-- then the report text is rendered from the normalised rankings
+- then the report text is rendered and truncated from the normalised rankings
 
 ### Render flow
 
@@ -44,9 +44,10 @@ flowchart TD
     header --> report[Report text]
     body --> report
     footer --> report
+    report --> truncate[Truncate final text]
 ```
 
-- body rendering stops once the final rune limit would be exceeded
+- final report text is truncated after header, body, footer, and prefixes are rendered
 
 ## Scope
 

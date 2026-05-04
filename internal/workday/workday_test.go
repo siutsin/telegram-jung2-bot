@@ -15,8 +15,8 @@ func TestParseAcceptsValidMasks(t *testing.T) {
 	}{
 		{name: "empty", mask: 0},
 		{name: "sunday", mask: Sun},
-		{name: "weekdays", mask: Mon | Tue | Wed | Thu | Fri},
-		{name: "all days", mask: Sun | Mon | Tue | Wed | Thu | Fri | Sat},
+		{name: "weekdays", mask: int(Weekdays)},
+		{name: "all days", mask: int(AllDays)},
 	}
 
 	for _, test := range tests {
@@ -40,7 +40,7 @@ func TestParseRejectsInvalidMasks(t *testing.T) {
 }
 
 func TestWeekdayMaskIsSixtyTwo(t *testing.T) {
-	assert.Equal(t, 62, Mon|Tue|Wed|Thu|Fri)
+	assert.Equal(t, 62, int(Weekdays))
 }
 
 func TestParseListMatchesContractWorkdayStringToBinary(t *testing.T) {

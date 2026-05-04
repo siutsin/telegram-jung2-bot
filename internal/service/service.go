@@ -26,7 +26,7 @@ type ChatMaintainer interface {
 }
 
 type MessageQuerier interface {
-	QueryByChat(ctx context.Context, tableName string, chatID int64, since time.Time, until time.Time) ([]message.Message, error)
+	QueryByChat(ctx context.Context, tableName string, chatID int64, since time.Time) ([]message.Message, error)
 }
 
 // Messenger is the Telegram surface the service actions need.
@@ -232,7 +232,7 @@ func (service Service) sendStatistics(ctx context.Context, chatID int64, options
 	now := service.now()
 	options.Now = now
 
-	rows, err := service.MessageQuerier.QueryByChat(ctx, service.MessageTable, chatID, now.AddDate(0, 0, -7), now)
+	rows, err := service.MessageQuerier.QueryByChat(ctx, service.MessageTable, chatID, now.AddDate(0, 0, -7))
 	if err != nil {
 		return err
 	}
@@ -269,4 +269,4 @@ func isTelegramStatusError(err error) bool {
 		strings.Contains(err.Error(), "telegram API returned HTTP 5")
 }
 
-var _ ChatMaintainer = dynamodb.ChatClient{}
+var _ ChatMaintainer = dynamodb.NewChatClient(nil)

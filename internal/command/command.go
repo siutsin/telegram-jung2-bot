@@ -27,37 +27,37 @@ var commandDefinitions = []commandDefinition{
 	{
 		Name:   jungHelp,
 		Action: queue.Action{Name: queue.ActionJungHelp, Body: queue.BodyJungHelp},
-		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(jungHelp) + `\b`),
+		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(jungHelp)),
 	},
 	{
 		Name:   topTen,
 		Action: queue.Action{Name: queue.ActionTopTen, Body: queue.BodyTopTen},
-		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(topTen) + `\b`),
+		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(topTen)),
 	},
 	{
 		Name:   topDiver,
 		Action: queue.Action{Name: queue.ActionTopDiver, Body: queue.BodyTopDiver},
-		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(topDiver) + `\b`),
+		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(topDiver)),
 	},
 	{
 		Name:   allJung,
 		Action: queue.Action{Name: queue.ActionAllJung, Body: queue.BodyAllJung},
-		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(allJung) + `\b`),
+		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(allJung)),
 	},
 	{
 		Name:   enableAllJung,
 		Action: queue.Action{Name: queue.ActionEnableAllJung, Body: queue.BodyEnableAllJung},
-		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(enableAllJung) + `\b`),
+		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(enableAllJung)),
 	},
 	{
 		Name:   disableAllJung,
 		Action: queue.Action{Name: queue.ActionDisableAllJung, Body: queue.BodyDisableAllJung},
-		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(disableAllJung) + `\b`),
+		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(disableAllJung)),
 	},
 	{
 		Name:   SetOffFromWorkTimeUTC,
 		Action: queue.Action{Name: queue.ActionSetOffWorkTime, Body: queue.BodySetOffWorkTime},
-		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(SetOffFromWorkTimeUTC) + `\b`),
+		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(SetOffFromWorkTimeUTC)),
 	},
 }
 
@@ -104,8 +104,20 @@ func ParseAll(text string) []Command {
 func commandFromMatch(text string, match []int) Command {
 	name := canonicalName(strings.TrimPrefix(text[match[0]:match[1]], "/"))
 	args := commandArgs(text[match[1]:])
+	if name == SetOffFromWorkTimeUTC {
+		args = setOffCommandArgs(text[match[0]:])
+	}
 
 	return Command{Name: name, Args: args}
+}
+
+func setOffCommandArgs(raw string) string {
+	argsStart := strings.Index(raw, " ")
+	if argsStart < 0 {
+		return ""
+	}
+
+	return strings.TrimPrefix(raw[argsStart:], " ")
 }
 
 // ActionFor converts a command and chat context into a stable queue action.

@@ -14,6 +14,7 @@ done < <(find . \
   -type f \
   -name '*.go' \
   -not -path './buck-out/*' \
+  -not -path './internal/mock/*' \
   -not -path './l[e]gacy/*' \
   -not -path './node_modules/*' \
   -not -path './vendor/*' \
@@ -44,7 +45,17 @@ if ((${#go_files[@]} > 0)); then
   fi
 fi
 
-go vet ./cmd ./internal/...
+go_packages=(./cmd/...)
+while IFS= read -r go_package; do
+  go_packages+=("${go_package}/...")
+done < <(find ./internal \
+  -mindepth 1 \
+  -maxdepth 1 \
+  -type d \
+  -not -path './internal/mock' \
+  | sort)
+
+go vet "${go_packages[@]}"
 
 if ((${#shell_files[@]} > 0)); then
   shellcheck "${shell_files[@]}"
@@ -52,6 +63,7 @@ fi
 
 typos_args=(
   --exclude ./buck-out
+  --exclude ./internal/mock
   --exclude ./legacy
   --exclude ./node_modules
   --exclude ./vendor
@@ -59,11 +71,11 @@ typos_args=(
 )
 
 if [[ "${mode}" == "fix" ]]; then
-  golangci-lint run --fix ./cmd/... ./internal/...
+  golangci-lint run --fix "${go_packages[@]}"
   typos --write-changes "${typos_args[@]}"
   markdownlint-cli2 --fix
 else
-  golangci-lint run ./cmd/... ./internal/...
+  golangci-lint run "${go_packages[@]}"
   typos "${typos_args[@]}"
   markdownlint-cli2
 fi

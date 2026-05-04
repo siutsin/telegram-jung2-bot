@@ -191,7 +191,7 @@ func TestNewContractOffFromWorkReturnsServerError(t *testing.T) {
 	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/jung2bot/dev/onOffFromWork", nil))
 
 	assert.Equal(t, http.StatusInternalServerError, response.Code)
-	assert.Equal(t, "Internal Server Error\n", response.Body.String())
+	assert.JSONEq(t, `{"onOffFromWork":"failed"}`, response.Body.String())
 }
 
 func TestNewContractOffFromWorkRejectsUnsupportedMethod(t *testing.T) {
@@ -323,6 +323,14 @@ func TestHandleWebhookReturnsDecodeError(t *testing.T) {
 	t.Parallel()
 
 	response := HandleWebhook(context.Background(), []byte(`{bad json`), testDependencies(&fakeMessageStore{}, &fakeChatStore{}, &fakeEnqueuer{}, nil))
+
+	assert.Equal(t, Response{StatusCode: 500, Message: "decode Telegram update"}, response)
+}
+
+func TestHandleWebhookRejectsMalformedMessageChatType(t *testing.T) {
+	t.Parallel()
+
+	response := HandleWebhook(context.Background(), []byte(`{"message":{"chat":{"id":123},"text":"hi"}}`), testDependencies(&fakeMessageStore{}, &fakeChatStore{}, &fakeEnqueuer{}, nil))
 
 	assert.Equal(t, Response{StatusCode: 500, Message: "decode Telegram update"}, response)
 }

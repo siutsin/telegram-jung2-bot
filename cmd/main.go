@@ -52,8 +52,9 @@ func run(ctx context.Context) error {
 	dynamoClient := newDynamoClient(awsConfig, loadedConfig.AWSEndpointURL)
 	queueClient := queue.Client{Queue: newSQSClient(awsConfig, loadedConfig.AWSEndpointURL)}
 	telegramClient := newTelegramClient(loadedConfig)
-	messageClient := dynamodb.MessageClient{Dynamo: dynamoClient}
-	chatClient := dynamodb.ChatClient{Dynamo: dynamoClient}
+	messageClient := dynamodb.NewMessageClient(dynamoClient)
+	chatClient := dynamodb.NewChatClient(dynamoClient)
+	scaleUpper := dynamodb.NewScaleUpper(dynamoClient, loadedConfig.MessageTable, loadedConfig.ScaleUpReadCapacity)
 	actions := service.New(
 		chatClient,
 		loadedConfig.ChatIDTable,
@@ -68,7 +69,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	httpServer, err := newHTTPServer(loadedConfig, chatClient, messageClient, queueClient, telegramClient, dynamoClient)
+	httpServer, err := newHTTPServer(loadedConfig, chatClient, messageClient, queueClient, telegramClient, scaleUpper)
 	if err != nil {
 		return err
 	}
@@ -131,7 +132,7 @@ func newHTTPServer(
 	messages httpserver.MessageSaver,
 	sender queue.Sender,
 	messenger httpserver.Messenger,
-	dynamoClient *awsdynamodb.Client,
+	scaleUpper httpserver.ScaleUpper,
 ) (*http.Server, error) {
 	dependencies := httpserver.Dependencies{
 		ChatTable:    loadedConfig.ChatIDTable,
@@ -140,12 +141,8 @@ func newHTTPServer(
 		Messages:     messages,
 		Enqueuer:     queue.Producer{QueueURL: loadedConfig.EventQueueURL, Sender: sender},
 		Messenger:    messenger,
-		ScaleUpper: dynamodb.ScaleUpper{
-			Dynamo:      dynamoClient,
-			DesiredRead: loadedConfig.ScaleUpReadCapacity,
-			TableName:   loadedConfig.MessageTable,
-		},
-		Now: time.Now,
+		ScaleUpper:   scaleUpper,
+		Now:          time.Now,
 	}
 
 	return httpserver.NewServer(

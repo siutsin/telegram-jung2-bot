@@ -9,10 +9,6 @@ import (
 	"github.com/siutsin/telegram-jung2-bot/internal/workday"
 )
 
-const defaultOffTime = "1000"
-const scheduleWorkdayMask = workday.Sun | workday.Mon | workday.Tue | workday.Wed | workday.Thu | workday.Fri | workday.Sat
-const defaultDueWorkdays = workday.Workdays(workday.Mon | workday.Tue | workday.Wed | workday.Thu | workday.Fri)
-
 const keyChatID = "chatId"
 
 // ChatSetting is the persisted chat-level setting record.
@@ -163,7 +159,7 @@ func FilterDue(rows []ChatSetting, offTime string, day string) []ChatSetting {
 // offTime="1830", day="MON".
 func isDue(settings ChatSetting, offTime string, day string) bool {
 	if !settings.HasOffTime && !settings.HasWorkday {
-		return offTime == defaultOffTime && workday.MatchesDay(day, defaultDueWorkdays)
+		return offTime == "1000" && workday.MatchesDay(day, workday.Weekdays)
 	}
 	if settings.OffTime != offTime || !settings.HasWorkday {
 		return false
@@ -178,7 +174,7 @@ func isDue(settings ChatSetting, offTime string, day string) bool {
 func FromScheduleRow(row Row) ChatSetting {
 	settings := baseSettings(row)
 	if row.Workday != nil {
-		settings.Workday = workday.Workdays(*row.Workday & scheduleWorkdayMask)
+		settings.Workday = workday.Workdays(*row.Workday & int(workday.AllDays))
 		settings.HasWorkday = true
 	}
 
@@ -194,7 +190,7 @@ func baseSettings(row Row) ChatSetting {
 		enableAllJung = *row.EnableAllJung
 	}
 
-	settings := ChatSetting{
+	return ChatSetting{
 		ChatID:        row.ChatID,
 		ChatTitle:     row.ChatTitle,
 		TTL:           row.TTL,
@@ -202,6 +198,4 @@ func baseSettings(row Row) ChatSetting {
 		OffTime:       row.OffTime,
 		HasOffTime:    row.OffTime != "",
 	}
-
-	return settings
 }

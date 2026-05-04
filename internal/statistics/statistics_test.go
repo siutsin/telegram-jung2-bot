@@ -182,9 +182,7 @@ func TestGenerateReportTruncatesFinalText(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.True(t, utf8.ValidString(summary.Report))
-	assert.Contains(t, summary.Report, "...\n...\n")
-	assert.Contains(t, summary.Report, "Total messages:")
-	assert.Contains(t, summary.Report, "Last Update:")
+	assert.LessOrEqual(t, utf8.RuneCountInString(summary.Report), telegram.ReportLimit)
 }
 
 func TestDisplayNameMatchesReferenceJoinBehavior(t *testing.T) {
@@ -246,15 +244,25 @@ func TestTimeAgoUnits(t *testing.T) {
 	current := now()
 
 	assert.Equal(t, "5 minutes ago", timeAgo(current.Add(-5*time.Minute), current))
+	assert.Equal(t, "an hour ago", timeAgo(current.Add(-(44*time.Minute+31*time.Second)), current))
 	assert.Equal(t, "an hour ago", timeAgo(current.Add(-time.Hour), current))
 	assert.Equal(t, "3 hours ago", timeAgo(current.Add(-3*time.Hour), current))
+	assert.Equal(t, "a day ago", timeAgo(current.Add(-(21*time.Hour+31*time.Minute)), current))
 	assert.Equal(t, "a day ago", timeAgo(current.Add(-23*time.Hour), current))
+	assert.Equal(t, "a month ago", timeAgo(current.Add(-(25*24*time.Hour+12*time.Hour)), current))
 	assert.Equal(t, "a month ago", timeAgo(current.Add(-27*24*time.Hour), current))
 	assert.Equal(t, "a month ago", timeAgo(current.Add(-31*24*time.Hour), current))
+	assert.Equal(t, "a month ago", timeAgo(current.Add(-46*24*time.Hour), current))
+	assert.Equal(t, "2 months ago", timeAgo(current.Add(-47*24*time.Hour), current))
+	assert.Equal(t, "2 months ago", timeAgo(current.Add(-59*24*time.Hour), current))
 	assert.Equal(t, "6 months ago", timeAgo(current.Add(-180*24*time.Hour), current))
+	assert.Equal(t, "10 months ago", timeAgo(current.Add(-319*24*time.Hour), current))
 	assert.Equal(t, "a year ago", timeAgo(current.Add(-370*24*time.Hour), current))
+	assert.Equal(t, "2 years ago", timeAgo(current.Add(-546*24*time.Hour), current))
+	assert.Equal(t, "2 years ago", timeAgo(current.Add(-547*24*time.Hour), current))
 	assert.Equal(t, "2 years ago", timeAgo(current.Add(-800*24*time.Hour), current))
-	assert.Equal(t, "a few seconds ago", timeAgo(current.Add(time.Minute), current))
+	assert.Equal(t, "in a minute", timeAgo(current.Add(time.Minute), current))
+	assert.Equal(t, "in 2 months", timeAgo(current.Add(47*24*time.Hour), current))
 }
 
 func sampleRows() []message.Message {

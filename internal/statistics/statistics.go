@@ -114,6 +114,7 @@ func GenerateReport(rows []message.Message, options Options) (Summary, error) {
 	if options.OffFromWork {
 		report = "夠鐘收工~~\n\n" + report
 	}
+	report = telegram.TruncateReport(report)
 
 	return Summary{
 		Report:       report,
@@ -299,32 +300,56 @@ func displayName(row message.Message) string {
 // timeAgo formats a relative timestamp.
 // For example, a timestamp two hours ago becomes "2 hours ago".
 func timeAgo(dateCreated time.Time, now time.Time) string {
-	duration := max(now.Sub(dateCreated), 0)
+	duration := now.Sub(dateCreated)
+	future := duration < 0
+	if future {
+		duration = -duration
+	}
+
+	text := relativeTimeText(duration)
+	if future {
+		return "in " + strings.TrimSuffix(text, " ago")
+	}
+
+	return text
+}
+
+func relativeTimeText(duration time.Duration) string {
+	seconds := rounded(duration.Seconds())
+	minutes := rounded(duration.Minutes())
+	hours := rounded(duration.Hours())
+	days := rounded(duration.Hours() / 24)
 
 	switch {
-	case duration < 45*time.Second:
+	case seconds < 45:
 		return "a few seconds ago"
-	case duration < 90*time.Second:
+	case minutes < 2:
 		return "a minute ago"
-	case duration < 45*time.Minute:
-		return plural(int(duration.Minutes()+0.5), "minute")
-	case duration < 90*time.Minute:
+	case minutes < 45:
+		return plural(minutes, "minute")
+	case hours < 2:
 		return "an hour ago"
-	case duration < 22*time.Hour:
-		return plural(int(duration.Hours()+0.5), "hour")
-	case duration < 36*time.Hour:
+	case hours < 22:
+		return plural(hours, "hour")
+	case days < 2:
 		return "a day ago"
-	case duration < 26*24*time.Hour:
-		return plural(int(duration.Hours()/24+0.5), "day")
-	case duration < 45*24*time.Hour:
+	case days < 26:
+		return plural(days, "day")
+	case days <= 46:
 		return "a month ago"
-	case duration < 320*24*time.Hour:
-		return plural(int(duration.Hours()/(24*30)+0.5), "month")
-	case duration < 548*24*time.Hour:
+	case days < 60:
+		return "2 months ago"
+	case days < 320:
+		return plural(days/30, "month")
+	case days < 546:
 		return "a year ago"
 	default:
-		return plural(int(duration.Hours()/(24*365)+0.5), "year")
+		return plural(max(rounded(duration.Hours()/(24*365)), 2), "year")
 	}
+}
+
+func rounded(value float64) int {
+	return int(value + 0.5)
 }
 
 // plural formats a pluralised relative time string.

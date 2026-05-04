@@ -105,12 +105,12 @@ func TestWindowFromTime(t *testing.T) {
 	assert.Equal(t, Window{OffTime: "1000", Weekday: "FRI"}, window)
 }
 
-func TestWindowFromTimePreservesInputOffset(t *testing.T) {
+func TestWindowFromTimeNormalisesToUTC(t *testing.T) {
 	t.Parallel()
 
 	window := WindowFromTime(time.Date(2022, 3, 4, 18, 0, 0, 0, time.FixedZone("UTC+8", 8*60*60)))
 
-	assert.Equal(t, Window{OffTime: "1800", Weekday: "FRI"}, window)
+	assert.Equal(t, Window{OffTime: "1000", Weekday: "FRI"}, window)
 }
 
 func TestDueChatIDs(t *testing.T) {

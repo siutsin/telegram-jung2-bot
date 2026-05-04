@@ -79,7 +79,7 @@ func TestBuildSaveUpdatePreservesContractDynamoDBShape(t *testing.T) {
 		"chatId":      int64(123),
 		"dateCreated": "2019-04-01T10:38:24+08:00",
 	}, update.Key)
-	assert.Equal(t, "SET #ttl = :ttl, #chatTitle = :chatTitle, #userId = :userId, #username = :username, #firstName = :firstName, #lastName = :lastName", update.UpdateExpression)
+	assert.Equal(t, "SET #chatTitle = :chatTitle, #userId = :userId, #username = :username, #firstName = :firstName, #lastName = :lastName, #ttl = :ttl", update.UpdateExpression)
 	assert.Equal(t, map[string]string{
 		"#ttl":       "ttl",
 		"#chatTitle": "chatTitle",

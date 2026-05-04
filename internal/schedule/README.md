@@ -34,6 +34,7 @@ flowchart TD
 ```
 
 - one timestamp becomes one off-work window
+- timestamps are normalised to UTC before calculating the window
 - due chat rows are reduced to just the chat IDs to fan out
 
 ### Admin setting flow

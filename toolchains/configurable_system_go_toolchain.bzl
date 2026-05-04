@@ -42,7 +42,7 @@ def _configurable_system_go_toolchain_impl(ctx):
 
     go_root = ctx.actions.declare_output("goroot", dir = True, has_content_based_path = True)
 
-    # We need a physical GOROOT artifact so Buck can project individual source files.
+    # We need a physical GOROOT artefact so Buck can project individual source files.
     ctx.actions.run([ctx.attrs.copy_goroot[RunInfo], "-o", go_root.as_output()], category = "go_copy_goroot")
 
     suffix = ".exe" if go_os == "windows" else ""

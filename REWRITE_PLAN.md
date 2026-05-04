@@ -21,7 +21,7 @@ Final acceptance requires:
   `internal/` packages.
 - `make lint` passing.
 - Production adapters and worker handlers wired in the default startup path.
-- A cleanup pass that removes migration-only artifacts and wording.
+- A cleanup pass that removes migration-only artefacts and wording.
 
 ## Production Contract
 
@@ -42,8 +42,8 @@ Final acceptance requires:
   truncation behaviour.
 - Preserve independent command matching: one Telegram message may enqueue
   multiple supported commands in the fixed command-check order.
-- Preserve the 3800-character Telegram response safety limit with valid UTF-8,
-  body ellipsis behaviour, and footer preservation.
+- Preserve the 3800-character Telegram response safety limit with valid UTF-8
+  after final report rendering.
 - Preserve workday bitmask values:
   `Sun=1`, `Mon=2`, `Tue=4`, `Wed=8`, `Thu=16`, `Fri=32`, `Sat=64`.
 - Preserve existing `dateCreated` parsing for the stored UTC+8 offset format
@@ -121,7 +121,7 @@ complete. It must be removed before the final cleanup gate.
 - [x] Package: `statistics`.
 - [x] Covered: report text, ordering, tie handling, missing names, row-only
   Top Diver output, large chats, Moment-like relative time wording, and
-  3800-character truncation with ellipsis/footer preservation.
+  final 3800-character truncation.
 
 ### Settings And Scheduling Domain
 
@@ -171,11 +171,10 @@ complete. It must be removed before the final cleanup gate.
 
 ### Test And Coverage Gate
 
-- [ ] Raise total Go statement coverage from the current `83.8%` to the
+- [ ] Raise total Go statement coverage from the current `94.0%` to the
   required `100.0%` for `internal/` packages so `make coverage` passes.
 - [ ] Add coverage for the remaining uncovered adapter and service paths in
-  `internal/dynamodb/store.go`, `internal/queue/sqs.go`, and
-  `internal/service/service.go`.
+  `internal/queue/sqs.go` and `internal/service/service.go`.
 - [ ] Add coverage for the remaining uncovered HTTP edge paths in
   `internal/httpserver/httpserver.go`.
 
@@ -240,8 +239,8 @@ complete. It must be removed before the final cleanup gate.
 
 - Owns SDK-free DynamoDB request helpers plus the concrete DynamoDB-backed
   adapters for message storage, chat storage, and scale-up.
-- Public API: `CollectPages`, `BuildChatCountUpdate`, `BuildScaleUpRequest`,
-  `MessageClient`, `ChatClient`, and `ScaleUpper`.
+- Public API: `MessageClient`, `ChatClient`, `ScaleUpper`,
+  `NewMessageClient`, `NewChatClient`, and `NewScaleUpper`.
 
 ### `service`
 

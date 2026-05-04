@@ -33,6 +33,7 @@ flowchart TD
 
 - `FromTelegram` builds the stored message row
 - `BuildSaveUpdate` turns that row into the DynamoDB update shape
+- `BuildSaveUpdate` preserves the legacy assignment order with `ttl` last
 
 ### Date flow
 

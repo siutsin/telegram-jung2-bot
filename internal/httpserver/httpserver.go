@@ -187,7 +187,7 @@ func registerOnOffFromWorkRoute(mux *http.ServeMux, stagePrefix string, dependen
 		}
 		err := dependencies.Enqueuer.Enqueue(request.Context(), schedule.BuildOnOffFromWorkAction(request.URL.Query().Get("timeString")))
 		if err != nil {
-			http.Error(writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			writeJSONResponse(writer, http.StatusInternalServerError, map[string]string{"onOffFromWork": "failed"})
 			return
 		}
 		writeJSONResponse(writer, http.StatusAccepted, map[string]string{"onOffFromWork": "ok"})
@@ -231,7 +231,13 @@ func parseGroupMessage(payload []byte) (*telegram.Message, Response, bool) {
 	if err != nil {
 		return nil, Response{StatusCode: 500, Message: "decode Telegram update"}, false
 	}
-	if update.Message == nil || !strings.Contains(update.Message.Chat.Type, "group") {
+	if update.Message == nil {
+		return nil, Response{StatusCode: 204, Message: "edited_message or non-group"}, false
+	}
+	if update.Message.Chat.Type == "" {
+		return nil, Response{StatusCode: 500, Message: "decode Telegram update"}, false
+	}
+	if !strings.Contains(update.Message.Chat.Type, "group") {
 		return nil, Response{StatusCode: 204, Message: "edited_message or non-group"}, false
 	}
 
