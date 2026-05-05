@@ -2,10 +2,8 @@ go_library(
     name = "mock",
     srcs = glob(["*.go"], exclude = ["*_test.go"]),
     deps = [
-        "//internal/chat:chat",
-        "//internal/message:message",
-        "//internal/queue:queue",
         "//vendor/github.com/aws/aws-sdk-go-v2/service/dynamodb:dynamodb",
+        "//vendor/github.com/aws/aws-sdk-go-v2/service/sqs:sqs",
         "//vendor/go.uber.org/mock/gomock:gomock",
     ],
     package_name = "github.com/siutsin/telegram-jung2-bot/internal/mock",

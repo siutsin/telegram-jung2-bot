@@ -36,6 +36,10 @@ type telegramMessenger interface {
 	SendMessageWithOptions(ctx context.Context, chatID int64, text string, options telegram.SendMessageOptions) error
 }
 
+type queueSender interface {
+	SendMessage(ctx context.Context, request queue.SendMessageRequest) error
+}
+
 // Service owns the application behaviour behind worker actions.
 type Service struct {
 	chatMaintainer chatRepository
@@ -45,7 +49,7 @@ type Service struct {
 	messenger      telegramMessenger
 	nowFunc        func() time.Time
 	queueURL       string
-	sender         queue.Sender
+	sender         queueSender
 }
 
 // New builds the action service from simple runtime parameters.
@@ -57,7 +61,7 @@ func New(
 	messenger telegramMessenger,
 	now func() time.Time,
 	queueURL string,
-	sender queue.Sender,
+	sender queueSender,
 ) Service {
 	return Service{
 		chatMaintainer: chatMaintainer,

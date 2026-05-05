@@ -34,6 +34,10 @@ type queueDeleter interface {
 	Delete(ctx context.Context, request queue.DeleteMessageRequest) error
 }
 
+type queueReceiver interface {
+	ReceiveMessage(ctx context.Context, request queue.ReceiveMessageRequest) (queue.ReceiveMessageResponse, error)
+}
+
 type queueConsumer interface {
 	Poll(ctx context.Context, handler func(context.Context, queue.RawMessage) error) error
 }
@@ -48,7 +52,7 @@ type pollingWorker struct {
 type actionDispatcher func(ctx context.Context, action queue.Action) error
 
 // NewPollingWorker builds a queue worker from the configured queue contracts.
-func NewPollingWorker(queueURL string, receiver queue.Receiver, deleter queueDeleter, handlers Handlers) (pollingWorker, error) {
+func NewPollingWorker(queueURL string, receiver queueReceiver, deleter queueDeleter, handlers Handlers) (pollingWorker, error) {
 	if receiver == nil {
 		return pollingWorker{}, fmt.Errorf("queue receiver is required")
 	}
@@ -112,7 +116,7 @@ func processMessage(ctx context.Context, queueURL string, raw queue.RawMessage, 
 		ReceiptHandle: raw.ReceiptHandle,
 	})
 	if err != nil {
-		return fmt.Errorf("delete SQS message: %w", err)
+		return err
 	}
 
 	return nil

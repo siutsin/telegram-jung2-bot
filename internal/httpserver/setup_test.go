@@ -12,7 +12,7 @@ import (
 
 	"github.com/siutsin/telegram-jung2-bot/internal/chat"
 	"github.com/siutsin/telegram-jung2-bot/internal/message"
-	mock "github.com/siutsin/telegram-jung2-bot/internal/mock"
+	httpservermock "github.com/siutsin/telegram-jung2-bot/internal/mock/httpserver"
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
 )
 
@@ -22,11 +22,11 @@ func TestMain(m *testing.M) {
 }
 
 type httpserverMocks struct {
-	messages   *mock.MockMessageSaver
-	chats      *mock.MockChatSaver
-	enqueuer   *mock.MockEnqueuer
-	messenger  *mock.MockMessenger
-	scaleUpper *mock.MockScaleUpper
+	messages   *httpservermock.MockMessageSaver
+	chats      *httpservermock.MockChatSaver
+	enqueuer   *httpservermock.MockEnqueuer
+	messenger  *httpservermock.MockMessenger
+	scaleUpper *httpservermock.MockScaleUpper
 
 	savedMessages []message.Message
 	savedChats    []chat.ChatSetting
@@ -39,11 +39,11 @@ func newMockDependencies(t *testing.T) (*httpserverMocks, Dependencies) {
 
 	controller := gomock.NewController(t)
 	mocks := &httpserverMocks{
-		messages:   mock.NewMockMessageSaver(controller),
-		chats:      mock.NewMockChatSaver(controller),
-		enqueuer:   mock.NewMockEnqueuer(controller),
-		messenger:  mock.NewMockMessenger(controller),
-		scaleUpper: mock.NewMockScaleUpper(controller),
+		messages:   httpservermock.NewMockMessageSaver(controller),
+		chats:      httpservermock.NewMockChatSaver(controller),
+		enqueuer:   httpservermock.NewMockEnqueuer(controller),
+		messenger:  httpservermock.NewMockMessenger(controller),
+		scaleUpper: httpservermock.NewMockScaleUpper(controller),
 	}
 
 	return mocks, Dependencies{

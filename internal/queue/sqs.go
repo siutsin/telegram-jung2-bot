@@ -2,13 +2,15 @@ package queue
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"strconv"
 
 	awscore "github.com/aws/aws-sdk-go-v2/aws"
 	awssqs "github.com/aws/aws-sdk-go-v2/service/sqs"
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
+
+//go:generate sh -c "GOFLAGS=-mod=mod go run go.uber.org/mock/mockgen -source=sqs.go -destination=../mock/queue_mock.go -package=mock -mock_names queueRequester=MockQueueRequester"
 
 // queueRequester is the SQS SDK surface used by the queue adapter.
 type queueRequester interface {
@@ -29,6 +31,10 @@ func NewClient(queue queueRequester) sqsClient {
 
 // Delete removes a consumed SQS message.
 func (client sqsClient) Delete(ctx context.Context, request DeleteMessageRequest) error {
+	if client.queue == nil {
+		return fmt.Errorf("queue client is required")
+	}
+
 	_, err := client.queue.DeleteMessage(ctx, &awssqs.DeleteMessageInput{
 		QueueUrl:      awscore.String(request.QueueURL),
 		ReceiptHandle: awscore.String(request.ReceiptHandle),
@@ -44,6 +50,10 @@ func (client sqsClient) Delete(ctx context.Context, request DeleteMessageRequest
 // For example, one AWS message becomes one RawMessage with JSON body text and
 // decoded attributes.
 func (client sqsClient) ReceiveMessage(ctx context.Context, request ReceiveMessageRequest) (ReceiveMessageResponse, error) {
+	if client.queue == nil {
+		return ReceiveMessageResponse{}, fmt.Errorf("queue client is required")
+	}
+
 	maxMessages, err := toInt32(request.MaxNumberOfMessages, "maxNumberOfMessages")
 	if err != nil {
 		return ReceiveMessageResponse{}, err
@@ -65,12 +75,9 @@ func (client sqsClient) ReceiveMessage(ctx context.Context, request ReceiveMessa
 
 	messages := make([]RawMessage, 0, len(output.Messages))
 	for _, item := range output.Messages {
-		payload, marshalErr := json.Marshal(awscore.ToString(item.Body))
-		if marshalErr != nil {
-			return ReceiveMessageResponse{}, fmt.Errorf("encode SQS message body: %w", marshalErr)
-		}
+		payload := strconv.Quote(awscore.ToString(item.Body))
 		messages = append(messages, RawMessage{
-			Body:              payload,
+			Body:              []byte(payload),
 			ReceiptHandle:     awscore.ToString(item.ReceiptHandle),
 			MessageAttributes: decodeQueueAttributes(item.MessageAttributes),
 		})
@@ -81,6 +88,10 @@ func (client sqsClient) ReceiveMessage(ctx context.Context, request ReceiveMessa
 
 // SendMessage sends a queue action to SQS.
 func (client sqsClient) SendMessage(ctx context.Context, request SendMessageRequest) error {
+	if client.queue == nil {
+		return fmt.Errorf("queue client is required")
+	}
+
 	_, err := client.queue.SendMessage(ctx, &awssqs.SendMessageInput{
 		QueueUrl:          awscore.String(request.QueueURL),
 		MessageBody:       awscore.String(request.MessageBody),
@@ -111,10 +122,10 @@ func encodeQueueAttributes(attributes map[string]SendMessageAttribute) map[strin
 // decodeQueueAttributes converts queue attributes from SQS.
 // For example, an AWS StringValue "42" becomes MessageAttribute{StringValue:
 // "42"}.
-func decodeQueueAttributes(attributes map[string]sqstypes.MessageAttributeValue) map[string]MessageAttribute {
-	decoded := make(map[string]MessageAttribute, len(attributes))
+func decodeQueueAttributes(attributes map[string]sqstypes.MessageAttributeValue) map[string]messageAttribute {
+	decoded := make(map[string]messageAttribute, len(attributes))
 	for name, attribute := range attributes {
-		decoded[name] = MessageAttribute{StringValue: awscore.ToString(attribute.StringValue)}
+		decoded[name] = messageAttribute{StringValue: awscore.ToString(attribute.StringValue)}
 	}
 
 	return decoded

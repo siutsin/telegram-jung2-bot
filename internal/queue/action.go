@@ -38,7 +38,6 @@ const (
 type Action struct {
 	Name       string
 	Body       string
-	Payload    json.RawMessage
 	Attributes map[string]string
 }
 
@@ -72,22 +71,22 @@ type ReceiveMessageResponse struct {
 	Messages []RawMessage
 }
 
-type Sender interface {
+type messageSender interface {
 	SendMessage(ctx context.Context, request SendMessageRequest) error
 }
 
-type Receiver interface {
+type messageReceiver interface {
 	ReceiveMessage(ctx context.Context, request ReceiveMessageRequest) (ReceiveMessageResponse, error)
 }
 
 type producer struct {
 	queueURL string
-	sender   Sender
+	sender   messageSender
 }
 
 // NewProducer builds a queue producer.
-func NewProducer(queueURL string, sender Sender) producer {
-	return producer{queueURL: queueURL, sender: sender}
+func NewProducer(queueURL string, queueSender messageSender) producer {
+	return producer{queueURL: queueURL, sender: queueSender}
 }
 
 // Enqueue sends an action to the queue.
@@ -97,7 +96,7 @@ func (p producer) Enqueue(ctx context.Context, action Action) error {
 	}
 	err := p.sender.SendMessage(ctx, buildSendMessageRequest(p.queueURL, action))
 	if err != nil {
-		return fmt.Errorf("send SQS message: %w", err)
+		return err
 	}
 
 	return nil
@@ -105,14 +104,14 @@ func (p producer) Enqueue(ctx context.Context, action Action) error {
 
 type consumer struct {
 	queueURL            string
-	receiver            Receiver
+	receiver            messageReceiver
 	maxNumberOfMessages int
 	waitTimeSeconds     int
 }
 
 // NewConsumer builds a queue consumer with default receive options.
-func NewConsumer(queueURL string, receiver Receiver) consumer {
-	return consumer{queueURL: queueURL, receiver: receiver}
+func NewConsumer(queueURL string, queueReceiver messageReceiver) consumer {
+	return consumer{queueURL: queueURL, receiver: queueReceiver}
 }
 
 // Poll receives queue messages and dispatches them to handler.
@@ -129,7 +128,7 @@ func (c consumer) Poll(ctx context.Context, handler func(context.Context, RawMes
 		WaitTimeSeconds:     waitTimeSeconds(c.waitTimeSeconds),
 	})
 	if err != nil {
-		return fmt.Errorf("receive SQS messages: %w", err)
+		return err
 	}
 	var (
 		firstErr error
@@ -156,8 +155,7 @@ func (c consumer) Poll(ctx context.Context, handler func(context.Context, RawMes
 	return nil
 }
 
-// MessageAttribute is the action attribute shape used by SQS events.
-type MessageAttribute struct {
+type messageAttribute struct {
 	StringValue string `json:"StringValue"`
 	stringValue string
 }
@@ -165,7 +163,7 @@ type MessageAttribute struct {
 // UnmarshalJSON supports both contract StringValue and lower-case stringValue
 // casings. For example, {"stringValue":"42"} and {"StringValue":"42"} both
 // produce the same MessageAttribute value.
-func (attribute *MessageAttribute) UnmarshalJSON(data []byte) error {
+func (attribute *messageAttribute) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		StringValue string `json:"StringValue"`
 		LowerValue  string `json:"stringValue"`
@@ -182,7 +180,7 @@ func (attribute *MessageAttribute) UnmarshalJSON(data []byte) error {
 
 // value returns the message attribute value regardless of casing.
 // For example, a lower-case stringValue takes priority over StringValue.
-func (attribute MessageAttribute) value() string {
+func (attribute messageAttribute) value() string {
 	if attribute.stringValue != "" {
 		return attribute.stringValue
 	}
@@ -194,7 +192,7 @@ func (attribute MessageAttribute) value() string {
 type RawMessage struct {
 	Body              json.RawMessage             `json:"body"`
 	ReceiptHandle     string                      `json:"receiptHandle"`
-	MessageAttributes map[string]MessageAttribute `json:"messageAttributes"`
+	MessageAttributes map[string]messageAttribute `json:"messageAttributes"`
 }
 
 // DecodeMessage converts a raw SQS event message into an action.
@@ -206,14 +204,13 @@ func DecodeMessage(message RawMessage) (Action, error) {
 	}
 
 	attributes := make(map[string]string, len(message.MessageAttributes))
-	for name, messageAttribute := range message.MessageAttributes {
-		attributes[name] = messageAttribute.value()
+	for name, attributeValue := range message.MessageAttributes {
+		attributes[name] = attributeValue.value()
 	}
 
 	return Action{
 		Name:       attribute.value(),
 		Body:       messageBodyText(message.Body),
-		Payload:    message.Body,
 		Attributes: attributes,
 	}, nil
 }
@@ -250,16 +247,6 @@ func buildSendMessageRequest(queueURL string, action Action) SendMessageRequest 
 		QueueURL:          queueURL,
 		MessageBody:       action.Body,
 		MessageAttributes: attributes,
-	}
-}
-
-// buildDeleteMessageRequest converts a consumed raw message into delete params.
-// For example, receiptHandle "abc" becomes DeleteMessageRequest{ReceiptHandle:
-// "abc"}.
-func buildDeleteMessageRequest(queueURL string, message RawMessage) DeleteMessageRequest {
-	return DeleteMessageRequest{
-		QueueURL:      queueURL,
-		ReceiptHandle: message.ReceiptHandle,
 	}
 }
 

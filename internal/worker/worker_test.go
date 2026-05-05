@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"sync/atomic"
 	"testing"
@@ -62,7 +63,7 @@ func TestNewPollingWorkerRequiresQueueContracts(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		receiver queue.Receiver
+		receiver queueReceiver
 		deleter  queueDeleter
 		wantErr  string
 	}{
@@ -84,13 +85,13 @@ func TestPollingWorkerProcessesAndDeletesMessages(t *testing.T) {
 	t.Parallel()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	raw := queue.RawMessage{
-		ReceiptHandle: "receipt",
-		MessageAttributes: map[string]queue.MessageAttribute{
-			"action": mustAttribute(t, `{"StringValue":"topten"}`),
-			"chatId": mustAttribute(t, `{"StringValue":"123"}`),
-		},
-	}
+	raw := mustRawMessage(t, `{
+		"receiptHandle": "receipt",
+		"messageAttributes": {
+			"action": {"StringValue": "topten"},
+			"chatId": {"StringValue": "123"}
+		}
+	}`)
 	deleter := &fakeDeleter{}
 	receiver := &workerReceiver{response: queue.ReceiveMessageResponse{Messages: []queue.RawMessage{raw}}}
 	handlerSet := testHandlers(nil, nil)
@@ -115,13 +116,13 @@ func TestPollingWorkerReturnsMessageFailure(t *testing.T) {
 
 	var calls atomic.Int32
 	rawMessages := []queue.RawMessage{
-		{
-			ReceiptHandle: "one",
-			MessageAttributes: map[string]queue.MessageAttribute{
-				"action": mustAttribute(t, `{"StringValue":"topten"}`),
-				"chatId": mustAttribute(t, `{"StringValue":"123"}`),
-			},
-		},
+		mustRawMessage(t, `{
+			"receiptHandle": "one",
+			"messageAttributes": {
+				"action": {"StringValue": "topten"},
+				"chatId": {"StringValue": "123"}
+			}
+		}`),
 	}
 	deleter := &fakeDeleter{}
 	receiver := &workerReceiver{response: queue.ReceiveMessageResponse{Messages: rawMessages}}
@@ -162,7 +163,7 @@ func TestPollingWorkerReturnsPollError(t *testing.T) {
 	}).Run(context.Background())
 
 	require.Error(t, err)
-	assert.EqualError(t, err, "receive SQS messages: boom")
+	assert.EqualError(t, err, "boom")
 }
 
 func TestPollingWorkerStopsOnCancelledContext(t *testing.T) {
@@ -272,13 +273,13 @@ func TestProcessMessageDeletesAfterSuccessfulDispatch(t *testing.T) {
 	t.Parallel()
 
 	deleter := &fakeDeleter{}
-	raw := queue.RawMessage{
-		ReceiptHandle: "receipt",
-		MessageAttributes: map[string]queue.MessageAttribute{
-			"action": mustAttribute(t, `{"StringValue":"topten"}`),
-			"chatId": mustAttribute(t, `{"StringValue":"123"}`),
-		},
-	}
+	raw := mustRawMessage(t, `{
+		"receiptHandle": "receipt",
+		"messageAttributes": {
+			"action": {"StringValue": "topten"},
+			"chatId": {"StringValue": "123"}
+		}
+	}`)
 
 	err := processMessage(context.Background(), "queue-url", raw, testHandlers(nil, nil), deleter)
 
@@ -290,9 +291,7 @@ func TestProcessMessageKeepsMessageAndReturnsDispatchFailure(t *testing.T) {
 	t.Parallel()
 
 	deleter := &fakeDeleter{}
-	raw := queue.RawMessage{MessageAttributes: map[string]queue.MessageAttribute{
-		"action": mustAttribute(t, `{"StringValue":"topten"}`),
-	}}
+	raw := mustRawMessage(t, `{"messageAttributes":{"action":{"StringValue":"topten"}}}`)
 
 	err := processMessage(context.Background(), "queue-url", raw, testHandlers(nil, errors.New("boom")), deleter)
 
@@ -312,14 +311,12 @@ func TestProcessMessageDropsMessageWithoutAction(t *testing.T) {
 func TestProcessMessageReturnsDeleteError(t *testing.T) {
 	t.Parallel()
 
-	raw := queue.RawMessage{MessageAttributes: map[string]queue.MessageAttribute{
-		"action": mustAttribute(t, `{"StringValue":"topten"}`),
-	}}
+	raw := mustRawMessage(t, `{"messageAttributes":{"action":{"StringValue":"topten"}}}`)
 
 	err := processMessage(context.Background(), "queue-url", raw, testHandlers(nil, nil), &fakeDeleter{err: errors.New("boom")})
 
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "delete SQS message")
+	assert.EqualError(t, err, "boom")
 }
 
 func testAction(name string) queue.Action {
@@ -374,12 +371,12 @@ func testHandlers(calls *[]string, err error) Handlers {
 	}
 }
 
-func mustAttribute(t *testing.T, raw string) queue.MessageAttribute {
+func mustRawMessage(t *testing.T, raw string) queue.RawMessage {
 	t.Helper()
 
-	var attribute queue.MessageAttribute
-	require.NoError(t, attribute.UnmarshalJSON([]byte(raw)))
-	return attribute
+	var message queue.RawMessage
+	require.NoError(t, json.Unmarshal([]byte(raw), &message))
+	return message
 }
 
 type fakeDeleter struct {
