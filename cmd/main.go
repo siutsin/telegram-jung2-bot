@@ -130,7 +130,9 @@ func newHTTPServer(
 	loadedConfig config.Config,
 	chats dynamodb.ChatClient,
 	messages dynamodb.MessageClient,
-	sender queue.Sender,
+	sender interface {
+		SendMessage(ctx context.Context, request queue.SendMessageRequest) error
+	},
 	messenger telegram.Client,
 	scaleUpper dynamodb.ScaleUpper,
 ) (*http.Server, error) {
@@ -155,7 +157,7 @@ func newHTTPServer(
 
 // newQueueWorker builds the production queue worker.
 func newQueueWorker(queueURL string, queueClient interface {
-	queue.Receiver
+	ReceiveMessage(ctx context.Context, request queue.ReceiveMessageRequest) (queue.ReceiveMessageResponse, error)
 	Delete(ctx context.Context, request queue.DeleteMessageRequest) error
 }, actions service.Service) (interface {
 	Run(ctx context.Context) error

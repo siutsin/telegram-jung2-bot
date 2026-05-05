@@ -23,7 +23,7 @@ go_test(
         "//internal/chat:chat",
         "//internal/command:command",
         "//internal/message:message",
-        "//internal/mock:mock",
+        "//internal/mock/httpserver:httpserver",
         "//internal/queue:queue",
         "//internal/schedule:schedule",
         "//internal/telegram:telegram",

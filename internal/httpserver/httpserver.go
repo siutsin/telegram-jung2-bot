@@ -1,7 +1,7 @@
 // Package httpserver owns transport-independent webhook handling.
 package httpserver
 
-//go:generate sh -c "GOFLAGS=-mod=mod go run go.uber.org/mock/mockgen -source=httpserver.go -destination=../mock/httpserver_mock.go -package=mock -mock_names messageSaver=MockMessageSaver,chatSaver=MockChatSaver,enqueuer=MockEnqueuer,messenger=MockMessenger,scaleUpper=MockScaleUpper"
+//go:generate sh -c "GOFLAGS=-mod=mod go run go.uber.org/mock/mockgen -source=httpserver.go -destination=../mock/httpserver/httpserver_mock.go -package=httpservermock -mock_names messageSaver=MockMessageSaver,chatSaver=MockChatSaver,enqueuer=MockEnqueuer,messenger=MockMessenger,scaleUpper=MockScaleUpper"
 
 import (
 	"context"

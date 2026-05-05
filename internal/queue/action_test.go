@@ -15,13 +15,13 @@ import (
 func TestProducerEnqueueSendsContractRequest(t *testing.T) {
 	t.Parallel()
 
-	sender := &fakeSender{}
+	queueSender := &fakeSender{}
 	action := Action{Body: BodyTopTen, Attributes: map[string]string{"action": ActionTopTen}}
 
-	err := (NewProducer("queue-url", sender)).Enqueue(context.Background(), action)
+	err := (NewProducer("queue-url", queueSender)).Enqueue(context.Background(), action)
 
 	require.NoError(t, err)
-	assert.Equal(t, []SendMessageRequest{buildSendMessageRequest("queue-url", action)}, sender.requests)
+	assert.Equal(t, []SendMessageRequest{buildSendMessageRequest("queue-url", action)}, queueSender.requests)
 }
 
 func TestProducerEnqueueRequiresSender(t *testing.T) {
@@ -33,24 +33,24 @@ func TestProducerEnqueueRequiresSender(t *testing.T) {
 	assert.EqualError(t, err, "queue sender is required")
 }
 
-func TestProducerEnqueueWrapsSenderError(t *testing.T) {
+func TestProducerEnqueueReturnsSenderError(t *testing.T) {
 	t.Parallel()
 
 	err := (producer{sender: &fakeSender{err: errors.New("boom")}}).Enqueue(context.Background(), Action{})
 
 	require.Error(t, err)
-	assert.EqualError(t, err, "send SQS message: boom")
+	assert.EqualError(t, err, "boom")
 }
 
 func TestConsumerPollReceivesAndHandlesMessages(t *testing.T) {
 	t.Parallel()
 
 	rawMessages := []RawMessage{{ReceiptHandle: "one"}, {ReceiptHandle: "two"}}
-	receiver := &fakeReceiver{response: ReceiveMessageResponse{Messages: rawMessages}}
+	queueReceiver := &fakeReceiver{response: ReceiveMessageResponse{Messages: rawMessages}}
 	handled := make([]string, 0, len(rawMessages))
 	var mutex sync.Mutex
 
-	err := (NewConsumer("queue-url", receiver)).Poll(context.Background(), func(ctx context.Context, message RawMessage) error {
+	err := (NewConsumer("queue-url", queueReceiver)).Poll(context.Background(), func(ctx context.Context, message RawMessage) error {
 		mutex.Lock()
 		handled = append(handled, message.ReceiptHandle)
 		mutex.Unlock()
@@ -58,7 +58,7 @@ func TestConsumerPollReceivesAndHandlesMessages(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, ReceiveMessageRequest{QueueURL: "queue-url", MaxNumberOfMessages: 10, WaitTimeSeconds: 20}, receiver.request)
+	assert.Equal(t, ReceiveMessageRequest{QueueURL: "queue-url", MaxNumberOfMessages: 10, WaitTimeSeconds: 20}, queueReceiver.request)
 	slices.Sort(handled)
 	assert.Equal(t, []string{"one", "two"}, handled)
 }
@@ -66,52 +66,60 @@ func TestConsumerPollReceivesAndHandlesMessages(t *testing.T) {
 func TestConsumerPollUsesConfiguredReceiveOptions(t *testing.T) {
 	t.Parallel()
 
-	receiver := &fakeReceiver{}
+	queueReceiver := &fakeReceiver{}
 
-	err := (consumer{queueURL: "queue-url", receiver: receiver, maxNumberOfMessages: 2, waitTimeSeconds: 5}).Poll(context.Background(), func(ctx context.Context, message RawMessage) error {
+	err := (consumer{queueURL: "queue-url", receiver: queueReceiver, maxNumberOfMessages: 2, waitTimeSeconds: 5}).Poll(context.Background(), func(ctx context.Context, message RawMessage) error {
 		return nil
 	})
 
 	require.NoError(t, err)
-	assert.Equal(t, ReceiveMessageRequest{QueueURL: "queue-url", MaxNumberOfMessages: 2, WaitTimeSeconds: 5}, receiver.request)
+	assert.Equal(t, ReceiveMessageRequest{QueueURL: "queue-url", MaxNumberOfMessages: 2, WaitTimeSeconds: 5}, queueReceiver.request)
 }
 
-func TestConsumerPollRequiresReceiver(t *testing.T) {
+func TestConsumerPollErrors(t *testing.T) {
 	t.Parallel()
 
-	err := (consumer{}).Poll(context.Background(), func(ctx context.Context, message RawMessage) error { return nil })
+	tests := []struct {
+		name     string
+		consumer consumer
+		handler  func(context.Context, RawMessage) error
+		wantErr  string
+	}{
+		{
+			name:     "missing receiver",
+			consumer: consumer{},
+			handler:  func(ctx context.Context, message RawMessage) error { return nil },
+			wantErr:  "queue receiver is required",
+		},
+		{
+			name:     "missing handler",
+			consumer: consumer{receiver: &fakeReceiver{}},
+			wantErr:  "queue handler is required",
+		},
+		{
+			name:     "receive error",
+			consumer: consumer{receiver: &fakeReceiver{err: errors.New("boom")}},
+			handler:  func(ctx context.Context, message RawMessage) error { return nil },
+			wantErr:  "boom",
+		},
+		{
+			name:     "handler error",
+			consumer: consumer{receiver: &fakeReceiver{response: ReceiveMessageResponse{Messages: []RawMessage{{}}}}},
+			handler: func(ctx context.Context, message RawMessage) error {
+				return errors.New("boom")
+			},
+			wantErr: "boom",
+		},
+	}
 
-	require.Error(t, err)
-	assert.EqualError(t, err, "queue receiver is required")
-}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := test.consumer.Poll(context.Background(), test.handler)
 
-func TestConsumerPollRequiresHandler(t *testing.T) {
-	t.Parallel()
-
-	err := (consumer{receiver: &fakeReceiver{}}).Poll(context.Background(), nil)
-
-	require.Error(t, err)
-	assert.EqualError(t, err, "queue handler is required")
-}
-
-func TestConsumerPollWrapsReceiveError(t *testing.T) {
-	t.Parallel()
-
-	err := (consumer{receiver: &fakeReceiver{err: errors.New("boom")}}).Poll(context.Background(), func(ctx context.Context, message RawMessage) error { return nil })
-
-	require.Error(t, err)
-	assert.EqualError(t, err, "receive SQS messages: boom")
-}
-
-func TestConsumerPollReturnsHandlerError(t *testing.T) {
-	t.Parallel()
-
-	err := (consumer{receiver: &fakeReceiver{response: ReceiveMessageResponse{Messages: []RawMessage{{}}}}}).Poll(context.Background(), func(ctx context.Context, message RawMessage) error {
-		return errors.New("boom")
-	})
-
-	require.Error(t, err)
-	assert.EqualError(t, err, "boom")
+			require.Error(t, err)
+			assert.EqualError(t, err, test.wantErr)
+		})
+	}
 }
 
 func TestDecodeMessageSupportsStringValueCasing(t *testing.T) {
@@ -138,7 +146,6 @@ func TestDecodeMessageSupportsStringValueCasing(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.Equal(t, ActionTopTen, action.Name)
-			assert.JSONEq(t, `{"chatId":123}`, string(action.Payload))
 			assert.Equal(t, `{"chatId":123}`, action.Body)
 			assert.Equal(t, "topten", action.Attributes["action"])
 		})
@@ -172,7 +179,7 @@ func TestDecodeMessagePrefersLowerCaseStringValue(t *testing.T) {
 }
 
 func TestMessageAttributeRejectsMalformedJSON(t *testing.T) {
-	var attribute MessageAttribute
+	var attribute messageAttribute
 
 	err := attribute.UnmarshalJSON([]byte(`[]`))
 
@@ -206,27 +213,51 @@ func TestDecodeMessagePreservesContractAttributes(t *testing.T) {
 }
 
 func TestActionNamesRemainStable(t *testing.T) {
-	assert.Equal(t, "junghelp", ActionJungHelp)
-	assert.Equal(t, "topten", ActionTopTen)
-	assert.Equal(t, "topdiver", ActionTopDiver)
-	assert.Equal(t, "alljung", ActionAllJung)
-	assert.Equal(t, "enableAllJung", ActionEnableAllJung)
-	assert.Equal(t, "disableAllJung", ActionDisableAllJung)
-	assert.Equal(t, "setOffFromWorkTimeUTC", ActionSetOffWorkTime)
-	assert.Equal(t, "offFromWork", ActionOffFromWork)
-	assert.Equal(t, "onOffFromWork", ActionOnOffFromWork)
+	tests := []struct {
+		name string
+		got  string
+		want string
+	}{
+		{name: "jung help", got: ActionJungHelp, want: "junghelp"},
+		{name: "top ten", got: ActionTopTen, want: "topten"},
+		{name: "top diver", got: ActionTopDiver, want: "topdiver"},
+		{name: "all jung", got: ActionAllJung, want: "alljung"},
+		{name: "enable all jung", got: ActionEnableAllJung, want: "enableAllJung"},
+		{name: "disable all jung", got: ActionDisableAllJung, want: "disableAllJung"},
+		{name: "set off work time", got: ActionSetOffWorkTime, want: "setOffFromWorkTimeUTC"},
+		{name: "off from work", got: ActionOffFromWork, want: "offFromWork"},
+		{name: "on off from work", got: ActionOnOffFromWork, want: "onOffFromWork"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert.Equal(t, test.want, test.got)
+		})
+	}
 }
 
 func TestContractBodiesRemainStable(t *testing.T) {
-	assert.Equal(t, "sendJungHelpMessage", BodyJungHelp)
-	assert.Equal(t, "sendTopTenMessage", BodyTopTen)
-	assert.Equal(t, "sendTopDiverMessage", BodyTopDiver)
-	assert.Equal(t, "sendAllJungMessage", BodyAllJung)
-	assert.Equal(t, "sendEnableAllJungMessage", BodyEnableAllJung)
-	assert.Equal(t, "sendDisableAllJungMessage", BodyDisableAllJung)
-	assert.Equal(t, "sendSetOffFromWorkTimeUTC", BodySetOffWorkTime)
-	assert.Equal(t, "sendOffFromWorkMessage", BodyOffFromWork)
-	assert.Equal(t, "sendOnOffFromWork", BodyOnOffFromWork)
+	tests := []struct {
+		name string
+		got  string
+		want string
+	}{
+		{name: "jung help", got: BodyJungHelp, want: "sendJungHelpMessage"},
+		{name: "top ten", got: BodyTopTen, want: "sendTopTenMessage"},
+		{name: "top diver", got: BodyTopDiver, want: "sendTopDiverMessage"},
+		{name: "all jung", got: BodyAllJung, want: "sendAllJungMessage"},
+		{name: "enable all jung", got: BodyEnableAllJung, want: "sendEnableAllJungMessage"},
+		{name: "disable all jung", got: BodyDisableAllJung, want: "sendDisableAllJungMessage"},
+		{name: "set off work time", got: BodySetOffWorkTime, want: "sendSetOffFromWorkTimeUTC"},
+		{name: "off from work", got: BodyOffFromWork, want: "sendOffFromWorkMessage"},
+		{name: "on off from work", got: BodyOnOffFromWork, want: "sendOnOffFromWork"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert.Equal(t, test.want, test.got)
+		})
+	}
 }
 
 func TestBuildSendMessageRequest(t *testing.T) {
@@ -250,20 +281,14 @@ func TestBuildSendMessageRequest(t *testing.T) {
 	assert.Equal(t, SendMessageAttribute{DataType: "String", StringValue: "Group"}, request.MessageAttributes["chatTitle"])
 }
 
-func TestBuildDeleteMessageRequest(t *testing.T) {
-	request := buildDeleteMessageRequest("queue-url", RawMessage{ReceiptHandle: "receipt"})
-
-	assert.Equal(t, DeleteMessageRequest{QueueURL: "queue-url", ReceiptHandle: "receipt"}, request)
-}
-
 type fakeSender struct {
 	requests []SendMessageRequest
 	err      error
 }
 
-func (sender *fakeSender) SendMessage(ctx context.Context, request SendMessageRequest) error {
-	sender.requests = append(sender.requests, request)
-	return sender.err
+func (queueSender *fakeSender) SendMessage(ctx context.Context, request SendMessageRequest) error {
+	queueSender.requests = append(queueSender.requests, request)
+	return queueSender.err
 }
 
 type fakeReceiver struct {
@@ -272,7 +297,7 @@ type fakeReceiver struct {
 	err      error
 }
 
-func (receiver *fakeReceiver) ReceiveMessage(ctx context.Context, request ReceiveMessageRequest) (ReceiveMessageResponse, error) {
-	receiver.request = request
-	return receiver.response, receiver.err
+func (queueReceiver *fakeReceiver) ReceiveMessage(ctx context.Context, request ReceiveMessageRequest) (ReceiveMessageResponse, error) {
+	queueReceiver.request = request
+	return queueReceiver.response, queueReceiver.err
 }

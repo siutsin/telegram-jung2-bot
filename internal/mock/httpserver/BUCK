@@ -1,0 +1,14 @@
+go_library(
+    name = "httpserver",
+    srcs = glob(["*.go"], exclude = ["*_test.go"]),
+    deps = [
+        "//internal/chat:chat",
+        "//internal/message:message",
+        "//internal/queue:queue",
+        "//vendor/go.uber.org/mock/gomock:gomock",
+    ],
+    package_name = "github.com/siutsin/telegram-jung2-bot/internal/mock/httpserver",
+    visibility = [
+        "//internal/...",
+    ],
+)
