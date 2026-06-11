@@ -4,10 +4,14 @@ package worker
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"reflect"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
+	"github.com/siutsin/telegram-jung2-bot/internal/schedule"
 )
 
 type Handlers struct {
@@ -18,16 +22,8 @@ type Handlers struct {
 	OffFromWork    func(ctx context.Context, chatID int64) error
 	EnableAllJung  func(ctx context.Context, chatID int64, chatTitle string, userID int64) error
 	DisableAllJung func(ctx context.Context, chatID int64, chatTitle string, userID int64) error
-	SetOffWorkTime func(ctx context.Context, input SetOffInput) error
+	SetOffWorkTime func(ctx context.Context, input schedule.SetOffInput) error
 	OnOffFromWork  func(ctx context.Context, timeString string) error
-}
-
-type SetOffInput struct {
-	ChatID    int64
-	ChatTitle string
-	UserID    int64
-	OffTime   string
-	Workday   string
 }
 
 type queueDeleter interface {
@@ -106,17 +102,54 @@ func processMessage(ctx context.Context, queueURL string, raw queue.RawMessage, 
 	action := queue.DecodeMessage(raw)
 	dispatchErr := dispatch(ctx, action, handlers)
 	if dispatchErr != nil {
-		return dispatchErr
+		slog.Error("queue message dispatch failed", "action", action.Name, "err", dispatchErr)
+		if !isPermanentDispatchError(dispatchErr) {
+			return dispatchErr
+		}
+	} else {
+		err := deleteProcessedMessage(ctx, deleter, queueURL, raw, action.Name)
+		if err != nil {
+			return err
+		}
+
+		return nil
 	}
-	err := deleter.Delete(ctx, queue.DeleteMessageRequest{
-		QueueURL:      queueURL,
-		ReceiptHandle: raw.ReceiptHandle,
-	})
+
+	err := deleteProcessedMessage(ctx, deleter, queueURL, raw, action.Name)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// deleteProcessedMessage deletes a successfully handled queue message.
+func deleteProcessedMessage(ctx context.Context, deleter queueDeleter, queueURL string, raw queue.RawMessage, actionName string) error {
+	deleteCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+
+	err := deleter.Delete(deleteCtx, queue.DeleteMessageRequest{
+		QueueURL:      queueURL,
+		ReceiptHandle: raw.ReceiptHandle,
+	})
+	if err != nil {
+		slog.Error("queue message delete failed", "action", actionName, "err", err)
+		return err
+	}
+
+	return nil
+}
+
+// isPermanentDispatchError reports malformed queue payloads that should not retry.
+func isPermanentDispatchError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	message := err.Error()
+	return strings.HasPrefix(message, "missing ") ||
+		strings.HasPrefix(message, "invalid ") ||
+		strings.HasPrefix(message, "missing handler for ")
 }
 
 // actionDispatchers returns the queue action dispatch table.
@@ -144,7 +177,12 @@ func withChatID(handler func(ctx context.Context, chatID int64) error, actionNam
 			return err
 		}
 
-		return requiredHandler(ctx, actionChatID(action))
+		chatID, err := requiredChatID(action)
+		if err != nil {
+			return err
+		}
+
+		return requiredHandler(ctx, chatID)
 	}
 }
 
@@ -157,7 +195,12 @@ func withChatIDAndTitle(handler func(ctx context.Context, chatID int64, chatTitl
 			return err
 		}
 
-		return requiredHandler(ctx, actionChatID(action), action.Attributes["chatTitle"])
+		chatID, err := requiredChatID(action)
+		if err != nil {
+			return err
+		}
+
+		return requiredHandler(ctx, chatID, action.Attributes["chatTitle"])
 	}
 }
 
@@ -171,24 +214,42 @@ func withAdminFields(handler func(ctx context.Context, chatID int64, chatTitle s
 			return err
 		}
 
-		return requiredHandler(ctx, actionChatID(action), action.Attributes["chatTitle"], actionUserID(action))
+		chatID, err := requiredChatID(action)
+		if err != nil {
+			return err
+		}
+		userID, err := requiredUserID(action)
+		if err != nil {
+			return err
+		}
+
+		return requiredHandler(ctx, chatID, action.Attributes["chatTitle"], userID)
 	}
 }
 
 // withSetOffInput builds a dispatcher for off-work schedule updates.
 // For example, action attributes become SetOffInput{ChatID, ChatTitle, UserID,
 // OffTime, Workday}.
-func withSetOffInput(handler func(ctx context.Context, input SetOffInput) error, actionName string) actionDispatcher {
+func withSetOffInput(handler func(ctx context.Context, input schedule.SetOffInput) error, actionName string) actionDispatcher {
 	return func(ctx context.Context, action queue.Action) error {
 		requiredHandler, err := requireHandler(handler, actionName)
 		if err != nil {
 			return err
 		}
 
-		return requiredHandler(ctx, SetOffInput{
-			ChatID:    actionChatID(action),
+		chatID, err := requiredChatID(action)
+		if err != nil {
+			return err
+		}
+		userID, err := requiredUserID(action)
+		if err != nil {
+			return err
+		}
+
+		return requiredHandler(ctx, schedule.SetOffInput{
+			ChatID:    chatID,
 			ChatTitle: action.Attributes["chatTitle"],
-			UserID:    actionUserID(action),
+			UserID:    userID,
 			OffTime:   action.Attributes["offTime"],
 			Workday:   action.Attributes["workday"],
 		})
@@ -205,31 +266,41 @@ func withTimeString(handler func(ctx context.Context, timeString string) error, 
 			return err
 		}
 
-		return requiredHandler(ctx, action.Attributes["timeString"])
+		timeString := action.Attributes["timeString"]
+		if timeString == "" {
+			return fmt.Errorf("missing timeString for %s", actionName)
+		}
+
+		return requiredHandler(ctx, timeString)
 	}
 }
 
-// actionChatID parses the chat ID from action attributes.
+// requiredChatID parses a required chatId attribute.
 // For example, Attributes["chatId"]="42" becomes 42.
-func actionChatID(action queue.Action) int64 {
-	return parseInt(action.Attributes["chatId"])
+func requiredChatID(action queue.Action) (int64, error) {
+	return requiredIntAttribute(action, "chatId")
 }
 
-// actionUserID parses the user ID from action attributes.
+// requiredUserID parses a required userId attribute.
 // For example, Attributes["userId"]="7" becomes 7.
-func actionUserID(action queue.Action) int64 {
-	return parseInt(action.Attributes["userId"])
+func requiredUserID(action queue.Action) (int64, error) {
+	return requiredIntAttribute(action, "userId")
 }
 
-// parseInt parses a decimal int64 and falls back to zero.
-// For example, "42" becomes 42, while "bad" becomes 0.
-func parseInt(raw string) int64 {
+// requiredIntAttribute parses a required decimal int64 action attribute.
+// For example, chatId "42" becomes 42, while a missing key returns an error.
+func requiredIntAttribute(action queue.Action, key string) (int64, error) {
+	raw, ok := action.Attributes[key]
+	if !ok || raw == "" {
+		return 0, fmt.Errorf("missing %s for %s", key, action.Name)
+	}
+
 	value, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil {
-		return 0
+		return 0, fmt.Errorf("invalid %s for %s: %w", key, action.Name, err)
 	}
 
-	return value
+	return value, nil
 }
 
 // requireHandler returns a configured handler for an action.

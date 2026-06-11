@@ -133,15 +133,15 @@ func setOffCommandArgs(raw string) string {
 // and chatTitle attributes.
 func ActionFor(command Command, chat ChatContext) (queue.Action, error) {
 	var action queue.Action
-	found := false
+	canonicalName := ""
 	for _, definition := range commandDefinitions {
 		if strings.EqualFold(definition.Name, command.Name) {
 			action = definition.Action
-			found = true
+			canonicalName = definition.Name
 			break
 		}
 	}
-	if !found {
+	if canonicalName == "" {
 		return queue.Action{}, fmt.Errorf("unsupported command %q", command.Name)
 	}
 
@@ -150,7 +150,7 @@ func ActionFor(command Command, chat ChatContext) (queue.Action, error) {
 		"action": action.Name,
 	}
 
-	switch command.Name {
+	switch canonicalName {
 	case jungHelp:
 		action.Attributes["chatTitle"] = chat.ChatTitle
 	case enableAllJung, disableAllJung:
@@ -170,6 +170,16 @@ func ActionFor(command Command, chat ChatContext) (queue.Action, error) {
 	return action, nil
 }
 
+// ValidateOffTime checks the contract off-work UTC grid.
+// For example, "1830" is valid while "9999" is not.
+func ValidateOffTime(offTime string) error {
+	if !offTimePattern.MatchString(offTime) {
+		return fmt.Errorf("invalid off time %q", offTime)
+	}
+
+	return nil
+}
+
 // parseSetOffFromWorkTimeArgs validates and normalises contract command args.
 // For example, "1830 MON,MON,TUE" becomes offTime "1830" and workday "MON,TUE".
 func parseSetOffFromWorkTimeArgs(args string) (offTime string, workdayList string, err error) {
@@ -179,8 +189,9 @@ func parseSetOffFromWorkTimeArgs(args string) (offTime string, workdayList strin
 	}
 
 	offTime = parts[0]
-	if !offTimePattern.MatchString(offTime) {
-		return "", "", fmt.Errorf("invalid off time %q", offTime)
+	err = ValidateOffTime(offTime)
+	if err != nil {
+		return "", "", err
 	}
 
 	workdayList, err = normaliseWorkdayList(parts[1])

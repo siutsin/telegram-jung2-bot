@@ -256,6 +256,28 @@ func TestSetOffFromWorkTimeUTCRejectsBadWorkday(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestSetOffFromWorkTimeUTCRejectsBadOffTime(t *testing.T) {
+	t.Parallel()
+
+	_, err := SetOffFromWorkTimeUTC("chats", 123, "Group", true, "9999", "MON")
+
+	require.Error(t, err)
+}
+
+func TestParseScheduledTimeAcceptsRFC3339Variants(t *testing.T) {
+	t.Parallel()
+
+	_, err := ParseScheduledTime("2026-05-01T18:00:00Z")
+	require.NoError(t, err)
+
+	_, err = ParseScheduledTime("2026-05-01T18:00:00.000Z")
+	require.NoError(t, err)
+
+	_, err = ParseScheduledTime("")
+	require.Error(t, err)
+	assert.EqualError(t, err, "timeString is required")
+}
+
 func TestInvalidSetOffFromWorkTimeUTCMessage(t *testing.T) {
 	t.Parallel()
 

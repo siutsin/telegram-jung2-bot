@@ -51,7 +51,7 @@ flowchart TD
   its `Poll` method.
 - `Poll` receives one batch
 - each message is handled concurrently inside the batch
-- the first handler error is returned
+- handler errors leave messages undeleted and do not stop polling
 
 ## Scope
 

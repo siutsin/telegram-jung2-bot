@@ -4,13 +4,11 @@ go_library(
     package_name = "github.com/siutsin/telegram-jung2-bot/internal/service",
     deps = [
         "//internal/chat:chat",
-        "//internal/dynamodb:dynamodb",
         "//internal/message:message",
         "//internal/queue:queue",
         "//internal/schedule:schedule",
         "//internal/statistics:statistics",
         "//internal/telegram:telegram",
-        "//internal/worker:worker",
     ],
     visibility = [
         "//cmd:",
@@ -23,13 +21,11 @@ go_test(
     srcs = glob(["*.go"]),
     deps = [
         "//internal/chat:chat",
-        "//internal/dynamodb:dynamodb",
         "//internal/message:message",
         "//internal/queue:queue",
         "//internal/schedule:schedule",
         "//internal/statistics:statistics",
         "//internal/telegram:telegram",
-        "//internal/worker:worker",
         "//vendor/github.com/stretchr/testify/assert:assert",
         "//vendor/github.com/stretchr/testify/require:require",
         ":service",

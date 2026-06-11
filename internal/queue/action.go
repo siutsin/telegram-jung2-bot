@@ -130,27 +130,14 @@ func (c consumer) Poll(ctx context.Context, handler func(context.Context, RawMes
 	if err != nil {
 		return err
 	}
-	var (
-		firstErr error
-		mutex    sync.Mutex
-		waiter   sync.WaitGroup
-	)
+	var waiter sync.WaitGroup
 	for _, message := range response.Messages {
 		waiter.Go(func() {
-			handlerErr := handler(ctx, message)
-			if handlerErr != nil {
-				mutex.Lock()
-				if firstErr == nil {
-					firstErr = handlerErr
-				}
-				mutex.Unlock()
-			}
+			// Handler errors leave messages undeleted; polling continues in the worker.
+			_ = handler(ctx, message) //nolint:errcheck // contract: per-message failures are non-fatal to Poll
 		})
 	}
 	waiter.Wait()
-	if firstErr != nil {
-		return firstErr
-	}
 
 	return nil
 }

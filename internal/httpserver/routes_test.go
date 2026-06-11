@@ -190,7 +190,7 @@ func TestNewContractOffFromWorkReturnsServerError(t *testing.T) {
 	handler := newHandler(serverDeps{Dependencies: dependencies, stage: "dev"})
 	recorder := httptest.NewRecorder()
 
-	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/jung2bot/dev/onOffFromWork", nil))
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/jung2bot/dev/onOffFromWork?timeString=2026-05-02T12:00:00Z", nil))
 
 	assert.Equal(t, http.StatusInternalServerError, recorder.Code)
 	assert.JSONEq(t, `{"onOffFromWork":"failed"}`, recorder.Body.String())
@@ -250,6 +250,32 @@ func TestNewContractScaleUpFailures(t *testing.T) {
 			assert.JSONEq(t, `{"onScaleUp":"failed"}`, recorder.Body.String())
 		})
 	}
+}
+
+func TestWebhookRejectsMissingSecretWhenConfigured(t *testing.T) {
+	t.Parallel()
+
+	_, dependencies := newMockDependencies(t)
+	dependencies.WebhookSecretToken = "secret-token"
+	handler := newHandler(serverDeps{Dependencies: dependencies})
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/webhook", strings.NewReader(`{}`)))
+
+	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
+}
+
+func TestOnOffFromWorkRejectsInvalidTimeString(t *testing.T) {
+	t.Parallel()
+
+	_, dependencies := newMockDependencies(t)
+	handler := newHandler(serverDeps{Dependencies: dependencies, stage: "dev"})
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/jung2bot/dev/onOffFromWork?timeString=bad", nil))
+
+	assert.Equal(t, http.StatusBadRequest, recorder.Code)
+	assert.JSONEq(t, `{"onOffFromWork":"invalid timeString"}`, recorder.Body.String())
 }
 
 func TestNewContractWebhookSuppressesInternalErrorMessage(t *testing.T) {

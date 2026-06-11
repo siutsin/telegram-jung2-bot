@@ -4,7 +4,6 @@ go_test(
         "app.go",
         "aws.go",
         "checks.go",
-        "dispatch.go",
         "floci.go",
         "helpers.go",
         "http.go",

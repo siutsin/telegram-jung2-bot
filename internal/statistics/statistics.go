@@ -2,18 +2,26 @@
 package statistics
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/siutsin/telegram-jung2-bot/internal/message"
 	"github.com/siutsin/telegram-jung2-bot/internal/telegram"
 )
 
+// ErrEmptyRows reports that a chat has no messages in the requested window.
+var ErrEmptyRows = errors.New("statistics rows are empty")
+
 const defaultWindowDays = 7
+
+// DefaultWindowDays returns the report query window used when Options.WindowDays is zero.
+func DefaultWindowDays() int {
+	return defaultWindowDays
+}
 
 const updateTimestampLayout = "2006-01-02T15:04:05-07:00"
 
@@ -97,7 +105,7 @@ func normaliseRows(rows []message.Message, reverse bool) rowSummary {
 // MessageCount}.
 func GenerateReport(rows []message.Message, options Options) (Summary, error) {
 	if len(rows) == 0 {
-		return Summary{}, fmt.Errorf("statistics rows are empty")
+		return Summary{}, ErrEmptyRows
 	}
 	if options.Now.IsZero() {
 		options.Now = time.Now()
@@ -107,14 +115,18 @@ func GenerateReport(rows []message.Message, options Options) (Summary, error) {
 	}
 
 	normalisedRows := normaliseRows(rows, options.Reverse)
-	report := buildHeader(normalisedRows, options)
+	header := buildHeader(normalisedRows, options)
 	footer := buildFooter(normalisedRows, options)
-	report += buildBodyWithLimit(normalisedRows, options, telegram.ReportLimit)
-	report += footer
+	prefix := ""
 	if options.OffFromWork {
-		report = "夠鐘收工~~\n\n" + report
+		prefix = "夠鐘收工~~\n\n"
 	}
-	report = telegram.TruncateReport(report)
+	bodyLimit := max(0, telegram.ReportLimit-jsStringLength(header)-jsStringLength(footer)-jsStringLength(prefix))
+	report := header + buildBodyWithLimit(normalisedRows, options, bodyLimit) + footer
+	if prefix != "" {
+		report = prefix + report
+	}
+	report = truncateReportByJSLength(report)
 
 	return Summary{
 		Report:       report,
@@ -174,7 +186,7 @@ func buildHeader(summary rowSummary, options Options) string {
 		suffix = ":"
 	}
 
-	return fmt.Sprintf("圍爐區: %s\n\n%s %s in the last %d days%s\n\n", chatTitle, limitText, personType, options.WindowDays, suffix)
+	return fmt.Sprintf("圍爐區: %s\n\n%s %s in the last %d days%s\n\n", escapeMarkdownTitle(chatTitle), limitText, personType, options.WindowDays, suffix)
 }
 
 // buildBodyWithLimit builds the report body within limit.
@@ -199,7 +211,7 @@ func buildBodyWithLimit(summary rowSummary, options Options, limit int) string {
 		item := summary.rankings[index]
 		percentage := float64(item.count) / float64(summary.totalMessage) * 100
 		line := fmt.Sprintf("%d. %s %.2f%% (%s)\n", index+1, item.fullName, percentage, timeAgo(item.dateCreated, options.Now))
-		if utf8.RuneCountInString(body) >= limit {
+		if jsStringLength(body) >= limit {
 			truncated = true
 			break
 		}
@@ -259,6 +271,49 @@ func buildFooter(summary rowSummary, options Options) string {
 
 // HelpMessage returns the bot help message.
 // For example, chat title "Ops" is inserted into the contract help template.
+// jsStringLength counts UTF-16 code units like legacy JavaScript String.length.
+// For example, "冗" becomes 1 and an astral character becomes 2.
+// truncateReportByJSLength trims text to the report limit using JavaScript
+// String.length semantics while keeping UTF-8 valid.
+// For example, a report one astral character over the limit drops that rune.
+func truncateReportByJSLength(text string) string {
+	if jsStringLength(text) <= telegram.ReportLimit {
+		return text
+	}
+
+	runes := []rune(text)
+	for len(runes) > 0 && jsStringLength(string(runes)) > telegram.ReportLimit {
+		runes = runes[:len(runes)-1]
+	}
+
+	return string(runes)
+}
+
+func jsStringLength(value string) int {
+	length := 0
+	for _, r := range value {
+		if r > 0xFFFF {
+			length += 2
+			continue
+		}
+		length++
+	}
+
+	return length
+}
+
+// escapeMarkdownTitle escapes Telegram Markdown metacharacters in user titles.
+// For example, "Ops_team" becomes "Ops\\_team".
+func escapeMarkdownTitle(title string) string {
+	replacer := strings.NewReplacer(
+		"_", "\\_",
+		"*", "\\*",
+		"`", "\\`",
+		"[", "\\[",
+	)
+	return replacer.Replace(title)
+}
+
 func HelpMessage(chatTitle string) string {
 	return fmt.Sprintf(`
 圍爐區: %s
@@ -282,7 +337,7 @@ Admin Only:
 [Service Status](https://stats.uptimerobot.com/kglZJSkYZg)
 
 May your 冗 power powerful
-`, chatTitle)
+`, escapeMarkdownTitle(chatTitle))
 }
 
 // displayName returns the preferred ranking display name.

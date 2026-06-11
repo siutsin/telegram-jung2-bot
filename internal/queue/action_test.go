@@ -108,13 +108,17 @@ func TestConsumerPollErrors(t *testing.T) {
 			handler: func(ctx context.Context, message RawMessage) error {
 				return errors.New("boom")
 			},
-			wantErr: "boom",
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			err := test.consumer.Poll(context.Background(), test.handler)
+
+			if test.wantErr == "" {
+				require.NoError(t, err)
+				return
+			}
 
 			require.Error(t, err)
 			assert.EqualError(t, err, test.wantErr)

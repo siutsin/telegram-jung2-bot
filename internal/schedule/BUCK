@@ -4,6 +4,7 @@ go_library(
     package_name = "github.com/siutsin/telegram-jung2-bot/internal/schedule",
     deps = [
         "//internal/chat:chat",
+        "//internal/command:command",
         "//internal/queue:queue",
         "//internal/workday:workday",
     ],
@@ -17,6 +18,7 @@ go_test(
     srcs = glob(["*.go"]),
     deps = [
         "//internal/chat:chat",
+        "//internal/command:command",
         "//internal/queue:queue",
         "//internal/workday:workday",
         "//vendor/github.com/stretchr/testify/assert:assert",

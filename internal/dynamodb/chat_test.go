@@ -326,3 +326,10 @@ func TestBuildChatCountUpdate(t *testing.T) {
 		expressionAttributeValues: map[string]any{":uc": 2, ":mc": 5, ":mpu": 2.5, ":ct": "2026-05-02T20:30:00+08:00"},
 	}, updateRequest)
 }
+
+func TestMessagePerUserGuardsZeroUserCount(t *testing.T) {
+	t.Parallel()
+
+	assert.InDelta(t, 0, messagePerUser(0, 0), 0)
+	assert.InDelta(t, 0, messagePerUser(0, 5), 0)
+}

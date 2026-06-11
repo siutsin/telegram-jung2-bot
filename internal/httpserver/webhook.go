@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"strings"
 	"time"
 
 	"github.com/siutsin/telegram-jung2-bot/internal/chat"
@@ -41,7 +40,7 @@ func parseGroupMessage(payload []byte) (*telegram.Message, response, bool) {
 	if update.Message.Chat.Type == "" {
 		return nil, response{statusCode: 500, message: "decode Telegram update"}, false
 	}
-	if !strings.Contains(update.Message.Chat.Type, "group") {
+	if !isGroupChat(update.Message.Chat.Type) {
 		return nil, response{statusCode: 204, message: "edited_message or non-group"}, false
 	}
 
@@ -168,4 +167,9 @@ func parseCommands(telegramMessage telegram.Message) []command.Command {
 	}
 
 	return command.ParseAll(telegramMessage.Text)
+}
+
+// isGroupChat reports whether a Telegram chat type is a group conversation.
+func isGroupChat(chatType string) bool {
+	return chatType == "group" || chatType == "supergroup"
 }

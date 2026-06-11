@@ -33,6 +33,7 @@ type Config struct {
 	HTTPTimeout         time.Duration
 	ShutdownTimeout     time.Duration
 	ScaleUpReadCapacity int
+	WebhookSecretToken  string
 }
 
 type rawConfig struct {
@@ -50,6 +51,7 @@ type rawConfig struct {
 	HTTPTimeoutSeconds     string `env:"HTTP_TIMEOUT_SECONDS"`
 	ShutdownTimeoutSeconds string `env:"SHUTDOWN_TIMEOUT_SECONDS"`
 	ScaleUpReadCapacity    string `env:"SCALE_UP_READ_CAPACITY"`
+	WebhookSecretToken     string `env:"WEBHOOK_SECRET_TOKEN"`
 }
 
 // Load validates configuration from an environment map.
@@ -133,6 +135,7 @@ func configFromRaw(raw rawConfig) (Config, error) {
 		HTTPTimeout:         httpTimeout,
 		ShutdownTimeout:     shutdownTimeout,
 		ScaleUpReadCapacity: scaleUpReadCapacity,
+		WebhookSecretToken:  raw.WebhookSecretToken,
 	}, nil
 }
 

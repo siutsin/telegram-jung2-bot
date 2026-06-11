@@ -145,8 +145,7 @@ func TestGenerateReportRejectsEmptyRows(t *testing.T) {
 
 	_, err := GenerateReport(nil, Options{})
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "statistics rows are empty")
+	require.ErrorIs(t, err, ErrEmptyRows)
 }
 
 func TestGenerateReportDefaultsNow(t *testing.T) {
@@ -201,6 +200,24 @@ func TestBuildBodyWithLimitCountsCharactersInsteadOfBytes(t *testing.T) {
 	body := buildBodyWithLimit(normalised, Options{Now: now()}, 40)
 
 	assert.Contains(t, body, "2. 冗冗冗冗")
+}
+
+func TestJsStringLengthCountsAstralCharactersAsTwoUnits(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, 2, jsStringLength("😀"))
+	assert.Equal(t, 3, jsStringLength("a😀"))
+}
+
+func TestTruncateReportByJSLengthKeepsValidUTF8(t *testing.T) {
+	t.Parallel()
+
+	text := strings.Repeat("a", telegram.ReportLimit-1) + "😀"
+	truncated := truncateReportByJSLength(text)
+
+	assert.True(t, utf8.ValidString(truncated))
+	assert.LessOrEqual(t, jsStringLength(truncated), telegram.ReportLimit)
+	assert.NotEqual(t, text, truncated)
 }
 
 func TestBuildBodyWithLimitClampsNegativeLimit(t *testing.T) {

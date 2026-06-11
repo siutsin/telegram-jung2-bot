@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"crypto/subtle"
 	"io"
 	"log/slog"
 	"net/http"
@@ -45,7 +46,13 @@ func registerStageRoutes(mux *http.ServeMux, dependencies serverDeps) {
 	})
 
 	registerRoute(mux, http.MethodGet, stagePrefix+"/onOffFromWork", func(writer http.ResponseWriter, request *http.Request) {
-		err := dependencies.Enqueuer.Enqueue(request.Context(), schedule.BuildOnOffFromWorkAction(request.URL.Query().Get("timeString")))
+		_, err := schedule.ParseScheduledTime(request.URL.Query().Get("timeString"))
+		if err != nil {
+			writeNamedJSONResponse(writer, http.StatusBadRequest, "onOffFromWork", "invalid timeString")
+			return
+		}
+
+		err = dependencies.Enqueuer.Enqueue(request.Context(), schedule.BuildOnOffFromWorkAction(request.URL.Query().Get("timeString")))
 		if err != nil {
 			slog.Error("enqueue off-work trigger", "err", err)
 			writeNamedJSONResponse(writer, http.StatusInternalServerError, "onOffFromWork", "failed")
@@ -88,6 +95,10 @@ func methodHandler(method string, handler http.HandlerFunc) http.HandlerFunc {
 
 // webhookResponse reads the HTTP request body and processes one webhook update.
 func webhookResponse(writer http.ResponseWriter, request *http.Request, dependencies serverDeps) response {
+	if !validateWebhookSecret(request, dependencies.WebhookSecretToken) {
+		return response{statusCode: http.StatusUnauthorized, message: "unauthorised"}
+	}
+
 	body, err := readRequestBody(writer, request, maxBodyBytes(dependencies))
 	if err != nil {
 		slog.Warn("read webhook request body", "err", err)
@@ -108,4 +119,14 @@ func readRequestBody(writer http.ResponseWriter, request *http.Request, bodyLimi
 	}()
 
 	return io.ReadAll(body)
+}
+
+// validateWebhookSecret checks Telegram's webhook secret header when configured.
+func validateWebhookSecret(request *http.Request, secret string) bool {
+	if secret == "" {
+		return true
+	}
+
+	got := request.Header.Get("X-Telegram-Bot-Api-Secret-Token")
+	return subtle.ConstantTimeCompare([]byte(got), []byte(secret)) == 1
 }

@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -40,6 +42,11 @@ func main() {
 // run loads config, assembles the application, and starts it.
 func run(ctx context.Context) error {
 	loadedConfig, err := config.LoadEnviron(os.Environ())
+	if err != nil {
+		return err
+	}
+
+	err = configureLogging(loadedConfig.LogLevel, os.Stderr)
 	if err != nil {
 		return err
 	}
@@ -137,14 +144,15 @@ func newHTTPServer(
 	scaleUpper dynamodb.ScaleUpper,
 ) (*http.Server, error) {
 	dependencies := httpserver.Dependencies{
-		ChatTable:    loadedConfig.ChatIDTable,
-		MessageTable: loadedConfig.MessageTable,
-		Chats:        chats,
-		Messages:     messages,
-		Enqueuer:     queue.NewProducer(loadedConfig.EventQueueURL, sender),
-		Messenger:    messenger,
-		ScaleUpper:   scaleUpper,
-		Now:          time.Now,
+		ChatTable:          loadedConfig.ChatIDTable,
+		MessageTable:       loadedConfig.MessageTable,
+		Chats:              chats,
+		Messages:           messages,
+		Enqueuer:           queue.NewProducer(loadedConfig.EventQueueURL, sender),
+		Messenger:          messenger,
+		ScaleUpper:         scaleUpper,
+		Now:                time.Now,
+		WebhookSecretToken: loadedConfig.WebhookSecretToken,
 	}
 
 	return httpserver.NewServer(
@@ -178,4 +186,38 @@ func newQueueWorker(queueURL string, queueClient interface {
 			OnOffFromWork:  actions.OnOffFromWork,
 		},
 	)
+}
+
+// configureLogging installs the process-wide slog handler from LOG_LEVEL.
+// For example, "debug" enables debug logs on the default logger.
+func configureLogging(level string, output io.Writer) error {
+	var slogLevel slog.Level
+
+	normalised := strings.ToLower(strings.TrimSpace(level))
+	if normalised == "" {
+		normalised = "info"
+	}
+
+	switch normalised {
+	case "debug":
+		slogLevel = slog.LevelDebug
+	case "info":
+		slogLevel = slog.LevelInfo
+	case "warn", "warning":
+		slogLevel = slog.LevelWarn
+	case "error":
+		slogLevel = slog.LevelError
+	default:
+		slogLevel = slog.LevelInfo
+		handler := slog.NewTextHandler(output, &slog.HandlerOptions{Level: slogLevel})
+		slog.SetDefault(slog.New(handler))
+		slog.Warn("unknown log level, defaulting to info", "level", level)
+
+		return nil
+	}
+
+	handler := slog.NewTextHandler(output, &slog.HandlerOptions{Level: slogLevel})
+	slog.SetDefault(slog.New(handler))
+
+	return nil
 }

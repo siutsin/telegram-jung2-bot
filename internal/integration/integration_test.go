@@ -17,10 +17,11 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "integration runtime bootstrap failed: %v\n", err)
 		os.Exit(1)
 	}
-	defer teardownIntegrationRuntime()
 	fmt.Fprintf(os.Stderr, "Floci integration using %s (container %s)\n", integrationEndpoint(), integrationContainerName())
 
-	os.Exit(m.Run())
+	code := m.Run()
+	teardownIntegrationRuntime()
+	os.Exit(code)
 }
 
 func TestFlociDynamoDB(t *testing.T) {

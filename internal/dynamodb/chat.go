@@ -146,6 +146,16 @@ func scanDueChatsRequest(tableName string, offTime string, weekday string) dueCh
 	}
 }
 
+// messagePerUser computes the stored average without dividing by zero.
+// For example, userCount 5 and messageCount 20 becomes 4.
+func messagePerUser(userCount int, messageCount int) float64 {
+	if userCount == 0 {
+		return 0
+	}
+
+	return float64(messageCount) / float64(userCount)
+}
+
 // buildChatCountUpdate builds a chat statistics update request.
 // For example, userCount 5 and messageCount 20 stores messagePerUser as 4.
 func buildChatCountUpdate(tableName string, chatID int64, userCount int, messageCount int, now time.Time) itemUpdateRequest {
@@ -162,7 +172,7 @@ func buildChatCountUpdate(tableName string, chatID int64, userCount int, message
 		expressionAttributeValues: map[string]any{
 			":uc":  userCount,
 			":mc":  messageCount,
-			":mpu": float64(messageCount) / float64(userCount),
+			":mpu": messagePerUser(userCount, messageCount),
 			":ct":  message.FormatDateCreated(now),
 		},
 	}

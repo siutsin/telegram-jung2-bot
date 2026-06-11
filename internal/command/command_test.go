@@ -275,6 +275,22 @@ func TestParseSetOffFromWorkTimeArgsRejectsContractInvalidFormats(t *testing.T) 
 	}
 }
 
+func TestActionForEnrichesAttributesForMixedCaseCommandNames(t *testing.T) {
+	action, err := ActionFor(
+		Command{Name: "ENABLEALLJUNG"},
+		ChatContext{ChatID: 123, ChatTitle: "title", UserID: 456},
+	)
+	require.NoError(t, err)
+
+	assert.Equal(t, queue.ActionEnableAllJung, action.Name)
+	assert.Equal(t, map[string]string{
+		"chatId":    "123",
+		"chatTitle": "title",
+		"userId":    "456",
+		"action":    queue.ActionEnableAllJung,
+	}, action.Attributes)
+}
+
 func TestActionForRejectsUnsupportedCommand(t *testing.T) {
 	_, err := ActionFor(Command{Name: "unknown"}, ChatContext{})
 	require.Error(t, err)

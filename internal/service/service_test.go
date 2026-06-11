@@ -12,9 +12,9 @@ import (
 	"github.com/siutsin/telegram-jung2-bot/internal/chat"
 	"github.com/siutsin/telegram-jung2-bot/internal/message"
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
+	"github.com/siutsin/telegram-jung2-bot/internal/schedule"
 	"github.com/siutsin/telegram-jung2-bot/internal/statistics"
 	"github.com/siutsin/telegram-jung2-bot/internal/telegram"
-	"github.com/siutsin/telegram-jung2-bot/internal/worker"
 )
 
 func TestJungHelpSendsMarkdownHelp(t *testing.T) {
@@ -262,19 +262,18 @@ func TestOffFromWorkAndTopDiverSendReports(t *testing.T) {
 func TestParseScheduledTimeRejectsInvalidInput(t *testing.T) {
 	t.Parallel()
 
-	_, err := parseScheduledTime("bad")
+	_, err := schedule.ParseScheduledTime("bad")
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "parse scheduled time")
 }
 
-func TestOnOffFromWorkReturnsScheduledTimeParseError(t *testing.T) {
+func TestOnOffFromWorkSkipsInvalidScheduledTime(t *testing.T) {
 	t.Parallel()
 
 	err := testService().OnOffFromWork(context.Background(), "bad")
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "parse scheduled time")
+	require.NoError(t, err)
 }
 
 func TestOnOffFromWorkReturnsFanOutErrors(t *testing.T) {
@@ -367,7 +366,6 @@ func TestTopTenReturnsStatisticsErrors(t *testing.T) {
 		{
 			name:    "empty rows",
 			service: testService(),
-			wantErr: "statistics rows are empty",
 		},
 		{
 			name: "save statistics",
@@ -395,10 +393,28 @@ func TestTopTenReturnsStatisticsErrors(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			err := test.service.TopTen(context.Background(), 123)
 
+			if test.wantErr == "" {
+				require.NoError(t, err)
+				return
+			}
+
 			require.Error(t, err)
 			assert.EqualError(t, err, test.wantErr)
 		})
 	}
+}
+
+func TestOffFromWorkSkipsEmptyChatWindow(t *testing.T) {
+	t.Parallel()
+
+	messenger := &fakeMessenger{}
+	service := testService()
+	service.messenger = messenger
+
+	err := service.OffFromWork(context.Background(), 123)
+
+	require.NoError(t, err)
+	assert.Empty(t, messenger.text)
 }
 
 func TestSetOffWorkTimeUsesWorkerInput(t *testing.T) {
@@ -410,7 +426,7 @@ func TestSetOffWorkTimeUsesWorkerInput(t *testing.T) {
 	service.chatMaintainer = chatStore
 	service.messenger = messenger
 
-	err := service.SetOffWorkTime(context.Background(), worker.SetOffInput{
+	err := service.SetOffWorkTime(context.Background(), schedule.SetOffInput{
 		ChatID:    123,
 		ChatTitle: "Group",
 		UserID:    456,
@@ -423,19 +439,33 @@ func TestSetOffWorkTimeUsesWorkerInput(t *testing.T) {
 	assert.Contains(t, messenger.text, "Updated setOffFromWorkTime in UTC: 1800 MON,WED")
 }
 
-func TestSetOffWorkTimeReturnsValidationAndAdminErrors(t *testing.T) {
+func TestSetOffWorkTimeSkipsInvalidInputForNonAdmin(t *testing.T) {
+	t.Parallel()
+
+	admin := false
+	messenger := &fakeMessenger{admin: &admin}
+	service := testService()
+	service.messenger = messenger
+
+	err := service.SetOffWorkTime(context.Background(), schedule.SetOffInput{
+		ChatID:    123,
+		ChatTitle: "Group",
+		UserID:    456,
+		OffTime:   "1800",
+		Workday:   "BAD",
+	})
+
+	require.NoError(t, err)
+	assert.Empty(t, messenger.text)
+}
+
+func TestSetOffWorkTimeReturnsInvalidReplySendError(t *testing.T) {
 	t.Parallel()
 
 	service := testService()
-	service.messenger = &fakeMessenger{adminErr: errors.New("boom")}
+	service.messenger = &fakeMessenger{err: errors.New("boom")}
 
-	err := service.SetOffWorkTime(context.Background(), worker.SetOffInput{ChatID: 123, UserID: 456})
-
-	require.Error(t, err)
-	require.EqualError(t, err, "boom")
-
-	service = testService()
-	err = service.SetOffWorkTime(context.Background(), worker.SetOffInput{
+	err := service.SetOffWorkTime(context.Background(), schedule.SetOffInput{
 		ChatID:    123,
 		ChatTitle: "Group",
 		UserID:    456,
@@ -444,7 +474,65 @@ func TestSetOffWorkTimeReturnsValidationAndAdminErrors(t *testing.T) {
 	})
 
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid workday")
+	assert.EqualError(t, err, "boom")
+}
+
+func TestSetOffWorkTimeIgnoresTelegramStatusErrorOnInvalidReply(t *testing.T) {
+	t.Parallel()
+
+	service := testService()
+	service.messenger = &fakeMessenger{err: errors.New("telegram API returned HTTP 403")}
+
+	err := service.SetOffWorkTime(context.Background(), schedule.SetOffInput{
+		ChatID:    123,
+		ChatTitle: "Group",
+		UserID:    456,
+		OffTime:   "1800",
+		Workday:   "BAD",
+	})
+
+	require.NoError(t, err)
+}
+
+func TestApplySettingChangeIgnoresTelegramStatusError(t *testing.T) {
+	t.Parallel()
+
+	messenger := &fakeMessenger{err: errors.New("telegram API returned HTTP 500")}
+	chatStore := &fakeChatStore{}
+	service := testService()
+	service.chatMaintainer = chatStore
+	service.messenger = messenger
+
+	err := service.EnableAllJung(context.Background(), 123, "Group", 456)
+
+	require.NoError(t, err)
+	assert.Equal(t, int64(123), chatStore.updatedChatID)
+}
+
+func TestSetOffWorkTimeReturnsValidationAndAdminErrors(t *testing.T) {
+	t.Parallel()
+
+	service := testService()
+	service.messenger = &fakeMessenger{adminErr: errors.New("boom")}
+
+	err := service.SetOffWorkTime(context.Background(), schedule.SetOffInput{ChatID: 123, UserID: 456})
+
+	require.Error(t, err)
+	require.EqualError(t, err, "boom")
+
+	messenger := &fakeMessenger{}
+	service = testService()
+	service.messenger = messenger
+	err = service.SetOffWorkTime(context.Background(), schedule.SetOffInput{
+		ChatID:    123,
+		ChatTitle: "Group",
+		UserID:    456,
+		OffTime:   "1800",
+		Workday:   "BAD",
+	})
+
+	require.NoError(t, err)
+	assert.Contains(t, messenger.text, "Invalid format for setOffFromWorkTimeUTC")
 }
 
 func TestServiceNowDefaultsToCurrentTime(t *testing.T) {
@@ -464,6 +552,8 @@ func TestIsTelegramStatusErrorHandlesNilAndServerErrors(t *testing.T) {
 
 	assert.False(t, isTelegramStatusError(nil))
 	assert.True(t, isTelegramStatusError(errors.New("telegram API returned HTTP 500")))
+	assert.True(t, isTelegramStatusError(errors.New("telegram API returned HTTP 429")))
+	assert.True(t, isTelegramStatusError(errors.New("telegram API returned HTTP 403")))
 }
 
 func statisticsChatCountUpdate(now time.Time) chat.UpdateExpression {

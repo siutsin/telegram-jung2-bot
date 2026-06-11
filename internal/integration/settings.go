@@ -13,8 +13,8 @@ import (
 	appdynamodb "github.com/siutsin/telegram-jung2-bot/internal/dynamodb"
 	"github.com/siutsin/telegram-jung2-bot/internal/message"
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
+	"github.com/siutsin/telegram-jung2-bot/internal/schedule"
 	"github.com/siutsin/telegram-jung2-bot/internal/workday"
-	"github.com/siutsin/telegram-jung2-bot/internal/worker"
 )
 
 const (
@@ -108,7 +108,7 @@ func runSetOffWorkTimeCase(
 	messenger := &recordingMessenger{admin: true}
 	svc := newIntegrationService(dynamoClient, sqsClient, resources, messenger)
 
-	err := svc.SetOffWorkTime(ctx, worker.SetOffInput{
+	err := svc.SetOffWorkTime(ctx, schedule.SetOffInput{
 		ChatID:    settingsChatID,
 		ChatTitle: settingsChatTitle,
 		UserID:    settingsUserID,

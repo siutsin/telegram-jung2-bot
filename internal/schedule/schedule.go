@@ -8,9 +8,19 @@ import (
 	"time"
 
 	"github.com/siutsin/telegram-jung2-bot/internal/chat"
+	"github.com/siutsin/telegram-jung2-bot/internal/command"
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
 	"github.com/siutsin/telegram-jung2-bot/internal/workday"
 )
+
+// SetOffInput carries queue attributes for setOffFromWorkTimeUTC actions.
+type SetOffInput struct {
+	ChatID    int64
+	ChatTitle string
+	UserID    int64
+	OffTime   string
+	Workday   string
+}
 
 type window struct {
 	OffTime string
@@ -101,6 +111,21 @@ func DueChatIDs(rows []chat.ChatSetting, timestamp time.Time) []int64 {
 	return chatIDs
 }
 
+// ParseScheduledTime parses scheduler timeString values from HTTP or queue payloads.
+// For example, "2025-01-06T18:30:00Z" and "2025-01-06T18:30:00.000Z" both parse.
+func ParseScheduledTime(raw string) (time.Time, error) {
+	if raw == "" {
+		return time.Time{}, fmt.Errorf("timeString is required")
+	}
+
+	timestamp, err := time.Parse(time.RFC3339Nano, raw)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("parse scheduled time: %w", err)
+	}
+
+	return timestamp, nil
+}
+
 // BuildOnOffFromWorkAction builds the scheduler fan-out action.
 // For example, "2025-01-06T18:30:00Z" becomes an action with timeString set to
 // that value.
@@ -171,6 +196,11 @@ func SetOffFromWorkTimeUTC(
 ) (SettingChange, error) {
 	if !isAdmin {
 		return SettingChange{}, nil
+	}
+
+	err := command.ValidateOffTime(offTime)
+	if err != nil {
+		return SettingChange{}, err
 	}
 
 	workdays, err := workday.ParseList(workdayList)

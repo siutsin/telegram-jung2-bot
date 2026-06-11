@@ -2,7 +2,6 @@ package integration
 
 import (
 	"context"
-	"strconv"
 	"testing"
 	"time"
 
@@ -302,19 +301,37 @@ func pollServiceAction(
 	err := producer.Enqueue(ctx, action)
 	require.NoError(t, err, "enqueue worker action")
 
-	err = queue.NewConsumer(resources.queueURL, queueClient).Poll(ctx, func(pollCtx context.Context, raw queue.RawMessage) error {
-		decoded := queue.DecodeMessage(raw)
-		handlerErr := dispatchAllServiceActions(pollCtx, svc, decoded)
-		if handlerErr != nil {
-			return handlerErr
-		}
+	queueWorker, err := worker.NewPollingWorker(
+		resources.queueURL,
+		queueClient,
+		queueClient,
+		buildWorkerHandlers(svc),
+	)
+	require.NoError(t, err, "create polling worker")
 
-		return queueClient.Delete(pollCtx, queue.DeleteMessageRequest{
-			QueueURL:      resources.queueURL,
-			ReceiptHandle: raw.ReceiptHandle,
-		})
-	})
-	require.NoError(t, err, "poll queue action")
+	pollCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- queueWorker.Run(pollCtx)
+	}()
+
+	require.Eventually(t, func() bool {
+		return len(messenger.recordedMessages()) > 0
+	}, 15*time.Second, 100*time.Millisecond, "worker should dispatch action %s", action.Name)
+
+	cancel()
+
+	select {
+	case runErr := <-done:
+		if pollCtx.Err() != nil {
+			break
+		}
+		require.NoError(t, runErr, "worker should stop after cancel")
+	case <-time.After(15 * time.Second):
+		t.Fatal("timed out waiting for worker to stop")
+	}
 
 	assertQueueEmpty(t, ctx, queueClient, resources.queueURL)
 }
@@ -487,17 +504,4 @@ func newIntegrationService(
 		resources.queueURL,
 		sender,
 	)
-}
-
-func actionChatID(action queue.Action) int64 {
-	return actionChatIDFromAttribute(action.Attributes["chatId"])
-}
-
-func actionChatIDFromAttribute(raw string) int64 {
-	value, err := strconv.ParseInt(raw, 10, 64)
-	if err != nil {
-		return 0
-	}
-
-	return value
 }

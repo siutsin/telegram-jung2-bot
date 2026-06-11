@@ -3,18 +3,18 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/siutsin/telegram-jung2-bot/internal/chat"
-	"github.com/siutsin/telegram-jung2-bot/internal/dynamodb"
 	"github.com/siutsin/telegram-jung2-bot/internal/message"
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
 	"github.com/siutsin/telegram-jung2-bot/internal/schedule"
 	"github.com/siutsin/telegram-jung2-bot/internal/statistics"
 	"github.com/siutsin/telegram-jung2-bot/internal/telegram"
-	"github.com/siutsin/telegram-jung2-bot/internal/worker"
 )
 
 // chatRepository is the chat persistence surface the service actions need.
@@ -125,9 +125,10 @@ func (service Service) OffFromWork(ctx context.Context, chatID int64) error {
 
 // OnOffFromWork fans out due off-work actions for one scheduled instant.
 func (service Service) OnOffFromWork(ctx context.Context, timeString string) error {
-	timestamp, err := parseScheduledTime(timeString)
+	timestamp, err := schedule.ParseScheduledTime(timeString)
 	if err != nil {
-		return err
+		slog.Warn("skip onOffFromWork with invalid timeString", "timeString", timeString, "err", err)
+		return nil
 	}
 
 	chatIDs, err := service.chatMaintainer.DueChatIDs(ctx, service.chatTable, timestamp)
@@ -151,7 +152,7 @@ func (service Service) OnOffFromWork(ctx context.Context, timeString string) err
 }
 
 // SetOffWorkTime updates and replies to the off-work settings command.
-func (service Service) SetOffWorkTime(ctx context.Context, input worker.SetOffInput) error {
+func (service Service) SetOffWorkTime(ctx context.Context, input schedule.SetOffInput) error {
 	isAdmin, err := service.messenger.IsAdmin(ctx, input.ChatID, input.UserID)
 	if err != nil {
 		return err
@@ -159,7 +160,16 @@ func (service Service) SetOffWorkTime(ctx context.Context, input worker.SetOffIn
 
 	change, err := schedule.SetOffFromWorkTimeUTC(service.chatTable, input.ChatID, input.ChatTitle, isAdmin, input.OffTime, input.Workday)
 	if err != nil {
-		return err
+		sendErr := service.messenger.SendMessage(
+			ctx,
+			input.ChatID,
+			schedule.InvalidSetOffFromWorkTimeUTCMessage(input.ChatTitle),
+		)
+		if sendErr != nil && !isTelegramStatusError(sendErr) {
+			return sendErr
+		}
+
+		return nil
 	}
 
 	return service.applySettingChange(ctx, input.ChatID, change)
@@ -185,7 +195,12 @@ func (service Service) applySettingChange(ctx context.Context, chatID int64, cha
 		return err
 	}
 
-	return service.messenger.SendMessage(ctx, chatID, change.Reply)
+	err = service.messenger.SendMessage(ctx, chatID, change.Reply)
+	if err != nil && isTelegramStatusError(err) {
+		return nil
+	}
+
+	return err
 }
 
 // now returns the configured service clock.
@@ -195,17 +210,6 @@ func (service Service) now() time.Time {
 	}
 
 	return service.nowFunc()
-}
-
-// parseScheduledTime parses the scheduler time string.
-// For example, "2025-01-06T18:30:00Z" becomes the matching time.Time.
-func parseScheduledTime(raw string) (time.Time, error) {
-	timestamp, err := time.Parse(time.RFC3339Nano, raw)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("parse scheduled time: %w", err)
-	}
-
-	return timestamp, nil
 }
 
 // pauseFanOut preserves the deployed scheduler pacing between sends.
@@ -228,14 +232,20 @@ func (service Service) sendStatistics(ctx context.Context, chatID int64, options
 	now := service.now()
 	options.Now = now
 
-	rows, err := service.messageQuerier.QueryByChat(ctx, service.messageTable, chatID, now.AddDate(0, 0, -7))
+	windowDays := options.WindowDays
+	if windowDays == 0 {
+		windowDays = statistics.DefaultWindowDays()
+	}
+
+	rows, err := service.messageQuerier.QueryByChat(ctx, service.messageTable, chatID, now.AddDate(0, 0, -windowDays))
 	if err != nil {
 		return err
 	}
 
 	summary, err := statistics.GenerateReport(rows, options)
-	if err != nil {
-		return err
+	if errors.Is(err, statistics.ErrEmptyRows) {
+		slog.Info("skip statistics report for empty chat window", "chatId", chatID)
+		return nil
 	}
 	err = service.chatMaintainer.SaveStatistics(ctx, service.chatTable, chatID, summary.UserCount, summary.MessageCount, now)
 	if err != nil {
@@ -255,7 +265,7 @@ func (service Service) sendStatistics(ctx context.Context, chatID int64, options
 
 // isTelegramStatusError reports whether err is a Telegram API 4xx or 5xx error.
 // For example, "telegram API returned HTTP 429" matches, while "timeout" does
-// not.
+// not. Matches legacy statistics.js non-fatal Telegram HTTP handling.
 func isTelegramStatusError(err error) bool {
 	if err == nil {
 		return false
@@ -264,5 +274,3 @@ func isTelegramStatusError(err error) bool {
 	return strings.Contains(err.Error(), "telegram API returned HTTP 4") ||
 		strings.Contains(err.Error(), "telegram API returned HTTP 5")
 }
-
-var _ chatRepository = dynamodb.NewChatClient(nil)

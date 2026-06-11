@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
+	"github.com/siutsin/telegram-jung2-bot/internal/schedule"
 )
 
 func TestDispatchRoutesActions(t *testing.T) {
@@ -111,8 +112,11 @@ func TestPollingWorkerProcessesAndDeletesMessages(t *testing.T) {
 	assert.Equal(t, []queue.DeleteMessageRequest{{QueueURL: "queue-url", ReceiptHandle: "receipt"}}, deleter.requests)
 }
 
-func TestPollingWorkerReturnsMessageFailure(t *testing.T) {
+func TestPollingWorkerContinuesAfterHandlerFailure(t *testing.T) {
 	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	var calls atomic.Int32
 	rawMessages := []queue.RawMessage{
@@ -129,6 +133,10 @@ func TestPollingWorkerReturnsMessageFailure(t *testing.T) {
 	handlerSet := testHandlers(nil, nil)
 	handlerSet.TopTen = func(handlerCtx context.Context, chatID int64) error {
 		calls.Add(1)
+		if calls.Load() == 2 {
+			cancel()
+		}
+
 		return errors.New("boom")
 	}
 
@@ -137,11 +145,10 @@ func TestPollingWorkerReturnsMessageFailure(t *testing.T) {
 		queueURL: "queue-url",
 		handlers: handlerSet,
 		deleter:  deleter,
-	}).Run(context.Background())
+	}).Run(ctx)
 
-	require.Error(t, err)
-	require.EqualError(t, err, "boom")
-	assert.Equal(t, int32(1), calls.Load())
+	require.NoError(t, err)
+	assert.GreaterOrEqual(t, calls.Load(), int32(2))
 	assert.Empty(t, deleter.requests)
 }
 
@@ -180,9 +187,9 @@ func TestPollingWorkerStopsOnCancelledContext(t *testing.T) {
 func TestDispatchPassesSetOffInput(t *testing.T) {
 	t.Parallel()
 
-	var input SetOffInput
+	var input schedule.SetOffInput
 	handlerSet := testHandlers(nil, nil)
-	handlerSet.SetOffWorkTime = func(handlerCtx context.Context, received SetOffInput) error {
+	handlerSet.SetOffWorkTime = func(handlerCtx context.Context, received schedule.SetOffInput) error {
 		input = received
 		return nil
 	}
@@ -190,7 +197,7 @@ func TestDispatchPassesSetOffInput(t *testing.T) {
 	err := dispatch(context.Background(), testAction(queue.ActionSetOffWorkTime), handlerSet)
 
 	require.NoError(t, err)
-	assert.Equal(t, SetOffInput{
+	assert.Equal(t, schedule.SetOffInput{
 		ChatID:    123,
 		ChatTitle: "Group",
 		UserID:    456,
@@ -327,7 +334,12 @@ func TestProcessMessageKeepsMessageAndReturnsDispatchFailure(t *testing.T) {
 	t.Parallel()
 
 	deleter := &fakeDeleter{}
-	raw := mustRawMessage(t, `{"messageAttributes":{"action":{"StringValue":"topten"}}}`)
+	raw := mustRawMessage(t, `{
+		"messageAttributes": {
+			"action": {"StringValue": "topten"},
+			"chatId": {"StringValue": "123"}
+		}
+	}`)
 
 	err := processMessage(context.Background(), "queue-url", raw, testHandlers(nil, errors.New("boom")), deleter)
 
@@ -344,10 +356,130 @@ func TestProcessMessageDropsMessageWithoutAction(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestProcessMessageDeletesPermanentDispatchErrors(t *testing.T) {
+	t.Parallel()
+
+	deleter := &fakeDeleter{}
+	raw := mustRawMessage(t, `{
+		"receiptHandle": "receipt",
+		"messageAttributes": {
+			"action": {"StringValue": "topten"}
+		}
+	}`)
+
+	err := processMessage(context.Background(), "queue-url", raw, testHandlers(nil, nil), deleter)
+
+	require.NoError(t, err)
+	assert.Equal(t, []queue.DeleteMessageRequest{{QueueURL: "queue-url", ReceiptHandle: "receipt"}}, deleter.requests)
+}
+
+func TestDispatchReturnsMissingAndInvalidAttributes(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		action     queue.Action
+		wantErr    string
+		wantSubstr string
+	}{
+		{
+			name:    "missing chat id",
+			action:  queue.Action{Name: queue.ActionTopTen, Attributes: map[string]string{}},
+			wantErr: "missing chatId for topten",
+		},
+		{
+			name:       "invalid chat id",
+			action:     queue.Action{Name: queue.ActionTopTen, Attributes: map[string]string{"chatId": "bad"}},
+			wantSubstr: "invalid chatId for topten",
+		},
+		{
+			name:    "missing user id",
+			action:  queue.Action{Name: queue.ActionEnableAllJung, Attributes: map[string]string{"chatId": "123", "chatTitle": "Group"}},
+			wantErr: "missing userId for enableAllJung",
+		},
+		{
+			name:       "invalid user id",
+			action:     queue.Action{Name: queue.ActionDisableAllJung, Attributes: map[string]string{"chatId": "123", "chatTitle": "Group", "userId": "bad"}},
+			wantSubstr: "invalid userId for disableAllJung",
+		},
+		{
+			name:       "invalid chat id for admin action",
+			action:     queue.Action{Name: queue.ActionEnableAllJung, Attributes: map[string]string{"chatId": "bad", "chatTitle": "Group", "userId": "456"}},
+			wantSubstr: "invalid chatId for enableAllJung",
+		},
+		{
+			name:    "missing chat id for help",
+			action:  queue.Action{Name: queue.ActionJungHelp, Attributes: map[string]string{"chatTitle": "Group"}},
+			wantErr: "missing chatId for junghelp",
+		},
+		{
+			name:    "missing user id for set off",
+			action:  queue.Action{Name: queue.ActionSetOffWorkTime, Attributes: map[string]string{"chatId": "123", "chatTitle": "Group", "offTime": "1800", "workday": "MON"}},
+			wantErr: "missing userId for setOffFromWorkTimeUTC",
+		},
+		{
+			name:    "missing chat id for set off",
+			action:  queue.Action{Name: queue.ActionSetOffWorkTime, Attributes: map[string]string{"chatTitle": "Group", "userId": "456", "offTime": "1800", "workday": "MON"}},
+			wantErr: "missing chatId for setOffFromWorkTimeUTC",
+		},
+		{
+			name:    "missing time string",
+			action:  queue.Action{Name: queue.ActionOnOffFromWork, Attributes: map[string]string{}},
+			wantErr: "missing timeString for onOffFromWork",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := dispatch(context.Background(), test.action, testHandlers(nil, nil))
+
+			require.Error(t, err)
+			if test.wantErr != "" {
+				require.EqualError(t, err, test.wantErr)
+			}
+			if test.wantSubstr != "" {
+				assert.Contains(t, err.Error(), test.wantSubstr)
+			}
+		})
+	}
+}
+
+func TestIsPermanentDispatchErrorMatchesContractPrefixes(t *testing.T) {
+	t.Parallel()
+
+	assert.True(t, isPermanentDispatchError(errors.New("missing chatId for topten")))
+	assert.True(t, isPermanentDispatchError(errors.New("invalid chatId for topten: boom")))
+	assert.True(t, isPermanentDispatchError(errors.New("missing handler for topten")))
+	assert.False(t, isPermanentDispatchError(errors.New("boom")))
+	assert.False(t, isPermanentDispatchError(nil))
+}
+
+func TestProcessMessageReturnsDeleteErrorAfterPermanentDispatchFailure(t *testing.T) {
+	t.Parallel()
+
+	raw := mustRawMessage(t, `{
+		"receiptHandle": "receipt",
+		"messageAttributes": {
+			"action": {"StringValue": "topten"}
+		}
+	}`)
+
+	err := processMessage(context.Background(), "queue-url", raw, testHandlers(nil, nil), &fakeDeleter{err: errors.New("boom")})
+
+	require.Error(t, err)
+	assert.EqualError(t, err, "boom")
+}
+
 func TestProcessMessageReturnsDeleteError(t *testing.T) {
 	t.Parallel()
 
-	raw := mustRawMessage(t, `{"messageAttributes":{"action":{"StringValue":"topten"}}}`)
+	raw := mustRawMessage(t, `{
+		"receiptHandle": "receipt",
+		"messageAttributes": {
+			"action": {"StringValue": "topten"},
+			"chatId": {"StringValue": "123"}
+		}
+	}`)
 
 	err := processMessage(context.Background(), "queue-url", raw, testHandlers(nil, nil), &fakeDeleter{err: errors.New("boom")})
 
@@ -398,7 +530,7 @@ func testHandlers(calls *[]string, err error) Handlers {
 		DisableAllJung: func(handlerCtx context.Context, chatID int64, chatTitle string, userID int64) error {
 			return record("disableAllJung")
 		},
-		SetOffWorkTime: func(handlerCtx context.Context, input SetOffInput) error {
+		SetOffWorkTime: func(handlerCtx context.Context, input schedule.SetOffInput) error {
 			return record("setOffFromWorkTimeUTC")
 		},
 		OnOffFromWork: func(handlerCtx context.Context, timeString string) error {
