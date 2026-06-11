@@ -74,6 +74,13 @@ receive, `app.Run` shutdown with a live HTTP listener.
   ongoing maintenance beyond the legacy JS contract shapes already checked in
   `TestFlociLegacySQSFixtures`.
 
+## Cutover cleanup
+
+`TestFlociLegacySQSFixtures` and `legacyfixtures.go` are temporary JS-to-Go
+parity checks. Remove them after production cutover when the old Node bot is
+retired, the queue no longer carries legacy-shaped messages, and only Go
+producers enqueue work.
+
 ## Files
 
 - `integration_test.go` — `TestMain`, gate, top-level `TestFloci*`

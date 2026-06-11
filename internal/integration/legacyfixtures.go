@@ -1,3 +1,6 @@
+// Legacy JS queue decode fixtures for JS-to-Go cutover parity.
+// Remove this file and TestFlociLegacySQSFixtures after production cutover; see
+// internal/integration/README.md § Cutover cleanup.
 package integration
 
 import (
