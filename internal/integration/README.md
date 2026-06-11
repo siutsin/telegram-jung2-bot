@@ -173,9 +173,9 @@ wrong assumption.
 - `aws.go` creates AWS SDK clients and temporary AWS resources.
 - `checks.go` contains the DynamoDB and SQS flow assertions.
 - `helpers.go` contains shared HTTP, queue, and recording messenger helpers.
-- `webhook_checks.go` contains HTTP webhook routing assertions.
-- `stage_checks.go` contains stage HTTP route assertions.
-- `worker_checks.go` contains queue poll and service dispatch assertions.
-- `service_checks.go` contains scheduled fan-out assertions.
-- `service_settings_checks.go` contains admin settings side-effect assertions.
+- `webhook.go` contains HTTP webhook routing assertions.
+- `stage.go` contains stage HTTP route assertions.
+- `worker.go` contains queue poll and service dispatch assertions.
+- `service.go` contains scheduled fan-out assertions.
+- `settings.go` contains admin settings side-effect assertions.
 - `BUCK` defines the slow Buck `go_test` target.
