@@ -38,11 +38,27 @@ Environment variables:
 `make test` excludes this target through the Buck `slow` label. `make coverage`
 also filters it out of the coverage target list.
 
+The package runs one shared Floci environment through `TestMain`, then executes
+these top-level tests individually:
+
+- `TestFlociDynamoDB`
+- `TestFlociSQS`
+- `TestFlociHTTPHealth`
+- `TestFlociHTTPWebhook`
+- `TestFlociHTTPStage`
+- `TestFlociWorkerService`
+- `TestFlociServiceOnOffFromWork`
+- `TestFlociServiceAdminSettings`
+
+A failure names the exact test function in the Buck stderr output. Nested cases
+inside `TestFlociSQS`, `TestFlociHTTPWebhook`, and similar flows still report
+their subtest names under the failing parent test.
+
 ## Flow
 
 ```mermaid
 flowchart TD
-    test[TestFlociAWSAdapters] --> floci[Start or reuse Floci endpoint]
+    test[TestMain shared bootstrap] --> floci[Start or reuse Floci endpoint]
     floci --> clients[Build DynamoDB and SQS AWS SDK clients]
     clients --> provision[Provision local resources]
     provision --> dynamo[DynamoDB adapter checks]
@@ -172,7 +188,9 @@ wrong assumption.
 
 ## Source Map
 
-- `integration_test.go` owns the slow-test gate and top-level test orchestration.
+- `integration_test.go` owns `TestMain`, the slow-test gate, and one top-level test
+  per integration flow.
+- `setup.go` bootstraps and tears down the shared Floci environment once per run.
 - `floci.go` starts and stops the Testcontainers Floci container.
 - `aws.go` creates AWS SDK clients and temporary AWS resources.
 - `checks.go` contains the DynamoDB and SQS flow assertions.

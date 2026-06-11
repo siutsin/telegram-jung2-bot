@@ -1,90 +1,64 @@
 package integration
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"testing"
-	"time"
-
-	"github.com/stretchr/testify/require"
 )
 
-const (
-	defaultRegion = "eu-west-1"
-	slowTestsEnv  = "SLOW_TESTS"
-)
-
-func TestFlociAWSAdapters(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping Floci integration in short mode")
-	}
+func TestMain(m *testing.M) {
 	if os.Getenv(slowTestsEnv) != "1" {
-		t.Skipf("set %s=1 to run Floci integration", slowTestsEnv)
+		integrationSlowGate = true
+		os.Exit(m.Run())
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-
-	endpoint := os.Getenv("FLOCI_ENDPOINT")
-	image := getenvDefault("FLOCI_IMAGE", defaultImage)
-	region := getenvDefault("AWS_REGION", defaultRegion)
-
-	if endpoint == "" {
-		floci, err := startFloci(ctx, image)
-		require.NoError(t, err, "start Floci")
-		t.Cleanup(func() {
-			terminateFloci(floci.container)
-		})
-		endpoint = floci.endpoint
+	err := bootstrapIntegration()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "integration bootstrap failed: %v\n", err)
+		os.Exit(1)
 	}
+	defer teardownIntegration()
+	fmt.Fprintf(os.Stderr, "Floci integration using %s\n", integrationEndpoint())
 
-	clients, err := newAWSClients(ctx, endpoint, region)
-	require.NoError(t, err, "create AWS clients")
-
-	resources, cleanup, err := provisionResources(ctx, clients)
-	if cleanup != nil {
-		t.Cleanup(cleanup)
-	}
-	require.NoError(t, err, "provision local AWS resources")
-
-	t.Run("DynamoDB", func(t *testing.T) {
-		runDynamoDBIntegration(t, ctx, clients.dynamo, resources)
-	})
-	t.Run("SQS", func(t *testing.T) {
-		runSQSIntegration(t, ctx, clients.sqs, resources)
-	})
-	t.Run("HTTP health", func(t *testing.T) {
-		runHTTPHealthIntegration(t, ctx, clients.dynamo, clients.sqs, resources)
-	})
-	t.Run("HTTP webhook", func(t *testing.T) {
-		runWebhookIntegration(t, ctx, clients.dynamo, clients.sqs, resources)
-	})
-	t.Run("HTTP stage routes", func(t *testing.T) {
-		runStageHTTPIntegration(t, ctx, clients.dynamo, clients.sqs, resources)
-	})
-	t.Run("Worker and service dispatch", func(t *testing.T) {
-		runWorkerServiceIntegration(t, ctx, clients.dynamo, clients.sqs, resources)
-	})
-	t.Run("Service onOffFromWork fan-out", func(t *testing.T) {
-		runServiceOnOffFromWorkIntegration(t, ctx, clients.dynamo, clients.sqs, resources)
-	})
-	t.Run("Service admin settings", func(t *testing.T) {
-		runServiceAdminSettingsIntegration(t, ctx, clients.dynamo, clients.sqs, resources)
-	})
-
-	t.Logf("Floci integration passed using %s", endpoint)
+	os.Exit(m.Run())
 }
 
-func reportCleanupError(action string, err error) {
-	fmt.Fprintf(os.Stderr, "cleanup %s: %v\n", action, err)
+func TestFlociDynamoDB(t *testing.T) {
+	ctx, clients, resources := startIntegrationTest(t)
+	runDynamoDBIntegration(t, ctx, clients.dynamo, resources)
 }
 
-func getenvDefault(name string, fallback string) string {
-	value := os.Getenv(name)
-	if value != "" {
-		return value
-	}
+func TestFlociSQS(t *testing.T) {
+	ctx, clients, resources := startIntegrationTest(t)
+	runSQSIntegration(t, ctx, clients.sqs, resources)
+}
 
-	return fallback
+func TestFlociHTTPHealth(t *testing.T) {
+	ctx, clients, resources := startIntegrationTest(t)
+	runHTTPHealthIntegration(t, ctx, clients.dynamo, clients.sqs, resources)
+}
+
+func TestFlociHTTPWebhook(t *testing.T) {
+	ctx, clients, resources := startIntegrationTest(t)
+	runWebhookIntegration(t, ctx, clients.dynamo, clients.sqs, resources)
+}
+
+func TestFlociHTTPStage(t *testing.T) {
+	ctx, clients, resources := startIntegrationTest(t)
+	runStageHTTPIntegration(t, ctx, clients.dynamo, clients.sqs, resources)
+}
+
+func TestFlociWorkerService(t *testing.T) {
+	ctx, clients, resources := startIntegrationTest(t)
+	runWorkerServiceIntegration(t, ctx, clients.dynamo, clients.sqs, resources)
+}
+
+func TestFlociServiceOnOffFromWork(t *testing.T) {
+	ctx, clients, resources := startIntegrationTest(t)
+	runServiceOnOffFromWorkIntegration(t, ctx, clients.dynamo, clients.sqs, resources)
+}
+
+func TestFlociServiceAdminSettings(t *testing.T) {
+	ctx, clients, resources := startIntegrationTest(t)
+	runServiceAdminSettingsIntegration(t, ctx, clients.dynamo, clients.sqs, resources)
 }

@@ -8,6 +8,7 @@ go_test(
         "helpers.go",
         "http.go",
         "integration_test.go",
+        "setup.go",
         "service.go",
         "settings.go",
         "stage.go",
