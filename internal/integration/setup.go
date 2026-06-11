@@ -15,20 +15,19 @@ const (
 	integrationTestsEnv = "INTEGRATION_TESTS"
 )
 
-type integrationEnv struct {
-	ctx       context.Context
-	clients   awsClients
-	resources testResources
-	endpoint  string
-	cleanup   func()
+type integrationRuntime struct {
+	ctx      context.Context
+	clients  awsClients
+	endpoint string
+	cleanup  func()
 }
 
 var (
-	sharedIntegrationEnv *integrationEnv
+	sharedRuntime        *integrationRuntime
 	integrationTestsGate bool
 )
 
-func bootstrapIntegration() error {
+func bootstrapIntegrationRuntime() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 
 	endpoint := os.Getenv("FLOCI_ENDPOINT")
@@ -57,24 +56,11 @@ func bootstrapIntegration() error {
 		return fmt.Errorf("create AWS clients: %w", err)
 	}
 
-	resources, resourceCleanup, err := provisionResources(ctx, clients)
-	if err != nil {
-		cancel()
-		if flociCleanup != nil {
-			flociCleanup()
-		}
-		return fmt.Errorf("provision local AWS resources: %w", err)
-	}
-
-	sharedIntegrationEnv = &integrationEnv{
-		ctx:       ctx,
-		clients:   clients,
-		resources: resources,
-		endpoint:  endpoint,
+	sharedRuntime = &integrationRuntime{
+		ctx:      ctx,
+		clients:  clients,
+		endpoint: endpoint,
 		cleanup: func() {
-			if resourceCleanup != nil {
-				resourceCleanup()
-			}
 			if flociCleanup != nil {
 				flociCleanup()
 			}
@@ -85,10 +71,10 @@ func bootstrapIntegration() error {
 	return nil
 }
 
-func teardownIntegration() {
-	if sharedIntegrationEnv != nil && sharedIntegrationEnv.cleanup != nil {
-		sharedIntegrationEnv.cleanup()
-		sharedIntegrationEnv = nil
+func teardownIntegrationRuntime() {
+	if sharedRuntime != nil && sharedRuntime.cleanup != nil {
+		sharedRuntime.cleanup()
+		sharedRuntime = nil
 	}
 }
 
@@ -97,10 +83,16 @@ func startIntegrationTest(t *testing.T) (context.Context, awsClients, testResour
 
 	fmt.Fprintf(os.Stderr, "=== RUN   %s\n", t.Name())
 
-	return requireIntegrationEnv(t)
+	ctx, clients := requireIntegrationRuntime(t)
+
+	resources, resourceCleanup, err := provisionResources(ctx, clients)
+	require.NoError(t, err, "provision test resources")
+	t.Cleanup(resourceCleanup)
+
+	return ctx, clients, resources
 }
 
-func requireIntegrationEnv(t *testing.T) (context.Context, awsClients, testResources) {
+func requireIntegrationRuntime(t *testing.T) (context.Context, awsClients) {
 	t.Helper()
 
 	if testing.Short() {
@@ -109,17 +101,17 @@ func requireIntegrationEnv(t *testing.T) (context.Context, awsClients, testResou
 	if integrationTestsGate {
 		t.Skipf("set %s=1 to run Floci integration", integrationTestsEnv)
 	}
-	require.NotNil(t, sharedIntegrationEnv, "integration environment not initialised")
+	require.NotNil(t, sharedRuntime, "integration runtime not initialised")
 
-	return sharedIntegrationEnv.ctx, sharedIntegrationEnv.clients, sharedIntegrationEnv.resources
+	return sharedRuntime.ctx, sharedRuntime.clients
 }
 
 func integrationEndpoint() string {
-	if sharedIntegrationEnv == nil {
+	if sharedRuntime == nil {
 		return ""
 	}
 
-	return sharedIntegrationEnv.endpoint
+	return sharedRuntime.endpoint
 }
 
 func reportCleanupError(action string, err error) {

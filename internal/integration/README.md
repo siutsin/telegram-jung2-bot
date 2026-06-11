@@ -38,8 +38,17 @@ Environment variables:
 `make test` excludes this target through the Buck `slow` label. `make coverage`
 also filters it out of the coverage target list.
 
-The package runs one shared Floci environment through `TestMain`, then executes
-these top-level tests individually:
+Buck reports one `go_test` target (`floci_integration_test`). Inside that binary
+Go runs eight top-level `TestFloci*` functions; their names appear in Buck
+stderr (`=== RUN` on pass, `--- FAIL` on failure).
+
+`TestMain` boots the shared Floci runtime once (container or `FLOCI_ENDPOINT`
+plus AWS SDK clients) and defers teardown after all tests finish. Each
+`TestFloci*` call through `startIntegrationTest` provisions its own temporary
+DynamoDB tables and SQS queue, registers `t.Cleanup` to delete them, then runs
+the flow assertions.
+
+Top-level tests:
 
 - `TestFlociDynamoDB`
 - `TestFlociSQS`
@@ -58,21 +67,14 @@ their subtest names under the failing parent test.
 
 ```mermaid
 flowchart TD
-    test[TestMain shared bootstrap] --> floci[Start or reuse Floci endpoint]
+    main[TestMain] --> floci[Start or reuse Floci endpoint]
     floci --> clients[Build DynamoDB and SQS AWS SDK clients]
-    clients --> provision[Provision local resources]
-    provision --> dynamo[DynamoDB adapter checks]
-    provision --> sqs[SQS action round-trip checks]
-    provision --> webhook[HTTP webhook routing checks]
-    provision --> stage[HTTP stage route checks]
-    provision --> worker[Queue poll and service dispatch checks]
-    provision --> service[Service fan-out and admin settings checks]
-    dynamo --> cleanup[Cleanup queue, tables, and container]
-    sqs --> cleanup
-    webhook --> cleanup
-    stage --> cleanup
-    worker --> cleanup
-    service --> cleanup
+    clients --> tests[Each TestFloci* function]
+    tests --> provision[Provision tables and queue]
+    provision --> flow[Run flow assertions]
+    flow --> testCleanup[t.Cleanup deletes tables and queue]
+    testCleanup --> tests
+    tests --> mainCleanup[TestMain teardown stops Floci]
 ```
 
 ## Covered Flows
@@ -190,7 +192,8 @@ wrong assumption.
 
 - `integration_test.go` owns `TestMain`, the slow-test gate, and one top-level test
   per integration flow.
-- `setup.go` bootstraps and tears down the shared Floci environment once per run.
+- `setup.go` bootstraps the shared Floci runtime in `TestMain` and provisions
+  per-test AWS resources in `startIntegrationTest`.
 - `floci.go` starts and stops the Testcontainers Floci container.
 - `aws.go` creates AWS SDK clients and temporary AWS resources.
 - `checks.go` contains the DynamoDB and SQS flow assertions.
