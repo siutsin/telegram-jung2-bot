@@ -32,6 +32,8 @@ Environment variables:
 
 - `INTEGRATION_TESTS=1` is required; otherwise the test skips.
 - `FLOCI_ENDPOINT` reuses an already-running Floci-compatible AWS endpoint.
+- `FLOCI_CONTAINER_NAME` overrides the default `telegram-jung2-bot-it-floci`
+  Docker container name when Testcontainers starts Floci.
 - `FLOCI_IMAGE` overrides the default `floci/floci:latest` container image.
 - `AWS_REGION` overrides the local AWS SDK region, defaulting to `eu-west-1`.
 

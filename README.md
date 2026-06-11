@@ -102,11 +102,12 @@ integration` passes that environment variable through Buck.
 
 Supported integration environment variables:
 
-| Variable         | Purpose                                                       |
-|------------------|---------------------------------------------------------------|
-| `FLOCI_ENDPOINT` | Reuse an existing Floci-compatible AWS endpoint.              |
-| `FLOCI_IMAGE`    | Override the default `floci/floci:latest` container image.    |
-| `AWS_REGION`     | Override the local AWS SDK region, defaulting to `eu-west-1`. |
+| Variable               | Purpose                                                            |
+|------------------------|--------------------------------------------------------------------|
+| `FLOCI_ENDPOINT`       | Reuse an existing Floci-compatible AWS endpoint.                   |
+| `FLOCI_CONTAINER_NAME` | Override the default `telegram-jung2-bot-it-floci` container name. |
+| `FLOCI_IMAGE`          | Override the default `floci/floci:latest` container image.         |
+| `AWS_REGION`           | Override the local AWS SDK region, defaulting to `eu-west-1`.      |
 
 ```bash
 make lint

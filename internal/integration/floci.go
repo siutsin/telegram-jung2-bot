@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	defaultImage = "floci/floci:latest"
-	flociPort    = "4566/tcp"
+	defaultImage              = "floci/floci:latest"
+	defaultFlociContainerName = "telegram-jung2-bot-it-floci"
+	flociPort                 = "4566/tcp"
 )
 
 type flociContainer struct {
@@ -19,9 +20,10 @@ type flociContainer struct {
 	endpoint  string
 }
 
-func startFloci(ctx context.Context, image string) (flociContainer, error) {
+func startFloci(ctx context.Context, image string, containerName string) (flociContainer, error) {
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
+			Name:         containerName,
 			Image:        image,
 			ExposedPorts: []string{flociPort},
 			WaitingFor: wait.ForHTTP("/_floci/init").

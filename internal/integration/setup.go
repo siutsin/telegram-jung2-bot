@@ -16,10 +16,11 @@ const (
 )
 
 type integrationRuntime struct {
-	ctx      context.Context
-	clients  awsClients
-	endpoint string
-	cleanup  func()
+	ctx           context.Context
+	clients       awsClients
+	endpoint      string
+	containerName string
+	cleanup       func()
 }
 
 var (
@@ -32,11 +33,12 @@ func bootstrapIntegrationRuntime() error {
 
 	endpoint := os.Getenv("FLOCI_ENDPOINT")
 	image := getenvDefault("FLOCI_IMAGE", defaultImage)
+	containerName := getenvDefault("FLOCI_CONTAINER_NAME", defaultFlociContainerName)
 	region := getenvDefault("AWS_REGION", defaultRegion)
 
 	var flociCleanup func()
 	if endpoint == "" {
-		floci, err := startFloci(ctx, image)
+		floci, err := startFloci(ctx, image, containerName)
 		if err != nil {
 			cancel()
 			return fmt.Errorf("start Floci: %w", err)
@@ -57,9 +59,10 @@ func bootstrapIntegrationRuntime() error {
 	}
 
 	sharedRuntime = &integrationRuntime{
-		ctx:      ctx,
-		clients:  clients,
-		endpoint: endpoint,
+		ctx:           ctx,
+		clients:       clients,
+		endpoint:      endpoint,
+		containerName: containerName,
 		cleanup: func() {
 			if flociCleanup != nil {
 				flociCleanup()
@@ -112,6 +115,14 @@ func integrationEndpoint() string {
 	}
 
 	return sharedRuntime.endpoint
+}
+
+func integrationContainerName() string {
+	if sharedRuntime == nil {
+		return ""
+	}
+
+	return sharedRuntime.containerName
 }
 
 func reportCleanupError(action string, err error) {

@@ -18,7 +18,7 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 	defer teardownIntegrationRuntime()
-	fmt.Fprintf(os.Stderr, "Floci integration using %s\n", integrationEndpoint())
+	fmt.Fprintf(os.Stderr, "Floci integration using %s (container %s)\n", integrationEndpoint(), integrationContainerName())
 
 	os.Exit(m.Run())
 }
