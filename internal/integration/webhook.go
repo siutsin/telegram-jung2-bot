@@ -16,6 +16,7 @@ import (
 	appdynamodb "github.com/siutsin/telegram-jung2-bot/internal/dynamodb"
 	"github.com/siutsin/telegram-jung2-bot/internal/message"
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
+	"github.com/siutsin/telegram-jung2-bot/internal/telegram"
 )
 
 const (
@@ -28,6 +29,14 @@ type noopMessenger struct{}
 
 func (noopMessenger) SendMessage(context.Context, int64, string) error {
 	return nil
+}
+
+func (noopMessenger) SendMessageWithOptions(context.Context, int64, string, telegram.SendMessageOptions) error {
+	return nil
+}
+
+func (noopMessenger) IsAdmin(context.Context, int64, int64) (bool, error) {
+	return false, nil
 }
 
 func runWebhookIntegration(

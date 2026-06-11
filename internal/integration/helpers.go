@@ -24,6 +24,12 @@ const integrationStage = "dev"
 
 var integrationNow = time.Date(2026, 6, 11, 18, 30, 0, 0, time.UTC)
 
+type integrationMessenger interface {
+	IsAdmin(ctx context.Context, chatID int64, userID int64) (bool, error)
+	SendMessage(ctx context.Context, chatID int64, text string) error
+	SendMessageWithOptions(ctx context.Context, chatID int64, text string, options telegram.SendMessageOptions) error
+}
+
 type recordingMessenger struct {
 	mutex    sync.Mutex
 	messages []recordedMessage
@@ -85,10 +91,8 @@ type integrationHTTPServer struct {
 }
 
 type integrationServerOptions struct {
-	stage     string
-	messenger interface {
-		SendMessage(context.Context, int64, string) error
-	}
+	stage      string
+	messenger  integrationMessenger
 	scaleUpper appdynamodb.ScaleUpper
 }
 

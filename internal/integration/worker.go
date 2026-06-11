@@ -319,11 +319,159 @@ func pollServiceAction(
 	assertQueueEmpty(t, ctx, queueClient, resources.queueURL)
 }
 
+func runWorkerHandlersIntegration(
+	t *testing.T,
+	ctx context.Context,
+	dynamoClient *awsdynamodb.Client,
+	sqsClient *awssqs.Client,
+	resources testResources,
+) {
+	t.Helper()
+
+	seedSettingsChat(t, ctx, dynamoClient, resources)
+
+	t.Run("disableAllJung via worker handlers", func(t *testing.T) {
+		runWorkerHandlersCase(
+			t,
+			ctx,
+			dynamoClient,
+			sqsClient,
+			resources,
+			mustCommandAction(t, "/disableAllJung", settingsChatID, settingsChatTitle, settingsUserID),
+			func(t *testing.T, messenger *recordingMessenger) {
+				messages := messenger.recordedMessages()
+				require.Len(t, messages, 1)
+				assert.Contains(t, messages[0].text, "Disabled AllJung command")
+
+				gotChat, ok, err := appdynamodb.NewChatClient(dynamoClient).Get(ctx, resources.chatTable, settingsChatID)
+				require.NoError(t, err, "get chat after worker disable")
+				require.True(t, ok)
+				assert.False(t, gotChat.EnableAllJung)
+			},
+		)
+	})
+}
+
+func runWorkerHandlersCase(
+	t *testing.T,
+	ctx context.Context,
+	dynamoClient *awsdynamodb.Client,
+	sqsClient *awssqs.Client,
+	resources testResources,
+	action queue.Action,
+	assertOutcome func(t *testing.T, messenger *recordingMessenger),
+) {
+	t.Helper()
+
+	messenger := &recordingMessenger{admin: true}
+	svc := newIntegrationService(dynamoClient, sqsClient, resources, messenger)
+	queueClient := queue.NewClient(sqsClient)
+
+	queueWorker, err := worker.NewPollingWorker(
+		resources.queueURL,
+		queueClient,
+		queueClient,
+		buildWorkerHandlers(svc),
+	)
+	require.NoError(t, err, "create worker handlers polling worker")
+
+	workerCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- queueWorker.Run(workerCtx)
+	}()
+
+	producer := queue.NewProducer(resources.queueURL, queueClient)
+	err = producer.Enqueue(ctx, action)
+	require.NoError(t, err, "enqueue worker handlers action")
+
+	require.Eventually(t, func() bool {
+		return len(messenger.recordedMessages()) > 0
+	}, 15*time.Second, 100*time.Millisecond, "worker handlers should dispatch action")
+
+	assertOutcome(t, messenger)
+
+	cancel()
+
+	select {
+	case runErr := <-done:
+		if workerCtx.Err() != nil {
+			break
+		}
+		require.NoError(t, runErr, "worker handlers run should stop after cancel")
+	case <-time.After(15 * time.Second):
+		t.Fatal("timed out waiting for worker handlers run to stop")
+	}
+
+	assertQueueEmpty(t, ctx, queueClient, resources.queueURL)
+}
+
+func runSQSBatchIntegration(
+	t *testing.T,
+	ctx context.Context,
+	dynamoClient *awsdynamodb.Client,
+	sqsClient *awssqs.Client,
+	resources testResources,
+) {
+	t.Helper()
+
+	messenger := &recordingMessenger{}
+	svc := newIntegrationService(dynamoClient, sqsClient, resources, messenger)
+	queueClient := queue.NewClient(sqsClient)
+
+	queueWorker, err := worker.NewPollingWorker(
+		resources.queueURL,
+		queueClient,
+		queueClient,
+		buildWorkerHandlers(svc),
+	)
+	require.NoError(t, err, "create batch polling worker")
+
+	workerCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- queueWorker.Run(workerCtx)
+	}()
+
+	producer := queue.NewProducer(resources.queueURL, queueClient)
+	actions := []queue.Action{
+		mustCommandAction(t, "/jungHelp", 42031, "Batch One", 10031),
+		mustCommandAction(t, "/jungHelp", 42032, "Batch Two", 10032),
+		mustCommandAction(t, "/jungHelp", 42033, "Batch Three", 10033),
+	}
+	for _, action := range actions {
+		err = producer.Enqueue(ctx, action)
+		require.NoError(t, err, "enqueue batch action")
+	}
+
+	require.Eventually(t, func() bool {
+		return len(messenger.recordedMessages()) == len(actions)
+	}, 15*time.Second, 100*time.Millisecond, "batch worker should process all queued actions")
+
+	cancel()
+
+	select {
+	case runErr := <-done:
+		if workerCtx.Err() != nil {
+			break
+		}
+		require.NoError(t, runErr, "batch worker run should stop after cancel")
+	case <-time.After(15 * time.Second):
+		t.Fatal("timed out waiting for batch worker run to stop")
+	}
+
+	assertQueueEmpty(t, ctx, queueClient, resources.queueURL)
+}
+
 func newIntegrationService(
 	dynamoClient *awsdynamodb.Client,
 	sqsClient *awssqs.Client,
 	resources testResources,
-	messenger *recordingMessenger,
+	messenger integrationMessenger,
 ) service.Service {
 	chatRepo := appdynamodb.NewChatClient(dynamoClient)
 	messageRepo := appdynamodb.NewMessageClient(dynamoClient)

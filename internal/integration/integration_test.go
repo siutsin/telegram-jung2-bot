@@ -33,9 +33,29 @@ func TestFlociDynamoDBPagination(t *testing.T) {
 	runDynamoDBPaginationIntegration(t, ctx, clients.dynamo, resources)
 }
 
+func TestFlociDynamoDBDueChatPagination(t *testing.T) {
+	ctx, clients, resources := startIntegrationTest(t)
+	runDynamoDBDueChatPaginationIntegration(t, ctx, clients.dynamo, resources)
+}
+
+func TestFlociDynamoDBMessagePagination(t *testing.T) {
+	ctx, clients, resources := startIntegrationTest(t)
+	runDynamoDBMessageQueryPaginationIntegration(t, ctx, clients.dynamo, resources)
+}
+
+func TestFlociLegacySQSFixtures(t *testing.T) {
+	startIntegrationTest(t)
+	runLegacySQSFixtureIntegration(t)
+}
+
 func TestFlociSQS(t *testing.T) {
 	ctx, clients, resources := startIntegrationTest(t)
 	runSQSIntegration(t, ctx, clients.sqs, resources)
+}
+
+func TestFlociSQSBatch(t *testing.T) {
+	ctx, clients, resources := startIntegrationTest(t)
+	runSQSBatchIntegration(t, ctx, clients.dynamo, clients.sqs, resources)
 }
 
 func TestFlociHTTPHealth(t *testing.T) {
@@ -48,14 +68,29 @@ func TestFlociHTTPWebhook(t *testing.T) {
 	runWebhookIntegration(t, ctx, clients.dynamo, clients.sqs, resources)
 }
 
+func TestFlociHTTPWebhookTelegramClient(t *testing.T) {
+	ctx, clients, resources := startIntegrationTest(t)
+	runWebhookTelegramClientIntegration(t, ctx, clients.dynamo, clients.sqs, resources)
+}
+
 func TestFlociHTTPStage(t *testing.T) {
 	ctx, clients, resources := startIntegrationTest(t)
 	runStageHTTPIntegration(t, ctx, clients.dynamo, clients.sqs, resources)
 }
 
+func TestFlociAppRun(t *testing.T) {
+	ctx, clients, resources := startIntegrationTest(t)
+	runAppRunIntegration(t, ctx, clients.dynamo, clients.sqs, resources)
+}
+
 func TestFlociWorkerRun(t *testing.T) {
 	ctx, clients, resources := startIntegrationTest(t)
 	runWorkerRunIntegration(t, ctx, clients.dynamo, clients.sqs, resources)
+}
+
+func TestFlociWorkerHandlers(t *testing.T) {
+	ctx, clients, resources := startIntegrationTest(t)
+	runWorkerHandlersIntegration(t, ctx, clients.dynamo, clients.sqs, resources)
 }
 
 func TestFlociWorkerService(t *testing.T) {
