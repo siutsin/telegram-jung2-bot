@@ -73,6 +73,11 @@ func runWorkerRunIntegration(
 
 	select {
 	case runErr := <-done:
+		if workerCtx.Err() != nil {
+			// Cancel during an in-flight SQS long poll returns context.Canceled;
+			// app.Run normalises that through normaliseWorkerRunError.
+			break
+		}
 		require.NoError(t, runErr, "worker run should stop after cancel")
 	case <-time.After(15 * time.Second):
 		t.Fatal("timed out waiting for worker run to stop")
