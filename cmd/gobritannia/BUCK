@@ -1,9 +1,0 @@
-go_binary(
-    name = "gobritannia",
-    srcs = ["main.go"],
-    deps = [
-        "//tools/gobritannia:gobritannia",
-        "//vendor/golang.org/x/tools/go/analysis/singlechecker:singlechecker",
-    ],
-    visibility = ["PUBLIC"],
-)

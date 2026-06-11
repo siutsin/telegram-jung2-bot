@@ -197,10 +197,10 @@ type RawMessage struct {
 
 // DecodeMessage converts a raw SQS event message into an action.
 // For example, a raw action attribute "topTen" becomes Action{Name: "topTen"}.
-func DecodeMessage(message RawMessage) (Action, error) {
+func DecodeMessage(message RawMessage) Action {
 	attribute, ok := message.MessageAttributes["action"]
 	if !ok || attribute.value() == "" {
-		return Action{}, nil
+		return Action{}
 	}
 
 	attributes := make(map[string]string, len(message.MessageAttributes))
@@ -212,7 +212,7 @@ func DecodeMessage(message RawMessage) (Action, error) {
 		Name:       attribute.value(),
 		Body:       messageBodyText(message.Body),
 		Attributes: attributes,
-	}, nil
+	}
 }
 
 // messageBodyText returns the raw body as a plain string.

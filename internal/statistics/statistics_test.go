@@ -113,7 +113,7 @@ func TestGenerateTopDiverReport(t *testing.T) {
 	assert.NotContains(t, summary.Report, "3. Ada Lovelace 60.00%")
 }
 
-func TestTopDiverUsesOnlyMessageRowsForContractParity(t *testing.T) {
+func TestTopDiverUsesOnlyMessageRowsForContract(t *testing.T) {
 	t.Parallel()
 
 	report := topDiver(sampleRows())
@@ -183,7 +183,7 @@ func TestGenerateReportTruncatesFinalText(t *testing.T) {
 	assert.LessOrEqual(t, utf8.RuneCountInString(summary.Report), telegram.ReportLimit)
 }
 
-func TestDisplayNameMatchesReferenceJoinBehaviour(t *testing.T) {
+func TestDisplayNameMatchesContractJoinBehaviour(t *testing.T) {
 	t.Parallel()
 
 	assert.Equal(t, " grace", displayName(message.Message{LastName: "grace"}))
@@ -201,6 +201,14 @@ func TestBuildBodyWithLimitCountsCharactersInsteadOfBytes(t *testing.T) {
 	body := buildBodyWithLimit(normalised, Options{Now: now()}, 40)
 
 	assert.Contains(t, body, "2. 冗冗冗冗")
+}
+
+func TestBuildBodyWithLimitClampsNegativeLimit(t *testing.T) {
+	t.Parallel()
+
+	body := buildBodyWithLimit(normaliseRows(sampleRows(), false), Options{Now: now()}, -1)
+
+	assert.Equal(t, "...\n...\n", body)
 }
 
 func TestBuildDiverBodyLimitsToAvailableRows(t *testing.T) {
@@ -261,6 +269,13 @@ func TestTimeAgoUnits(t *testing.T) {
 	assert.Equal(t, "2 years ago", timeAgo(current.Add(-800*24*time.Hour), current))
 	assert.Equal(t, "in a minute", timeAgo(current.Add(time.Minute), current))
 	assert.Equal(t, "in 2 months", timeAgo(current.Add(47*24*time.Hour), current))
+}
+
+func TestPluralFormatsSingularUnits(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "an hour ago", plural(1, "hour"))
+	assert.Equal(t, "a day ago", plural(1, "day"))
 }
 
 func sampleRows() []message.Message {

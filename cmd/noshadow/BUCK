@@ -1,9 +1,0 @@
-go_binary(
-    name = "noshadow",
-    srcs = ["main.go"],
-    deps = [
-        "//tools/noshadow:noshadow",
-        "//vendor/golang.org/x/tools/go/analysis/singlechecker:singlechecker",
-    ],
-    visibility = ["PUBLIC"],
-)

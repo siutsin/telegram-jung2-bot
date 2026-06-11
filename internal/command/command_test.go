@@ -51,6 +51,11 @@ func TestParseAll(t *testing.T) {
 			commands: []Command{{Name: setOffWorkTime, Args: "1830 MON,TUE"}},
 		},
 		{
+			name:     "set off work without args",
+			text:     "/setOffFromWorkTimeUTC",
+			commands: []Command{{Name: setOffWorkTime}},
+		},
+		{
 			name:     "command inside text",
 			text:     "please /topTen now",
 			commands: []Command{{Name: topTen, Args: "now"}},
@@ -61,12 +66,12 @@ func TestParseAll(t *testing.T) {
 			commands: []Command{{Name: topTen}},
 		},
 		{
-			name:     "legacy prefix match",
+			name:     "deployed prefix match",
 			text:     "/topTen123",
 			commands: []Command{{Name: topTen, Args: "123"}},
 		},
 		{
-			name:     "legacy set off prefix match",
+			name:     "deployed set off prefix match",
 			text:     "/setOffFromWorkTimeUTC123 1830 MON",
 			commands: []Command{{Name: setOffWorkTime, Args: "1830 MON"}},
 		},

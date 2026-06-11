@@ -114,10 +114,10 @@ func TestQueryMessagesRequest(t *testing.T) {
 	assert.Equal(t, "2026-04-25T20:30:00+08:00", queryRequest.expressionAttributeValues[":date_created"])
 }
 
-func TestMessageClientSaveMatchesLegacyBuildExpression(t *testing.T) {
+func TestMessageClientSaveMatchesContractUpdateExpression(t *testing.T) {
 	t.Parallel()
 
-	// Mirrors legacy/src/dynamodb.js buildExpression and legacy/test/testDynamodb.js.
+	// Preserves the deployed DynamoDB update shape for saved messages.
 	tests := []struct {
 		name string
 		row  message.Message

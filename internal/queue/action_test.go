@@ -142,8 +142,7 @@ func TestDecodeMessageSupportsStringValueCasing(t *testing.T) {
 			var message RawMessage
 			require.NoError(t, json.Unmarshal([]byte(test.raw), &message))
 
-			action, err := DecodeMessage(message)
-			require.NoError(t, err)
+			action := DecodeMessage(message)
 
 			assert.Equal(t, ActionTopTen, action.Name)
 			assert.Equal(t, `{"chatId":123}`, action.Body)
@@ -155,9 +154,8 @@ func TestDecodeMessageSupportsStringValueCasing(t *testing.T) {
 func TestDecodeMessageTreatsMissingActionAsNoOp(t *testing.T) {
 	t.Parallel()
 
-	action, err := DecodeMessage(RawMessage{})
+	action := DecodeMessage(RawMessage{})
 
-	require.NoError(t, err)
 	assert.Equal(t, Action{}, action)
 }
 
@@ -171,8 +169,7 @@ func TestDecodeMessagePrefersLowerCaseStringValue(t *testing.T) {
 		}
 	}`), &message))
 
-	action, err := DecodeMessage(message)
-	require.NoError(t, err)
+	action := DecodeMessage(message)
 
 	assert.Equal(t, ActionAllJung, action.Name)
 	assert.Equal(t, ActionAllJung, action.Attributes["action"])
@@ -200,8 +197,7 @@ func TestDecodeMessagePreservesContractAttributes(t *testing.T) {
 		}
 	}`), &message))
 
-	action, err := DecodeMessage(message)
-	require.NoError(t, err)
+	action := DecodeMessage(message)
 
 	assert.Equal(t, ActionSetOffWorkTime, action.Name)
 	assert.Equal(t, "sendSetOffFromWorkMessage", action.Body)

@@ -53,8 +53,7 @@ func TestClientReceiveMessageSupportsContractAttributes(t *testing.T) {
 	require.Len(t, response.Messages, 1)
 	assert.Equal(t, "receipt", response.Messages[0].ReceiptHandle)
 	assert.Equal(t, `"sendTopTenMessage"`, string(response.Messages[0].Body))
-	action, err := DecodeMessage(response.Messages[0])
-	require.NoError(t, err)
+	action := DecodeMessage(response.Messages[0])
 	assert.Equal(t, ActionTopTen, action.Attributes["action"])
 }
 

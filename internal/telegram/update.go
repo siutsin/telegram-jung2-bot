@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 )
@@ -115,21 +116,7 @@ func (client Client) SendMessage(ctx context.Context, chatID int64, text string)
 // API sendMessage fields. For example, ParseMode "Markdown" adds
 // parse_mode="Markdown" to the request body.
 func (client Client) SendMessageWithOptions(ctx context.Context, chatID int64, text string, options SendMessageOptions) (err error) {
-	requestBody := map[string]any{
-		"chat_id": chatID,
-		"text":    text,
-	}
-	if options.DisableWebPagePreview {
-		requestBody["disable_web_page_preview"] = true
-	}
-	if options.ParseMode != "" {
-		requestBody["parse_mode"] = options.ParseMode
-	}
-	payload, err := json.Marshal(requestBody)
-	if err != nil {
-		return fmt.Errorf("marshal sendMessage request: %w", err)
-	}
-
+	payload := sendMessagePayload(chatID, text, options)
 	response, err := client.do(ctx, http.MethodPost, "sendMessage", nil, payload)
 	if err != nil {
 		return err
@@ -144,6 +131,23 @@ func (client Client) SendMessageWithOptions(ctx context.Context, chatID int64, t
 	}
 
 	return nil
+}
+
+func sendMessagePayload(chatID int64, text string, options SendMessageOptions) []byte {
+	payload := []byte(`{"chat_id":`)
+	payload = strconv.AppendInt(payload, chatID, 10)
+	if options.DisableWebPagePreview {
+		payload = append(payload, `,"disable_web_page_preview":true`...)
+	}
+	if options.ParseMode != "" {
+		payload = append(payload, `,"parse_mode":`...)
+		payload = strconv.AppendQuote(payload, options.ParseMode)
+	}
+	payload = append(payload, `,"text":`...)
+	payload = strconv.AppendQuote(payload, text)
+	payload = append(payload, '}')
+
+	return payload
 }
 
 // GetChatAdministrators returns the administrators of a Telegram chat.

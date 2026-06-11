@@ -28,7 +28,7 @@ func writeStageWebhookResponse(writer http.ResponseWriter, result response) {
 	writeJSONResponse(writer, result.statusCode, body)
 }
 
-// writeNamedJSONResponse writes the legacy static route response shape.
+// writeNamedJSONResponse writes the stage-route JSON response shape.
 func writeNamedJSONResponse(writer http.ResponseWriter, statusCode int, name string, value string) {
 	writeJSONResponse(writer, statusCode, map[string]string{name: value})
 }

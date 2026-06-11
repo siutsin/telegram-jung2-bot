@@ -69,7 +69,6 @@ fi
 typos_args=(
   --exclude ./buck-out
   --exclude ./internal/mock
-  --exclude ./legacy
   --exclude ./node_modules
   --exclude ./vendor
   .

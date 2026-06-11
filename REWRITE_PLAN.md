@@ -20,6 +20,7 @@ Final acceptance requires:
 - `make coverage` passing with the required 100% Go statement coverage for
   `internal/` packages.
 - `make lint` passing.
+- Optional local AWS adapter integration coverage available through Floci.
 - Production adapters and worker handlers wired in the default startup path.
 - A cleanup pass that removes migration-only artefacts and wording.
 
@@ -74,6 +75,7 @@ complete. It must be removed before the final cleanup gate.
 │   ├── config/
 │   ├── dynamodb/
 │   ├── httpserver/
+│   ├── integration/
 │   ├── message/
 │   ├── queue/
 │   ├── schedule/
@@ -143,6 +145,18 @@ complete. It must be removed before the final cleanup gate.
 - [x] Covered: fakeable HTTP server and queue worker lifecycle, cancellation,
   shutdown timeout, and test coverage.
 
+### Local AWS Integration
+
+- [x] `make integration` runs the slow Buck `go_test` target with
+  `SLOW_TESTS=1` and starts Floci locally through Testcontainers-Go unless
+  `FLOCI_ENDPOINT` points at an existing endpoint.
+- [x] README documents the fast/slow split and the supported Floci integration
+  environment variables.
+- [x] Covered: real AWS SDK DynamoDB and SQS adapters against local DynamoDB
+  tables and an SQS queue, preserving table keys, attribute names, every
+  Telegram command queue action, scheduled queue actions, enqueue, receive,
+  decode, and delete behaviour.
+
 ### Startup And Adapters
 
 - [x] Production startup assembly lives in `cmd/main.go`, with
@@ -171,11 +185,11 @@ complete. It must be removed before the final cleanup gate.
 
 ### Test And Coverage Gate
 
-- [ ] Raise total Go statement coverage from the current `94.0%` to the
+- [x] Raise total Go statement coverage from the current `94.0%` to the
   required `100.0%` for `internal/` packages so `make coverage` passes.
-- [ ] Add coverage for the remaining uncovered adapter and service paths in
+- [x] Add coverage for the remaining uncovered adapter and service paths in
   `internal/queue/sqs.go` and `internal/service/service.go`.
-- [ ] Add coverage for the remaining uncovered HTTP edge paths in
+- [x] Add coverage for the remaining uncovered HTTP edge paths in
   `internal/httpserver/httpserver.go`.
 
 ### Build And Tooling Hygiene
@@ -185,12 +199,12 @@ complete. It must be removed before the final cleanup gate.
   explicit `make vendor` step instead of a prerequisite for every build/test
   run.
 - [x] Keep test selection centralised in `make test`; `make coverage` reuses
-  the same Buck test target set and race mode instead of discovering its own
-  test graph.
+  the same fast Buck test target set and race mode, while the Floci-backed slow
+  `go_test` target stays behind `make integration`.
 - [x] Keep CI minimal and ordered: `make ci` now runs `make vendor`, then
   `make coverage`; `make coverage` in turn pulls in `make test`, which pulls
   in `make lint`.
-- [ ] Document or otherwise preserve the convention that first-party BUCK deps
+- [x] Document or otherwise preserve the convention that first-party BUCK deps
   still need manual maintenance when Go imports change; `gobuckify` only
   generates vendored third-party BUCK targets in this repo.
 
@@ -198,12 +212,12 @@ complete. It must be removed before the final cleanup gate.
 
 - [ ] Remove migration-only reference material after production adapter and
   worker-handler parity is complete and the coverage/lint gates are green.
-- [ ] Remove migration-only docs, package comments, test names, and helper names.
-- [ ] Remove route aliases or reference-shaped response code only if production
+- [x] Remove migration-only docs, package comments, test names, and helper names.
+- [x] Remove route aliases or reference-shaped response code only if production
   no longer depends on those public HTTP paths.
 - [ ] Ensure searches for migration-only wording return no matches outside
   intentionally archived material before final release.
-- [ ] Re-run `make test`, `make coverage`, and `make lint`.
+- [x] Re-run `make test`, `make coverage`, and `make lint`.
 
 ## Module Contracts
 

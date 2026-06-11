@@ -103,15 +103,12 @@ func dispatch(ctx context.Context, action queue.Action, handlers Handlers) error
 // For example, one raw SQS message becomes queue.DecodeMessage(raw), one handler
 // call, and one delete request.
 func processMessage(ctx context.Context, queueURL string, raw queue.RawMessage, handlers Handlers, deleter queueDeleter) error {
-	action, err := queue.DecodeMessage(raw)
-	if err != nil {
-		return err
-	}
+	action := queue.DecodeMessage(raw)
 	dispatchErr := dispatch(ctx, action, handlers)
 	if dispatchErr != nil {
 		return dispatchErr
 	}
-	err = deleter.Delete(ctx, queue.DeleteMessageRequest{
+	err := deleter.Delete(ctx, queue.DeleteMessageRequest{
 		QueueURL:      queueURL,
 		ReceiptHandle: raw.ReceiptHandle,
 	})

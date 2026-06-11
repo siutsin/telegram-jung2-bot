@@ -61,5 +61,4 @@ Worker creation or execution fails when:
 
 - the queue receiver is missing
 - the queue deleter is missing
-- message decode fails
 - queue delete fails

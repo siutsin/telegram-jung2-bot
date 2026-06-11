@@ -60,7 +60,7 @@ func TestParseRowRejectsMalformedValues(t *testing.T) {
 	}
 }
 
-func TestFromScheduleRowPreservesScheduleParity(t *testing.T) {
+func TestFromScheduleRowPreservesScheduleDefaults(t *testing.T) {
 	disabled := false
 	mask := workday.Mon | 128
 

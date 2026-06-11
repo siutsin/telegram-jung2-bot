@@ -1,13 +1,13 @@
 # Agent Instructions
 
 This repository is the Go service for `telegram-jung2-bot`. Keep the root
-clean, Go-native, and contract-first. Migration-only reference material may be
-used to verify behaviour until production adapter parity is complete.
+clean, Go-native, and contract-first. Production behaviour is preserved by
+focused Go tests.
 
 ## Working Rules
 
-- Work on independent modules first; defer app wiring until package contracts
-  and parity tests are stable.
+- Work on independent modules first; keep app wiring behind stable package
+  contracts and tests.
 - Do not create a `go/` subdirectory. The service executable lives under
   `cmd/`; private Go packages live under `internal/`.
 - Keep Buck target visibility explicit even though the Go `internal` import
@@ -29,10 +29,9 @@ used to verify behaviour until production adapter parity is complete.
   `messageAttributes.action.StringValue`.
 - Preserve existing `dateCreated` parsing for the stored UTC+8 offset format
   before normalising time internally.
-- Treat migration fixtures as contract references only; add or update Go tests
-  for behaviour you touch.
-- Every implementation change should identify which contract test case
-  or fixture it replicates.
+- Add or update Go tests for production-contract behaviour you touch.
+- Every implementation change should identify the contract test case it
+  preserves.
 
 ## Domain Rules
 

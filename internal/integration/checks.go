@@ -1,0 +1,196 @@
+package integration
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"testing"
+	"time"
+
+	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	awssqs "github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/siutsin/telegram-jung2-bot/internal/chat"
+	"github.com/siutsin/telegram-jung2-bot/internal/command"
+	appdynamodb "github.com/siutsin/telegram-jung2-bot/internal/dynamodb"
+	"github.com/siutsin/telegram-jung2-bot/internal/message"
+	"github.com/siutsin/telegram-jung2-bot/internal/queue"
+	"github.com/siutsin/telegram-jung2-bot/internal/schedule"
+	"github.com/siutsin/telegram-jung2-bot/internal/workday"
+)
+
+const (
+	integrationChatID    = 42001
+	integrationChatTitle = "Floci Integration"
+	integrationUserID    = 10001
+)
+
+type queueActionCase struct {
+	name   string
+	action queue.Action
+}
+
+type commandActionSpec struct {
+	name string
+	text string
+}
+
+func runDynamoDBIntegration(t *testing.T, ctx context.Context, client *awsdynamodb.Client, resources testResources) {
+	t.Helper()
+
+	chatRepo := appdynamodb.NewChatClient(client)
+	messageRepo := appdynamodb.NewMessageClient(client)
+
+	created := time.Date(2026, 6, 11, 18, 30, 0, 0, time.UTC)
+	settings := chat.ChatSetting{
+		ChatID:      integrationChatID,
+		ChatTitle:   integrationChatTitle,
+		DateCreated: created,
+		TTL:         message.TTL(created, message.DefaultTTL),
+	}
+	err := chatRepo.Save(ctx, resources.chatTable, settings)
+	require.NoError(t, err, "save chat metadata")
+
+	gotChat, ok, err := chatRepo.Get(ctx, resources.chatTable, settings.ChatID)
+	require.NoError(t, err, "get chat metadata")
+	require.True(t, ok, "expected stored chat metadata")
+	assert.Equal(t, settings.ChatTitle, gotChat.ChatTitle)
+	assert.True(t, gotChat.EnableAllJung)
+
+	err = chatRepo.Update(ctx, chat.BuildOffWorkUpdate(resources.chatTable, settings.ChatID, "1830", workday.Thu))
+	require.NoError(t, err, "save chat off-work settings")
+	due, err := chatRepo.DueChatIDs(ctx, resources.chatTable, created)
+	require.NoError(t, err, "scan due chats")
+	assert.Equal(t, []int64{settings.ChatID}, due)
+
+	row := message.Message{
+		ChatID:      settings.ChatID,
+		DateCreated: created,
+		ChatTitle:   settings.ChatTitle,
+		UserID:      integrationUserID,
+		Username:    "floci-user",
+		FirstName:   "Floci",
+		LastName:    "Tester",
+		TTL:         message.TTL(created, message.DefaultTTL),
+	}
+	err = messageRepo.Save(ctx, resources.messageTable, row)
+	require.NoError(t, err, "save message row")
+
+	messages, err := messageRepo.QueryByChat(ctx, resources.messageTable, settings.ChatID, created.Add(-time.Minute))
+	require.NoError(t, err, "query messages by chat")
+	require.Len(t, messages, 1)
+	assert.Equal(t, row.Username, messages[0].Username)
+	assert.Equal(t, row.UserID, messages[0].UserID)
+	assert.True(t, messages[0].DateCreated.Equal(row.DateCreated), "dateCreated")
+}
+
+func runSQSIntegration(t *testing.T, ctx context.Context, client *awssqs.Client, resources testResources) {
+	t.Helper()
+
+	queueClient := queue.NewClient(client)
+	producer := queue.NewProducer(resources.queueURL, queueClient)
+
+	actionCases := queueActionCases(t)
+
+	for _, testCase := range actionCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			err := producer.Enqueue(ctx, testCase.action)
+			require.NoError(t, err, "enqueue %s action", testCase.action.Name)
+
+			response, receiveErr := receiveOne(ctx, queueClient, resources.queueURL)
+			require.NoError(t, receiveErr)
+
+			got := queue.DecodeMessage(response.Messages[0])
+			assertAction(t, testCase.action, got)
+
+			err = queueClient.Delete(ctx, queue.DeleteMessageRequest{
+				QueueURL:      resources.queueURL,
+				ReceiptHandle: response.Messages[0].ReceiptHandle,
+			})
+			require.NoError(t, err, "delete %s queue message", testCase.action.Name)
+		})
+	}
+}
+
+func queueActionCases(t *testing.T) []queueActionCase {
+	t.Helper()
+
+	chatContext := command.ChatContext{
+		ChatID:    integrationChatID,
+		ChatTitle: integrationChatTitle,
+		UserID:    integrationUserID,
+	}
+
+	commandSpecs := []commandActionSpec{
+		{name: "Telegram /jungHelp", text: "/jungHelp"},
+		{name: "Telegram /topTen", text: "/topTen"},
+		{name: "Telegram /topDiver", text: "/topDiver"},
+		{name: "Telegram /allJung", text: "/allJung"},
+		{name: "Telegram /enableAllJung", text: "/enableAllJung"},
+		{name: "Telegram /disableAllJung", text: "/disableAllJung"},
+		{name: "Telegram /setOffFromWorkTimeUTC", text: "/setOffFromWorkTimeUTC 1830 MON,TUE"},
+	}
+
+	actionCases := make([]queueActionCase, 0, len(commandSpecs)+2)
+	for _, spec := range commandSpecs {
+		testCase := buildCommandActionCase(t, spec, chatContext)
+		actionCases = append(actionCases, testCase)
+	}
+
+	actionCases = append(actionCases,
+		queueActionCase{
+			name:   "Scheduler onOffFromWork",
+			action: schedule.BuildOnOffFromWorkAction("2026-06-11T18:30:00Z"),
+		},
+		queueActionCase{
+			name:   "Scheduler offFromWork",
+			action: schedule.BuildOffFromWorkAction(chatContext.ChatID),
+		},
+	)
+
+	return actionCases
+}
+
+func buildCommandActionCase(t *testing.T, spec commandActionSpec, chatContext command.ChatContext) queueActionCase {
+	t.Helper()
+
+	commands := command.ParseAll(spec.text)
+	require.Len(t, commands, 1, spec.name)
+
+	action, err := command.ActionFor(commands[0], chatContext)
+	require.NoError(t, err, "%s: build action", spec.name)
+
+	return queueActionCase{name: spec.name, action: action}
+}
+
+func assertAction(t *testing.T, want queue.Action, got queue.Action) {
+	t.Helper()
+
+	assert.Equal(t, want.Name, got.Name)
+	assert.Equal(t, want.Body, got.Body)
+	assert.Equal(t, want.Attributes, got.Attributes)
+}
+
+func receiveOne(ctx context.Context, client interface {
+	ReceiveMessage(context.Context, queue.ReceiveMessageRequest) (queue.ReceiveMessageResponse, error)
+}, queueURL string) (queue.ReceiveMessageResponse, error) {
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		response, err := client.ReceiveMessage(ctx, queue.ReceiveMessageRequest{
+			QueueURL:            queueURL,
+			MaxNumberOfMessages: 1,
+			WaitTimeSeconds:     1,
+		})
+		if err != nil {
+			return queue.ReceiveMessageResponse{}, fmt.Errorf("receive queue message: %w", err)
+		}
+		if len(response.Messages) > 0 {
+			return response, nil
+		}
+		if time.Now().After(deadline) {
+			return queue.ReceiveMessageResponse{}, errors.New("timed out waiting for SQS message")
+		}
+	}
+}

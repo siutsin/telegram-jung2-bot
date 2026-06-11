@@ -75,7 +75,7 @@ func registerRoute(mux *http.ServeMux, method string, path string, handler http.
 	mux.HandleFunc(path, methodHandler(method, handler))
 }
 
-// methodHandler rejects requests that do not match the legacy route method.
+// methodHandler rejects requests that do not match the configured route method.
 func methodHandler(method string, handler http.HandlerFunc) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		if request.Method != method {

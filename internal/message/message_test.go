@@ -18,7 +18,7 @@ func TestFromTelegram(t *testing.T) {
 		want  Message
 	}{
 		{
-			name: "full legacy message",
+			name: "full stored message",
 			input: telegram.Message{
 				Chat: telegram.Chat{ID: -4, Title: "title"},
 				From: &telegram.User{ID: 3, UserName: "username", FirstName: "first_name", LastName: "last_name"},
@@ -35,7 +35,7 @@ func TestFromTelegram(t *testing.T) {
 			},
 		},
 		{
-			name: "legacy optional user fields",
+			name: "optional user fields",
 			input: telegram.Message{
 				Chat: telegram.Chat{ID: -4},
 				From: &telegram.User{},

@@ -118,6 +118,28 @@ func TestSendMessageReturnsTelegramHTTPError(t *testing.T) {
 	assert.Contains(t, err.Error(), "HTTP 418")
 }
 
+func TestTelegramAPIErrorIncludesDrainError(t *testing.T) {
+	t.Parallel()
+
+	err := telegramAPIError(&http.Response{
+		StatusCode: http.StatusInternalServerError,
+		Body:       failingReadCloser{},
+	})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "telegram API returned HTTP 500")
+	assert.Contains(t, err.Error(), "drain telegram API error response")
+}
+
+func TestCloseResponseBodyWrapsCloseError(t *testing.T) {
+	t.Parallel()
+
+	err := closeResponseBody(failingCloser{}, "sendMessage")
+
+	require.Error(t, err)
+	assert.EqualError(t, err, "close Telegram sendMessage response body: close down")
+}
+
 func TestSendMessageReturnsRequestCreationError(t *testing.T) {
 	client := NewClient("token", WithBaseURL("\n"))
 
@@ -217,4 +239,20 @@ type failingRoundTripper struct{}
 
 func (failingRoundTripper) RoundTrip(*http.Request) (*http.Response, error) {
 	return nil, errors.New("network down")
+}
+
+type failingReadCloser struct{}
+
+func (failingReadCloser) Read([]byte) (int, error) {
+	return 0, errors.New("read down")
+}
+
+func (failingReadCloser) Close() error {
+	return nil
+}
+
+type failingCloser struct{}
+
+func (failingCloser) Close() error {
+	return errors.New("close down")
 }

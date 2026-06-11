@@ -89,4 +89,4 @@ Actions fail when:
 These do not fail:
 
 - disabled `allJung` chats, which return without sending a report
-- Telegram 4xx and 5xx report send errors, which are ignored to match the reference behaviour
+- Telegram 4xx and 5xx report send errors, which are ignored to match the deployed behaviour

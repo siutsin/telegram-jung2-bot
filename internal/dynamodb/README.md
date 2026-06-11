@@ -60,7 +60,7 @@ flowchart TD
 ```
 
 - the scale-up adapter reads current throughput, chooses the target read capacity, then updates the table.
-- some known DynamoDB scale-up errors are ignored to match the reference behaviour.
+- some known DynamoDB scale-up errors are ignored to match the deployed behaviour.
 
 ## Scope
 
@@ -91,8 +91,7 @@ This package owns:
 
 - `collectPages` stays generic because the same pagination flow is reused for
   message rows, chat settings, and chat IDs.
-- `buildMessageSaveUpdate` preserves the legacy `buildExpression` message
-  persistence shape from `legacy/src/dynamodb.js`.
+- `buildMessageSaveUpdate` preserves the deployed message persistence shape.
 - `updateContractUpdate` is the bridge from SDK-free update shapes to the final
   DynamoDB `UpdateItem` call.
 

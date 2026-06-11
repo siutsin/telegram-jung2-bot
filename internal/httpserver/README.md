@@ -7,7 +7,7 @@ This package handles HTTP transport for the bot.
 It:
 
 - builds the production HTTP server
-- exposes native and legacy-compatible HTTP routes
+- exposes native and stage-compatible HTTP routes
 - reads bounded webhook request bodies
 - parses Telegram webhook requests
 - saves webhook state
@@ -40,7 +40,7 @@ flowchart TD
 
 - unsupported methods return `405 Method Not Allowed`
 - webhook body reads are bounded by `MaxBodyBytes` or the default 1 MiB limit
-- native routes use plain responses, while legacy stage routes use JSON
+- native routes use plain responses, while stage routes use JSON
 
 ### Webhook flow
 
@@ -67,8 +67,7 @@ flowchart TD
     stage --> scaleup[onScaleUp]
 ```
 
-- stage-prefixed routes preserve the legacy Fastify route shape from
-  `legacy/src/index.js`
+- stage-prefixed routes preserve the deployed route shape
 - `/jung2bot/{stage}/ping` returns `{"health":"ok"}`
 - `/jung2bot/{stage}/` accepts webhook `POST` requests and returns a
   `{"statusCode":...}` JSON object
@@ -91,10 +90,10 @@ This package owns:
 
 - `httpserver.go` defines package contracts, dependency structs, health, and
   production server construction
-- `routes.go` wires native and legacy-compatible HTTP routes
+- `routes.go` wires native and stage-compatible HTTP routes
 - `webhook.go` handles Telegram webhook parsing, persistence, command parsing,
   and enqueueing
-- `response.go` writes plain and legacy JSON HTTP responses
+- `response.go` writes plain and stage JSON HTTP responses
 - `validation.go` checks required dependencies and body-size defaults
 - `*_test.go` files mirror the same boundaries: server setup, routes,
   webhook flow, validation, and shared generated mock helpers
@@ -114,7 +113,7 @@ Webhook handling returns an error response when:
 
 ## Tests
 
-The tests keep legacy parity with table-driven cases for:
+The tests keep deployed-route contract coverage with table-driven cases for:
 
 - unsupported route methods
 - exact stage webhook path matching

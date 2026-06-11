@@ -13,7 +13,6 @@ linters:
     - copyloopvar   # Catch unsafe loop variable copies and captures.
     - durationcheck # Flag invalid duration arithmetic.
     - errorlint     # Enforce modern wrapped-error handling.
-    - gobritannia   # Enforce UK English in Go definitions and comments.
     - gocognit      # Flag functions whose control flow becomes too hard to follow.
     - gosec         # Flag common security-sensitive code patterns and dangerous APIs.
     - loggercheck   # Validate structured logging key/value usage.
@@ -25,21 +24,11 @@ linters:
     - noctx         # Require context-aware APIs in non-test code paths.
     - noinlineerr   # Keep error handling out of inline declarations for clearer control flow.
     - nolintlint    # Keep nolint directives specific and justified.
-    - noshadow      # Reject declarations that shadow names from an outer scope.
     - revive        # Provide configurable, actively maintained style and correctness checks.
     - testifylint   # Catch misuse of testify assertions in tests.
     - unconvert     # Remove unnecessary type conversions.
     - unparam       # Find parameters that are never used by callees.
   settings:
-    custom:
-      gobritannia:
-        type: module
-        description: Reports configured US English spellings.
-      noshadow:
-        type: module
-        description: Reports declarations that shadow names from an outer scope.
-        settings:
-          testT: true
     errcheck:
       # Surface intentionally ignored writes and unsafe type assertions.
       check-blank: true
@@ -85,10 +74,6 @@ linters:
           - goconst
           - lll
           - noctx
-      # gobritannia owns deliberate US spelling fixtures and dictionary entries.
-      - path: ^tools/gobritannia/
-        linters:
-          - misspell
 formatters:
   enable:
     - gofmt

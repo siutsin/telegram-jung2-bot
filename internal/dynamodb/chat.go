@@ -113,7 +113,7 @@ func (client ChatClient) DueChatIDs(ctx context.Context, tableName string, times
 	})
 }
 
-// dueScanRowMatches applies the reference post-scan weekday filter.
+// dueScanRowMatches applies the deployed post-scan weekday filter.
 // For example, a row with MON|TUE matches day "MON" but not "SUN".
 func dueScanRowMatches(row chat.Row, day string) bool {
 	if row.Workday == nil {

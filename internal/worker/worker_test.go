@@ -263,10 +263,46 @@ func TestDispatchDropsUnsupportedAction(t *testing.T) {
 func TestDispatchReturnsErrorForMissingHandler(t *testing.T) {
 	t.Parallel()
 
-	err := dispatch(context.Background(), testAction(queue.ActionTopTen), Handlers{})
+	tests := []struct {
+		name    string
+		action  queue.Action
+		wantErr string
+	}{
+		{
+			name:    "chat id",
+			action:  testAction(queue.ActionTopTen),
+			wantErr: "missing handler for topten",
+		},
+		{
+			name:    "chat id and title",
+			action:  testAction(queue.ActionJungHelp),
+			wantErr: "missing handler for junghelp",
+		},
+		{
+			name:    "admin fields",
+			action:  testAction(queue.ActionEnableAllJung),
+			wantErr: "missing handler for enableAllJung",
+		},
+		{
+			name:    "set off input",
+			action:  testAction(queue.ActionSetOffWorkTime),
+			wantErr: "missing handler for setOffFromWorkTimeUTC",
+		},
+		{
+			name:    "time string",
+			action:  queue.Action{Name: queue.ActionOnOffFromWork, Attributes: map[string]string{"timeString": "2026-05-02T12:00:00Z"}},
+			wantErr: "missing handler for onOffFromWork",
+		},
+	}
 
-	require.Error(t, err)
-	assert.EqualError(t, err, "missing handler for topten")
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := dispatch(context.Background(), test.action, Handlers{})
+
+			require.Error(t, err)
+			assert.EqualError(t, err, test.wantErr)
+		})
+	}
 }
 
 func TestProcessMessageDeletesAfterSuccessfulDispatch(t *testing.T) {

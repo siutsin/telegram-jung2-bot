@@ -201,11 +201,6 @@ func (service Service) now() time.Time {
 // For example, "2025-01-06T18:30:00Z" becomes the matching time.Time.
 func parseScheduledTime(raw string) (time.Time, error) {
 	timestamp, err := time.Parse(time.RFC3339Nano, raw)
-	if err == nil {
-		return timestamp, nil
-	}
-
-	timestamp, err = time.Parse(time.RFC3339, raw)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("parse scheduled time: %w", err)
 	}
@@ -213,7 +208,7 @@ func parseScheduledTime(raw string) (time.Time, error) {
 	return timestamp, nil
 }
 
-// pauseFanOut preserves the reference scheduler pacing between sends.
+// pauseFanOut preserves the deployed scheduler pacing between sends.
 func pauseFanOut(ctx context.Context, duration time.Duration) error {
 	timer := time.NewTimer(duration)
 	defer timer.Stop()

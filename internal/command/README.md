@@ -31,7 +31,7 @@ flowchart TD
 ```
 
 - `ParseAll` finds supported commands in message text.
-- Command matching preserves the legacy prefix behaviour.
+- Command matching preserves the deployed prefix behaviour.
 - It keeps the contract command casing.
 - It returns commands in the fixed contract order, not text order.
 
