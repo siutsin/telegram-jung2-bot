@@ -40,15 +40,16 @@ type scaleUpper interface {
 }
 
 type Dependencies struct {
-	ChatTable          string
-	MessageTable       string
-	Messages           messageSaver
-	Chats              chatSaver
-	Enqueuer           enqueuer
-	Messenger          messenger
-	ScaleUpper         scaleUpper
-	Now                func() time.Time
-	WebhookSecretToken string
+	ChatTable            string
+	MessageTable         string
+	Messages             messageSaver
+	Chats                chatSaver
+	Enqueuer             enqueuer
+	Messenger            messenger
+	ScaleUpper           scaleUpper
+	Now                  func() time.Time
+	WebhookSecretToken   string
+	SchedulerSecretToken string
 }
 
 type serverDeps struct {

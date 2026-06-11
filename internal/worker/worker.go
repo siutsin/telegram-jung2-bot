@@ -91,9 +91,14 @@ func (worker pollingWorker) Run(ctx context.Context) error {
 // dispatch routes an action to its handler.
 // For example, Action{Name: "topTen"} is sent to handlers.TopTen.
 func dispatch(ctx context.Context, action queue.Action, handlers Handlers) error {
+	if action.Name == "" {
+		return permanentDispatchError("missing action name")
+	}
+
 	dispatcher, ok := actionDispatchers(handlers)[action.Name]
 	if !ok {
-		return nil
+		slog.Warn("queue message has unsupported action", "action", action.Name)
+		return permanentDispatchError("unsupported action %s", action.Name)
 	}
 
 	return dispatcher(ctx, action)
@@ -266,6 +271,10 @@ func withTimeString(handler func(ctx context.Context, timeString string) error, 
 		timeString := action.Attributes["timeString"]
 		if timeString == "" {
 			return permanentDispatchError("missing timeString for %s", actionName)
+		}
+		_, err = schedule.ParseScheduledTime(timeString)
+		if err != nil {
+			return permanentDispatchError("invalid timeString for %s: %v", actionName, err)
 		}
 
 		return requiredHandler(ctx, timeString)

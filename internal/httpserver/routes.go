@@ -46,7 +46,7 @@ func registerStageRoutes(mux *http.ServeMux, dependencies serverDeps) {
 	})
 
 	registerRoute(mux, http.MethodGet, stagePrefix+"/onOffFromWork", func(writer http.ResponseWriter, request *http.Request) {
-		if rejectUnauthorisedStageRoute(writer, request, dependencies.WebhookSecretToken, "onOffFromWork") {
+		if rejectUnauthorisedStageRoute(writer, request, dependencies.SchedulerSecretToken, "onOffFromWork") {
 			return
 		}
 
@@ -66,7 +66,7 @@ func registerStageRoutes(mux *http.ServeMux, dependencies serverDeps) {
 	})
 
 	registerRoute(mux, http.MethodGet, stagePrefix+"/onScaleUp", func(writer http.ResponseWriter, request *http.Request) {
-		if rejectUnauthorisedStageRoute(writer, request, dependencies.WebhookSecretToken, "onScaleUp") {
+		if rejectUnauthorisedStageRoute(writer, request, dependencies.SchedulerSecretToken, "onScaleUp") {
 			return
 		}
 
@@ -129,16 +129,37 @@ func readRequestBody(writer http.ResponseWriter, request *http.Request, bodyLimi
 	return io.ReadAll(body)
 }
 
-// rejectUnauthorisedStageRoute writes 401 when the configured secret is missing
-// or wrong. For example, a bad onScaleUp request becomes
+// rejectUnauthorisedStageRoute writes 401 when the configured scheduler secret
+// is missing or wrong. For example, a bad onScaleUp request becomes
 // {"onScaleUp":"unauthorised"}.
 func rejectUnauthorisedStageRoute(writer http.ResponseWriter, request *http.Request, secret string, routeName string) bool {
-	if validateWebhookSecret(request, secret) {
+	if validateSchedulerSecret(request, secret) {
 		return false
 	}
 
 	writeNamedJSONResponse(writer, http.StatusUnauthorized, routeName, "unauthorised")
 	return true
+}
+
+// validateSchedulerSecret checks scheduler auth via query or bearer token.
+// For example, ?schedulerToken=secret matches SCHEDULER_SECRET_TOKEN.
+func validateSchedulerSecret(request *http.Request, secret string) bool {
+	if secret == "" {
+		return true
+	}
+
+	queryToken := request.URL.Query().Get("schedulerToken")
+	if subtle.ConstantTimeCompare([]byte(queryToken), []byte(secret)) == 1 {
+		return true
+	}
+
+	authHeader := request.Header.Get("Authorization")
+	if len(authHeader) > len("Bearer ") && authHeader[:len("Bearer ")] == "Bearer " {
+		bearer := authHeader[len("Bearer "):]
+		return subtle.ConstantTimeCompare([]byte(bearer), []byte(secret)) == 1
+	}
+
+	return false
 }
 
 // validateWebhookSecret checks Telegram's webhook secret header when configured.

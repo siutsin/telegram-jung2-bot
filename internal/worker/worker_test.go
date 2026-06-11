@@ -259,12 +259,13 @@ func TestDispatchReturnsHandlerError(t *testing.T) {
 	require.EqualError(t, err, "boom")
 }
 
-func TestDispatchDropsUnsupportedAction(t *testing.T) {
+func TestDispatchRejectsUnsupportedAction(t *testing.T) {
 	t.Parallel()
 
 	err := dispatch(context.Background(), queue.Action{Name: "nope"}, testHandlers(nil, nil))
 
-	require.NoError(t, err)
+	require.ErrorIs(t, err, ErrPermanentDispatch)
+	assert.Contains(t, err.Error(), "unsupported action nope")
 }
 
 func TestDispatchReturnsErrorForMissingHandler(t *testing.T) {
@@ -426,6 +427,11 @@ func TestDispatchReturnsMissingAndInvalidAttributes(t *testing.T) {
 			name:    "missing time string",
 			action:  queue.Action{Name: queue.ActionOnOffFromWork, Attributes: map[string]string{}},
 			wantErr: "missing timeString for onOffFromWork",
+		},
+		{
+			name:       "invalid time string",
+			action:     queue.Action{Name: queue.ActionOnOffFromWork, Attributes: map[string]string{"timeString": "bad"}},
+			wantSubstr: "invalid timeString for onOffFromWork",
 		},
 	}
 

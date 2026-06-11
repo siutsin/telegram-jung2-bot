@@ -265,7 +265,7 @@ func TestWebhookRejectsMissingSecretWhenConfigured(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
 }
 
-func TestStageRoutesRejectMissingSecretWhenConfigured(t *testing.T) {
+func TestStageRoutesRejectMissingSchedulerSecretWhenConfigured(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -282,7 +282,7 @@ func TestStageRoutesRejectMissingSecretWhenConfigured(t *testing.T) {
 			t.Parallel()
 
 			mocks, dependencies := newMockDependencies(t)
-			dependencies.WebhookSecretToken = "secret-token"
+			dependencies.SchedulerSecretToken = "scheduler-secret"
 			dependencies.ScaleUpper = mocks.scaleUpper
 			handler := newHandler(serverDeps{Dependencies: dependencies, stage: "dev"})
 			recorder := httptest.NewRecorder()
@@ -293,6 +293,43 @@ func TestStageRoutesRejectMissingSecretWhenConfigured(t *testing.T) {
 			assert.JSONEq(t, test.body, recorder.Body.String())
 		})
 	}
+}
+
+func TestStageRoutesAcceptSchedulerBearerToken(t *testing.T) {
+	t.Parallel()
+
+	mocks, dependencies := newMockDependencies(t)
+	mocks.expectScaleUp(nil)
+	dependencies.SchedulerSecretToken = "scheduler-secret"
+	dependencies.ScaleUpper = mocks.scaleUpper
+	handler := newHandler(serverDeps{Dependencies: dependencies, stage: "dev"})
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/jung2bot/dev/onScaleUp", nil)
+	request.Header.Set("Authorization", "Bearer scheduler-secret")
+
+	handler.ServeHTTP(recorder, request)
+
+	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.JSONEq(t, `{"onScaleUp":"ok"}`, recorder.Body.String())
+}
+
+func TestStageRoutesAcceptSchedulerTokenQueryParam(t *testing.T) {
+	t.Parallel()
+
+	mocks, dependencies := newMockDependencies(t)
+	mocks.expectEnqueue(nil)
+	dependencies.SchedulerSecretToken = "scheduler-secret"
+	handler := newHandler(serverDeps{Dependencies: dependencies, stage: "dev"})
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, httptest.NewRequest(
+		http.MethodGet,
+		"/jung2bot/dev/onOffFromWork?timeString=2026-05-02T12:00:00Z&schedulerToken=scheduler-secret",
+		nil,
+	))
+
+	assert.Equal(t, http.StatusAccepted, recorder.Code)
+	assert.JSONEq(t, `{"onOffFromWork":"ok"}`, recorder.Body.String())
 }
 
 func TestOnOffFromWorkRejectsInvalidTimeString(t *testing.T) {

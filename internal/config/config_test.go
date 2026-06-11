@@ -36,6 +36,8 @@ func TestLoadBuildsConfig(t *testing.T) {
 				env["AWS_REGION"] = "ap-east-1"
 				env["LOG_LEVEL"] = "debug"
 				env["STAGE"] = "prod"
+				env["WEBHOOK_SECRET_TOKEN"] = "webhook-secret"
+				env["SCHEDULER_SECRET_TOKEN"] = "scheduler-secret"
 				env["SERVER_ADDRESS"] = ":8080"
 				env["SCALE_UP_READ_CAPACITY"] = "5"
 				env["AWS_ENDPOINT_URL"] = "http://localhost:4566"
@@ -152,6 +154,59 @@ func TestLoadFallsBackForInvalidScaleUpReadCapacity(t *testing.T) {
 			config, err := Load(env)
 			require.NoError(t, err)
 			assert.Equal(t, 0, config.ScaleUpReadCapacity)
+		})
+	}
+}
+
+func TestLoadRequiresProductionSecrets(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		mutate  func(env map[string]string)
+		wantErr string
+	}{
+		{
+			name: "missing webhook secret",
+			mutate: func(env map[string]string) {
+				env["STAGE"] = "prod"
+				env["SCHEDULER_SECRET_TOKEN"] = "scheduler-secret"
+			},
+			wantErr: "WEBHOOK_SECRET_TOKEN is required for stage \"prod\"",
+		},
+		{
+			name: "missing scheduler secret",
+			mutate: func(env map[string]string) {
+				env["STAGE"] = "prod"
+				env["WEBHOOK_SECRET_TOKEN"] = "webhook-secret"
+			},
+			wantErr: "SCHEDULER_SECRET_TOKEN is required for stage \"prod\"",
+		},
+		{
+			name: "dev allows missing secrets",
+			mutate: func(env map[string]string) {
+				env["STAGE"] = "dev"
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			env := validEnv()
+			if test.mutate != nil {
+				test.mutate(env)
+			}
+
+			_, err := Load(env)
+			if test.wantErr == "" {
+				require.NoError(t, err)
+				return
+			}
+
+			require.Error(t, err)
+			assert.EqualError(t, err, test.wantErr)
 		})
 	}
 }

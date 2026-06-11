@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	caarlosenv "github.com/caarlos0/env/v11"
@@ -20,20 +21,21 @@ const (
 
 // Config contains validated startup configuration.
 type Config struct {
-	AWSRegion           string
-	TelegramBotToken    string
-	MessageTable        string
-	ChatIDTable         string
-	EventQueueURL       string
-	AWSEndpointURL      string
-	TelegramAPIBaseURL  string
-	LogLevel            string
-	Stage               string
-	ServerAddress       string
-	HTTPTimeout         time.Duration
-	ShutdownTimeout     time.Duration
-	ScaleUpReadCapacity int
-	WebhookSecretToken  string
+	AWSRegion            string
+	TelegramBotToken     string
+	MessageTable         string
+	ChatIDTable          string
+	EventQueueURL        string
+	AWSEndpointURL       string
+	TelegramAPIBaseURL   string
+	LogLevel             string
+	Stage                string
+	ServerAddress        string
+	HTTPTimeout          time.Duration
+	ShutdownTimeout      time.Duration
+	ScaleUpReadCapacity  int
+	WebhookSecretToken   string
+	SchedulerSecretToken string
 }
 
 type rawConfig struct {
@@ -52,6 +54,7 @@ type rawConfig struct {
 	ShutdownTimeoutSeconds string `env:"SHUTDOWN_TIMEOUT_SECONDS"`
 	ScaleUpReadCapacity    string `env:"SCALE_UP_READ_CAPACITY"`
 	WebhookSecretToken     string `env:"WEBHOOK_SECRET_TOKEN"`
+	SchedulerSecretToken   string `env:"SCHEDULER_SECRET_TOKEN"`
 }
 
 // Load validates configuration from an environment map.
@@ -122,20 +125,21 @@ func configFromRaw(raw rawConfig) (Config, error) {
 	}
 
 	return Config{
-		AWSRegion:           raw.AWSRegion,
-		LogLevel:            raw.LogLevel,
-		Stage:               raw.Stage,
-		ServerAddress:       serverAddress(raw.ServerAddress, raw.Docker),
-		TelegramAPIBaseURL:  raw.TelegramAPIBaseURL,
-		TelegramBotToken:    raw.TelegramBotToken,
-		MessageTable:        raw.MessageTable,
-		ChatIDTable:         raw.ChatIDTable,
-		EventQueueURL:       raw.EventQueueURL,
-		AWSEndpointURL:      raw.AWSEndpointURL,
-		HTTPTimeout:         httpTimeout,
-		ShutdownTimeout:     shutdownTimeout,
-		ScaleUpReadCapacity: scaleUpReadCapacity,
-		WebhookSecretToken:  raw.WebhookSecretToken,
+		AWSRegion:            raw.AWSRegion,
+		LogLevel:             raw.LogLevel,
+		Stage:                raw.Stage,
+		ServerAddress:        serverAddress(raw.ServerAddress, raw.Docker),
+		TelegramAPIBaseURL:   raw.TelegramAPIBaseURL,
+		TelegramBotToken:     raw.TelegramBotToken,
+		MessageTable:         raw.MessageTable,
+		ChatIDTable:          raw.ChatIDTable,
+		EventQueueURL:        raw.EventQueueURL,
+		AWSEndpointURL:       raw.AWSEndpointURL,
+		HTTPTimeout:          httpTimeout,
+		ShutdownTimeout:      shutdownTimeout,
+		ScaleUpReadCapacity:  scaleUpReadCapacity,
+		WebhookSecretToken:   raw.WebhookSecretToken,
+		SchedulerSecretToken: raw.SchedulerSecretToken,
 	}, nil
 }
 
@@ -163,6 +167,23 @@ func validateConfig(config Config) error {
 	err = validateURL("TELEGRAM_API_BASE_URL", config.TelegramAPIBaseURL)
 	if err != nil {
 		return err
+	}
+
+	return requireProductionSecrets(config)
+}
+
+// requireProductionSecrets rejects non-dev stages that run without auth tokens.
+// For example, STAGE=prod without WEBHOOK_SECRET_TOKEN fails config validation.
+func requireProductionSecrets(config Config) error {
+	stage := strings.ToLower(strings.TrimSpace(config.Stage))
+	if stage == "dev" || stage == "test" || stage == "local" {
+		return nil
+	}
+	if strings.TrimSpace(config.WebhookSecretToken) == "" {
+		return fmt.Errorf("WEBHOOK_SECRET_TOKEN is required for stage %q", config.Stage)
+	}
+	if strings.TrimSpace(config.SchedulerSecretToken) == "" {
+		return fmt.Errorf("SCHEDULER_SECRET_TOKEN is required for stage %q", config.Stage)
 	}
 
 	return nil

@@ -179,7 +179,23 @@ func TestGenerateReportTruncatesFinalText(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.True(t, utf8.ValidString(summary.Report))
-	assert.LessOrEqual(t, utf8.RuneCountInString(summary.Report), telegram.ReportLimit)
+	assert.LessOrEqual(t, jsStringLength(summary.Report), telegram.ReportLimit)
+}
+
+func TestGenerateReportTruncatesAstralCharactersByJSLength(t *testing.T) {
+	t.Parallel()
+
+	rows := []message.Message{{
+		ChatTitle:   "Group",
+		UserID:      1,
+		FirstName:   strings.Repeat("😀", 2000),
+		DateCreated: now().Add(-time.Hour),
+	}}
+
+	summary, err := GenerateReport(rows, Options{Now: now()})
+
+	require.NoError(t, err)
+	assert.LessOrEqual(t, jsStringLength(summary.Report), telegram.ReportLimit)
 }
 
 func TestDisplayNameMatchesContractJoinBehaviour(t *testing.T) {

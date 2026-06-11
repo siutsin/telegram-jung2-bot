@@ -50,8 +50,6 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	warnIfWebhookSecretMissing(loadedConfig)
-
 	awsConfig, err := loadAWSConfig(ctx, loadedConfig.AWSRegion)
 	if err != nil {
 		return err
@@ -145,15 +143,16 @@ func newHTTPServer(
 	scaleUpper dynamodb.ScaleUpper,
 ) (*http.Server, error) {
 	dependencies := httpserver.Dependencies{
-		ChatTable:          loadedConfig.ChatIDTable,
-		MessageTable:       loadedConfig.MessageTable,
-		Chats:              chats,
-		Messages:           messages,
-		Enqueuer:           queue.NewProducer(loadedConfig.EventQueueURL, sender),
-		Messenger:          messenger,
-		ScaleUpper:         scaleUpper,
-		Now:                time.Now,
-		WebhookSecretToken: loadedConfig.WebhookSecretToken,
+		ChatTable:            loadedConfig.ChatIDTable,
+		MessageTable:         loadedConfig.MessageTable,
+		Chats:                chats,
+		Messages:             messages,
+		Enqueuer:             queue.NewProducer(loadedConfig.EventQueueURL, sender),
+		Messenger:            messenger,
+		ScaleUpper:           scaleUpper,
+		Now:                  time.Now,
+		WebhookSecretToken:   loadedConfig.WebhookSecretToken,
+		SchedulerSecretToken: loadedConfig.SchedulerSecretToken,
 	}
 
 	return httpserver.NewServer(
@@ -221,18 +220,4 @@ func configureLogging(level string, output io.Writer) error {
 	slog.SetDefault(slog.New(handler))
 
 	return nil
-}
-
-// warnIfWebhookSecretMissing logs when non-dev stages run without webhook auth.
-func warnIfWebhookSecretMissing(loadedConfig config.Config) {
-	if strings.TrimSpace(loadedConfig.WebhookSecretToken) != "" {
-		return
-	}
-
-	stage := strings.ToLower(strings.TrimSpace(loadedConfig.Stage))
-	if stage == "dev" || stage == "test" || stage == "local" {
-		return
-	}
-
-	slog.Warn("WEBHOOK_SECRET_TOKEN is not set; webhook and stage routes accept unsigned requests", "stage", loadedConfig.Stage)
 }

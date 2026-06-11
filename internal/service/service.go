@@ -4,6 +4,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 	"time"
@@ -126,8 +127,7 @@ func (service Service) OffFromWork(ctx context.Context, chatID int64) error {
 func (service Service) OnOffFromWork(ctx context.Context, timeString string) error {
 	timestamp, err := schedule.ParseScheduledTime(timeString)
 	if err != nil {
-		slog.Warn("skip onOffFromWork with invalid timeString", "timeString", timeString, "err", err)
-		return nil
+		return err
 	}
 
 	chatIDs, err := service.chatMaintainer.DueChatIDs(ctx, service.chatTable, timestamp)
@@ -139,8 +139,7 @@ func (service Service) OnOffFromWork(ctx context.Context, timeString string) err
 	for _, chatID := range chatIDs {
 		err = producer.Enqueue(ctx, schedule.BuildOffFromWorkAction(chatID))
 		if err != nil {
-			slog.Warn("enqueue due off-work report", "chatId", chatID, "err", err)
-			continue
+			return fmt.Errorf("enqueue due off-work report: %w", err)
 		}
 		err = pauseFanOut(ctx, 5*time.Millisecond)
 		if err != nil {
