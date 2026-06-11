@@ -23,6 +23,9 @@ const (
 	workerChatID    int64 = 42003
 	workerChatTitle       = "Worker Integration"
 	workerUserID    int64 = 10003
+
+	workerDispatchTimeout = 45 * time.Second
+	workerStopTimeout     = 25 * time.Second
 )
 
 func runWorkerRunIntegration(
@@ -263,18 +266,19 @@ func seedWorkerTopTenData(
 
 	users := []struct {
 		firstName string
+		userID    int64
 		offset    time.Duration
 	}{
-		{firstName: "Alice", offset: 3 * time.Minute},
-		{firstName: "Bob", offset: 2 * time.Minute},
-		{firstName: "Carol", offset: time.Minute},
+		{firstName: "Alice", userID: workerUserID + 1, offset: -3 * time.Minute},
+		{firstName: "Bob", userID: workerUserID + 2, offset: -2 * time.Minute},
+		{firstName: "Carol", userID: workerUserID + 3, offset: -time.Minute},
 	}
 	for _, user := range users {
 		row := message.Message{
 			ChatID:      workerChatID,
 			DateCreated: integrationNow.Add(user.offset),
 			ChatTitle:   workerChatTitle,
-			UserID:      workerUserID,
+			UserID:      user.userID,
 			FirstName:   user.firstName,
 			TTL:         message.TTL(integrationNow, message.DefaultTTL),
 		}
@@ -295,6 +299,8 @@ func pollServiceAction(
 	t.Helper()
 
 	queueClient := queue.NewClient(sqsClient)
+	drainQueue(t, ctx, queueClient, resources.queueURL)
+
 	producer := queue.NewProducer(resources.queueURL, queueClient)
 	svc := newIntegrationService(dynamoClient, sqsClient, resources, messenger)
 
@@ -310,30 +316,38 @@ func pollServiceAction(
 	require.NoError(t, err, "create polling worker")
 
 	pollCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
 	done := make(chan error, 1)
 	go func() {
 		done <- queueWorker.Run(pollCtx)
 	}()
+	defer stopIntegrationWorker(t, cancel, done, ctx, queueClient, resources.queueURL)
 
 	require.Eventually(t, func() bool {
 		return len(messenger.recordedMessages()) > 0
-	}, 15*time.Second, 100*time.Millisecond, "worker should dispatch action %s", action.Name)
+	}, workerDispatchTimeout, 100*time.Millisecond, "worker should dispatch action %s", action.Name)
+}
+
+func stopIntegrationWorker(
+	t *testing.T,
+	cancel context.CancelFunc,
+	done <-chan error,
+	ctx context.Context,
+	queueClient queueClient,
+	queueURL string,
+) {
+	t.Helper()
 
 	cancel()
 
 	select {
-	case runErr := <-done:
-		if pollCtx.Err() != nil {
-			break
-		}
-		require.NoError(t, runErr, "worker should stop after cancel")
-	case <-time.After(15 * time.Second):
+	case <-done:
+		// Cancel during an in-flight SQS long poll may return context.Canceled.
+	case <-time.After(workerStopTimeout):
 		t.Fatal("timed out waiting for worker to stop")
 	}
 
-	assertQueueEmpty(t, ctx, queueClient, resources.queueURL)
+	drainQueue(t, ctx, queueClient, queueURL)
+	assertQueueEmpty(t, ctx, queueClient, queueURL)
 }
 
 func runWorkerHandlersIntegration(

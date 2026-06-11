@@ -91,9 +91,10 @@ type integrationHTTPServer struct {
 }
 
 type integrationServerOptions struct {
-	stage      string
-	messenger  integrationMessenger
-	scaleUpper appdynamodb.ScaleUpper
+	stage                string
+	messenger            integrationMessenger
+	scaleUpper           appdynamodb.ScaleUpper
+	schedulerSecretToken string
 }
 
 func buildIntegrationHTTPServer(
@@ -114,13 +115,14 @@ func buildIntegrationHTTPServer(
 	}
 
 	deps := httpserver.Dependencies{
-		ChatTable:    resources.chatTable,
-		MessageTable: resources.messageTable,
-		Messages:     appdynamodb.NewMessageClient(dynamoClient),
-		Chats:        appdynamodb.NewChatClient(dynamoClient),
-		Enqueuer:     producer,
-		Messenger:    messenger,
-		ScaleUpper:   options.scaleUpper,
+		ChatTable:            resources.chatTable,
+		MessageTable:         resources.messageTable,
+		Messages:             appdynamodb.NewMessageClient(dynamoClient),
+		Chats:                appdynamodb.NewChatClient(dynamoClient),
+		Enqueuer:             producer,
+		Messenger:            messenger,
+		ScaleUpper:           options.scaleUpper,
+		SchedulerSecretToken: options.schedulerSecretToken,
 		Now: func() time.Time {
 			return integrationNow
 		},
