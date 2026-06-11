@@ -40,7 +40,6 @@ func TestLoadBuildsConfig(t *testing.T) {
 				env["SCHEDULER_SECRET_TOKEN"] = "scheduler-secret"
 				env["SERVER_ADDRESS"] = ":8080"
 				env["SCALE_UP_READ_CAPACITY"] = "5"
-				env["AWS_ENDPOINT_URL"] = "http://localhost:4566"
 				env["TELEGRAM_API_BASE_URL"] = "http://localhost:8081"
 				env["HTTP_TIMEOUT_SECONDS"] = "3"
 				env["SHUTDOWN_TIMEOUT_SECONDS"] = "4"
@@ -51,7 +50,6 @@ func TestLoadBuildsConfig(t *testing.T) {
 				assert.Equal(t, "prod", config.Stage)
 				assert.Equal(t, ":8080", config.ServerAddress)
 				assert.Equal(t, 5, config.ScaleUpReadCapacity)
-				assert.Equal(t, "http://localhost:4566", config.AWSEndpointURL)
 				assert.Equal(t, "http://localhost:8081", config.TelegramAPIBaseURL)
 				assert.Equal(t, 3*time.Second, config.HTTPTimeout)
 				assert.Equal(t, 4*time.Second, config.ShutdownTimeout)
@@ -64,6 +62,26 @@ func TestLoadBuildsConfig(t *testing.T) {
 			},
 			check: func(t *testing.T, config Config) {
 				assert.Equal(t, "0.0.0.0:3000", config.ServerAddress)
+			},
+		},
+		{
+			name: "local endpoint override",
+			mutate: func(env map[string]string) {
+				env["AWS_ENDPOINT_URL"] = "http://localhost:4566"
+			},
+			check: func(t *testing.T, config Config) {
+				assert.Equal(t, "http://localhost:4566", config.AWSEndpointURL)
+			},
+		},
+		{
+			name: "normalises stage",
+			mutate: func(env map[string]string) {
+				env["STAGE"] = " Prod "
+				env["WEBHOOK_SECRET_TOKEN"] = "webhook-secret"
+				env["SCHEDULER_SECRET_TOKEN"] = "scheduler-secret"
+			},
+			check: func(t *testing.T, config Config) {
+				assert.Equal(t, "prod", config.Stage)
 			},
 		},
 	}
@@ -156,6 +174,38 @@ func TestLoadFallsBackForInvalidScaleUpReadCapacity(t *testing.T) {
 			assert.Equal(t, 0, config.ScaleUpReadCapacity)
 		})
 	}
+}
+
+func TestLoadRejectsInvalidLogLevel(t *testing.T) {
+	t.Parallel()
+
+	env := validEnv()
+	env["LOG_LEVEL"] = "trace"
+
+	_, err := Load(env)
+	require.Error(t, err)
+	assert.EqualError(t, err, "LOG_LEVEL must be one of debug, info, warn, warning, or error")
+}
+
+func TestLoadRejectsProductionEndpointOverride(t *testing.T) {
+	t.Parallel()
+
+	env := validEnv()
+	env["STAGE"] = "prod"
+	env["WEBHOOK_SECRET_TOKEN"] = "webhook-secret"
+	env["SCHEDULER_SECRET_TOKEN"] = "scheduler-secret"
+	env["AWS_ENDPOINT_URL"] = "http://localhost:4566"
+
+	_, err := Load(env)
+	require.Error(t, err)
+	assert.EqualError(t, err, "AWS_ENDPOINT_URL is not allowed for stage \"prod\"")
+}
+
+func TestServerAddressIgnoresFalseDockerFlag(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "127.0.0.1:3000", serverAddress("", "false"))
+	assert.Equal(t, "127.0.0.1:3000", serverAddress("", "0"))
 }
 
 func TestLoadRequiresProductionSecrets(t *testing.T) {

@@ -208,12 +208,7 @@ func configureLogging(level string, output io.Writer) error {
 	case "error":
 		slogLevel = slog.LevelError
 	default:
-		slogLevel = slog.LevelInfo
-		handler := slog.NewTextHandler(output, &slog.HandlerOptions{Level: slogLevel})
-		slog.SetDefault(slog.New(handler))
-		slog.Warn("unknown log level, defaulting to info", "level", level)
-
-		return nil
+		return fmt.Errorf("unsupported log level %q", level)
 	}
 
 	handler := slog.NewTextHandler(output, &slog.HandlerOptions{Level: slogLevel})

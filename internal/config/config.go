@@ -127,7 +127,7 @@ func configFromRaw(raw rawConfig) (Config, error) {
 	return Config{
 		AWSRegion:            raw.AWSRegion,
 		LogLevel:             raw.LogLevel,
-		Stage:                raw.Stage,
+		Stage:                strings.ToLower(strings.TrimSpace(raw.Stage)),
 		ServerAddress:        serverAddress(raw.ServerAddress, raw.Docker),
 		TelegramAPIBaseURL:   raw.TelegramAPIBaseURL,
 		TelegramBotToken:     raw.TelegramBotToken,
@@ -168,6 +168,10 @@ func validateConfig(config Config) error {
 	if err != nil {
 		return err
 	}
+	err = validateLogLevel(config.LogLevel)
+	if err != nil {
+		return err
+	}
 
 	return requireProductionSecrets(config)
 }
@@ -175,8 +179,7 @@ func validateConfig(config Config) error {
 // requireProductionSecrets rejects non-dev stages that run without auth tokens.
 // For example, STAGE=prod without WEBHOOK_SECRET_TOKEN fails config validation.
 func requireProductionSecrets(config Config) error {
-	stage := strings.ToLower(strings.TrimSpace(config.Stage))
-	if stage == "dev" || stage == "test" || stage == "local" {
+	if isLocalStage(config.Stage) {
 		return nil
 	}
 	if strings.TrimSpace(config.WebhookSecretToken) == "" {
@@ -185,8 +188,30 @@ func requireProductionSecrets(config Config) error {
 	if strings.TrimSpace(config.SchedulerSecretToken) == "" {
 		return fmt.Errorf("SCHEDULER_SECRET_TOKEN is required for stage %q", config.Stage)
 	}
+	if config.AWSEndpointURL != "" {
+		return fmt.Errorf("AWS_ENDPOINT_URL is not allowed for stage %q", config.Stage)
+	}
 
 	return nil
+}
+
+// isLocalStage reports whether stage is exempt from production secret checks.
+// For example, "dev" and " local " both return true.
+func isLocalStage(stage string) bool {
+	stage = strings.ToLower(strings.TrimSpace(stage))
+
+	return stage == "dev" || stage == "test" || stage == "local"
+}
+
+// validateLogLevel checks LOG_LEVEL against supported slog levels.
+// For example, "debug" is valid while "trace" is rejected.
+func validateLogLevel(level string) error {
+	switch strings.ToLower(strings.TrimSpace(level)) {
+	case "", "debug", "info", "warn", "warning", "error":
+		return nil
+	default:
+		return fmt.Errorf("LOG_LEVEL must be one of debug, info, warn, warning, or error")
+	}
 }
 
 // serverAddress returns the default bind address for the current environment.
@@ -195,11 +220,22 @@ func serverAddress(value string, docker string) string {
 	if value != "" {
 		return value
 	}
-	if docker != "" {
+	if dockerEnabled(docker) {
 		return "0.0.0.0:3000"
 	}
 
 	return "127.0.0.1:3000"
+}
+
+// dockerEnabled reports whether DOCKER requests the container bind address.
+// For example, DOCKER=1 and DOCKER=true return true while DOCKER=false does not.
+func dockerEnabled(value string) bool {
+	enabled, err := strconv.ParseBool(strings.TrimSpace(value))
+	if err != nil {
+		return false
+	}
+
+	return enabled
 }
 
 // validateTableName checks a DynamoDB table name.

@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -340,8 +341,10 @@ func stopIntegrationWorker(
 	cancel()
 
 	select {
-	case <-done:
-		// Cancel during an in-flight SQS long poll may return context.Canceled.
+	case runErr := <-done:
+		if runErr != nil && !errors.Is(runErr, context.Canceled) {
+			require.NoError(t, runErr, "worker should stop after cancel")
+		}
 	case <-time.After(workerStopTimeout):
 		t.Fatal("timed out waiting for worker to stop")
 	}
