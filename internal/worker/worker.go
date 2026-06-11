@@ -3,16 +3,20 @@ package worker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"reflect"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
 	"github.com/siutsin/telegram-jung2-bot/internal/schedule"
 )
+
+// ErrPermanentDispatch marks queue payload or handler wiring errors that should
+// not retry.
+var ErrPermanentDispatch = errors.New("permanent queue dispatch error")
 
 type Handlers struct {
 	JungHelp       func(ctx context.Context, chatID int64, chatTitle string) error
@@ -142,14 +146,7 @@ func deleteProcessedMessage(ctx context.Context, deleter queueDeleter, queueURL 
 
 // isPermanentDispatchError reports malformed queue payloads that should not retry.
 func isPermanentDispatchError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	message := err.Error()
-	return strings.HasPrefix(message, "missing ") ||
-		strings.HasPrefix(message, "invalid ") ||
-		strings.HasPrefix(message, "missing handler for ")
+	return errors.Is(err, ErrPermanentDispatch)
 }
 
 // actionDispatchers returns the queue action dispatch table.
@@ -268,7 +265,7 @@ func withTimeString(handler func(ctx context.Context, timeString string) error, 
 
 		timeString := action.Attributes["timeString"]
 		if timeString == "" {
-			return fmt.Errorf("missing timeString for %s", actionName)
+			return permanentDispatchError("missing timeString for %s", actionName)
 		}
 
 		return requiredHandler(ctx, timeString)
@@ -292,12 +289,12 @@ func requiredUserID(action queue.Action) (int64, error) {
 func requiredIntAttribute(action queue.Action, key string) (int64, error) {
 	raw, ok := action.Attributes[key]
 	if !ok || raw == "" {
-		return 0, fmt.Errorf("missing %s for %s", key, action.Name)
+		return 0, permanentDispatchError("missing %s for %s", key, action.Name)
 	}
 
 	value, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("invalid %s for %s: %w", key, action.Name, err)
+		return 0, permanentDispatchError("invalid %s for %s: %v", key, action.Name, err)
 	}
 
 	return value, nil
@@ -308,8 +305,14 @@ func requireHandler[T any](handler T, actionName string) (T, error) {
 	value := reflect.ValueOf(handler)
 	if !value.IsValid() || value.IsNil() {
 		var zero T
-		return zero, fmt.Errorf("missing handler for %s", actionName)
+		return zero, permanentDispatchError("missing handler for %s", actionName)
 	}
 
 	return handler, nil
+}
+
+// permanentDispatchError wraps one validation error as non-retryable.
+// For example, "missing chatId for topten" becomes a permanent dispatch error.
+func permanentDispatchError(format string, args ...any) error {
+	return fmt.Errorf("%w: "+format, append([]any{ErrPermanentDispatch}, args...)...)
 }

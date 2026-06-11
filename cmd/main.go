@@ -50,6 +50,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	warnIfWebhookSecretMissing(loadedConfig)
 
 	awsConfig, err := loadAWSConfig(ctx, loadedConfig.AWSRegion)
 	if err != nil {
@@ -220,4 +221,18 @@ func configureLogging(level string, output io.Writer) error {
 	slog.SetDefault(slog.New(handler))
 
 	return nil
+}
+
+// warnIfWebhookSecretMissing logs when non-dev stages run without webhook auth.
+func warnIfWebhookSecretMissing(loadedConfig config.Config) {
+	if strings.TrimSpace(loadedConfig.WebhookSecretToken) != "" {
+		return
+	}
+
+	stage := strings.ToLower(strings.TrimSpace(loadedConfig.Stage))
+	if stage == "dev" || stage == "test" || stage == "local" {
+		return
+	}
+
+	slog.Warn("WEBHOOK_SECRET_TOKEN is not set; webhook and stage routes accept unsigned requests", "stage", loadedConfig.Stage)
 }

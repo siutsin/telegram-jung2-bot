@@ -4,7 +4,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"strings"
 	"time"
@@ -140,7 +139,8 @@ func (service Service) OnOffFromWork(ctx context.Context, timeString string) err
 	for _, chatID := range chatIDs {
 		err = producer.Enqueue(ctx, schedule.BuildOffFromWorkAction(chatID))
 		if err != nil {
-			return fmt.Errorf("enqueue due off-work report: %w", err)
+			slog.Warn("enqueue due off-work report", "chatId", chatID, "err", err)
+			continue
 		}
 		err = pauseFanOut(ctx, 5*time.Millisecond)
 		if err != nil {

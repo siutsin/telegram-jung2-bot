@@ -46,6 +46,10 @@ func registerStageRoutes(mux *http.ServeMux, dependencies serverDeps) {
 	})
 
 	registerRoute(mux, http.MethodGet, stagePrefix+"/onOffFromWork", func(writer http.ResponseWriter, request *http.Request) {
+		if rejectUnauthorisedStageRoute(writer, request, dependencies.WebhookSecretToken, "onOffFromWork") {
+			return
+		}
+
 		_, err := schedule.ParseScheduledTime(request.URL.Query().Get("timeString"))
 		if err != nil {
 			writeNamedJSONResponse(writer, http.StatusBadRequest, "onOffFromWork", "invalid timeString")
@@ -62,6 +66,10 @@ func registerStageRoutes(mux *http.ServeMux, dependencies serverDeps) {
 	})
 
 	registerRoute(mux, http.MethodGet, stagePrefix+"/onScaleUp", func(writer http.ResponseWriter, request *http.Request) {
+		if rejectUnauthorisedStageRoute(writer, request, dependencies.WebhookSecretToken, "onScaleUp") {
+			return
+		}
+
 		if dependencies.ScaleUpper == nil {
 			slog.Error("scale up dependency missing")
 			writeNamedJSONResponse(writer, http.StatusServiceUnavailable, "onScaleUp", "failed")
@@ -119,6 +127,18 @@ func readRequestBody(writer http.ResponseWriter, request *http.Request, bodyLimi
 	}()
 
 	return io.ReadAll(body)
+}
+
+// rejectUnauthorisedStageRoute writes 401 when the configured secret is missing
+// or wrong. For example, a bad onScaleUp request becomes
+// {"onScaleUp":"unauthorised"}.
+func rejectUnauthorisedStageRoute(writer http.ResponseWriter, request *http.Request, secret string, routeName string) bool {
+	if validateWebhookSecret(request, secret) {
+		return false
+	}
+
+	writeNamedJSONResponse(writer, http.StatusUnauthorized, routeName, "unauthorised")
+	return true
 }
 
 // validateWebhookSecret checks Telegram's webhook secret header when configured.

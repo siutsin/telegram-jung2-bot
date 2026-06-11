@@ -265,6 +265,36 @@ func TestWebhookRejectsMissingSecretWhenConfigured(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
 }
 
+func TestStageRoutesRejectMissingSecretWhenConfigured(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		path string
+		body string
+	}{
+		{name: "off from work", path: "/jung2bot/dev/onOffFromWork?timeString=2026-05-02T12:00:00Z", body: `{"onOffFromWork":"unauthorised"}`},
+		{name: "scale up", path: "/jung2bot/dev/onScaleUp", body: `{"onScaleUp":"unauthorised"}`},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			mocks, dependencies := newMockDependencies(t)
+			dependencies.WebhookSecretToken = "secret-token"
+			dependencies.ScaleUpper = mocks.scaleUpper
+			handler := newHandler(serverDeps{Dependencies: dependencies, stage: "dev"})
+			recorder := httptest.NewRecorder()
+
+			handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, test.path, nil))
+
+			assert.Equal(t, http.StatusUnauthorized, recorder.Code)
+			assert.JSONEq(t, test.body, recorder.Body.String())
+		})
+	}
+}
+
 func TestOnOffFromWorkRejectsInvalidTimeString(t *testing.T) {
 	t.Parallel()
 

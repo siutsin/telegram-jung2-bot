@@ -306,8 +306,8 @@ func TestDispatchReturnsErrorForMissingHandler(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			err := dispatch(context.Background(), test.action, Handlers{})
 
-			require.Error(t, err)
-			assert.EqualError(t, err, test.wantErr)
+			require.ErrorIs(t, err, ErrPermanentDispatch)
+			assert.Contains(t, err.Error(), test.wantErr)
 		})
 	}
 }
@@ -433,9 +433,9 @@ func TestDispatchReturnsMissingAndInvalidAttributes(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			err := dispatch(context.Background(), test.action, testHandlers(nil, nil))
 
-			require.Error(t, err)
+			require.ErrorIs(t, err, ErrPermanentDispatch)
 			if test.wantErr != "" {
-				require.EqualError(t, err, test.wantErr)
+				assert.Contains(t, err.Error(), test.wantErr)
 			}
 			if test.wantSubstr != "" {
 				assert.Contains(t, err.Error(), test.wantSubstr)
@@ -444,12 +444,13 @@ func TestDispatchReturnsMissingAndInvalidAttributes(t *testing.T) {
 	}
 }
 
-func TestIsPermanentDispatchErrorMatchesContractPrefixes(t *testing.T) {
+func TestIsPermanentDispatchErrorMatchesTypedValidationErrors(t *testing.T) {
 	t.Parallel()
 
-	assert.True(t, isPermanentDispatchError(errors.New("missing chatId for topten")))
-	assert.True(t, isPermanentDispatchError(errors.New("invalid chatId for topten: boom")))
-	assert.True(t, isPermanentDispatchError(errors.New("missing handler for topten")))
+	assert.True(t, isPermanentDispatchError(permanentDispatchError("missing chatId for %s", queue.ActionTopTen)))
+	assert.True(t, isPermanentDispatchError(permanentDispatchError("invalid chatId for %s: boom", queue.ActionTopTen)))
+	assert.True(t, isPermanentDispatchError(permanentDispatchError("missing handler for %s", queue.ActionTopTen)))
+	assert.False(t, isPermanentDispatchError(errors.New("invalid UpdateExpression")))
 	assert.False(t, isPermanentDispatchError(errors.New("boom")))
 	assert.False(t, isPermanentDispatchError(nil))
 }

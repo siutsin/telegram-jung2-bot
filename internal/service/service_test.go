@@ -65,6 +65,20 @@ func TestNewBuildsService(t *testing.T) {
 	assert.Equal(t, sender, service.sender)
 }
 
+func TestOnOffFromWorkContinuesAfterPartialEnqueueFailure(t *testing.T) {
+	t.Parallel()
+
+	sender := &fakeSender{err: errors.New("boom"), errOnce: true}
+	service := testService()
+	service.chatMaintainer = &fakeChatStore{dueChatIDs: []int64{123, 456}}
+	service.sender = sender
+
+	err := service.OnOffFromWork(context.Background(), "2026-05-01T18:00:00Z")
+
+	require.NoError(t, err)
+	require.Len(t, sender.requests, 2)
+}
+
 func TestOnOffFromWorkEnqueuesDueChats(t *testing.T) {
 	t.Parallel()
 
@@ -293,8 +307,7 @@ func TestOnOffFromWorkReturnsFanOutErrors(t *testing.T) {
 
 	err = service.OnOffFromWork(context.Background(), "2026-05-01T18:00:00Z")
 
-	require.Error(t, err)
-	require.EqualError(t, err, "enqueue due off-work report: boom")
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -712,10 +725,20 @@ func (messenger *fakeMessenger) SendMessageWithOptions(ctx context.Context, chat
 
 type fakeSender struct {
 	err      error
+	errOnce  bool
+	failed   bool
 	requests []queue.SendMessageRequest
 }
 
 func (sender *fakeSender) SendMessage(ctx context.Context, request queue.SendMessageRequest) error {
 	sender.requests = append(sender.requests, request)
-	return sender.err
+	if sender.errOnce && !sender.failed {
+		sender.failed = true
+		return sender.err
+	}
+	if sender.err != nil && !sender.errOnce {
+		return sender.err
+	}
+
+	return nil
 }
