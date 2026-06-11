@@ -11,6 +11,8 @@ It:
 - provisions temporary DynamoDB tables and an SQS queue
 - exercises the real AWS SDK v2 DynamoDB and SQS adapters
 - verifies queue action round-trips for every command action shape
+- covers HTTP webhook and stage routing through production handlers
+- exercises service-layer side effects with a recording Telegram messenger
 
 It does not run as part of the fast test or coverage gate.
 
@@ -46,9 +48,15 @@ flowchart TD
     provision --> dynamo[DynamoDB adapter checks]
     provision --> sqs[SQS action round-trip checks]
     provision --> webhook[HTTP webhook routing checks]
+    provision --> stage[HTTP stage route checks]
+    provision --> worker[Queue poll and service dispatch checks]
+    provision --> service[Service fan-out and admin settings checks]
     dynamo --> cleanup[Cleanup queue, tables, and container]
     sqs --> cleanup
     webhook --> cleanup
+    stage --> cleanup
+    worker --> cleanup
+    service --> cleanup
 ```
 
 ## Covered Flows
@@ -74,6 +82,8 @@ flowchart TD
 - Saves one message through `dynamodb.NewMessageClient`.
 - Queries messages by chat and verifies `username`, `userID`, and
   `dateCreated`.
+- Saves additional message rows and verifies multi-row query ordering.
+- Saves a second enabled chat and verifies `ListEnabled`.
 
 ### SQS action flow
 
@@ -105,12 +115,35 @@ For every action, the test verifies:
 ### HTTP webhook routing flow
 
 - Builds `httpserver.NewServer` with real DynamoDB and SQS adapters.
-- Posts a Telegram `/topTen` group webhook through `httptest`.
-- Verifies HTTP `200`.
-- Reads the saved chat row through `dynamodb.NewChatClient`.
-- Queries the saved message row through `dynamodb.NewMessageClient`.
-- Receives the queued `topten` action from Floci SQS and compares name, body,
-  and attributes.
+- Posts Telegram group webhooks through `httptest`.
+- Verifies HTTP `200`, saved chat rows, saved message rows, and queued actions.
+- Covers `/topTen`, plain group messages without queue work, multiple commands in
+  contract order, and invalid `/setOffFromWorkTimeUTC` replies through a
+  recording messenger.
+
+### HTTP stage route flow
+
+- Exercises `/jung2bot/dev/ping`.
+- Exercises stage webhook `POST /jung2bot/dev/`.
+- Exercises scheduler trigger `GET /jung2bot/dev/onOffFromWork`.
+- Exercises `GET /jung2bot/dev/onScaleUp` against a provisioned DynamoDB table
+  through `dynamodb.NewScaleUpper`.
+
+### Queue poll and service dispatch flow
+
+- Enqueues actions through the production queue producer.
+- Receives one SQS batch through `queue.NewConsumer`.
+- Dispatches to real `service.Service` handlers.
+- Verifies Telegram replies through a recording messenger.
+- Covers `jungHelp`, `topTen`, and `offFromWork` report generation against
+  seeded DynamoDB rows.
+
+### Service fan-out and admin settings flow
+
+- Calls `service.OnOffFromWork` against seeded due-chat rows and verifies the
+  queued `offFromWork` action.
+- Calls `service.DisableAllJung` as an admin and verifies both the DynamoDB
+  chat update and Telegram reply text.
 
 ## Not Covered
 
@@ -118,15 +151,15 @@ This is an adapter integration smoke test, not full product parity coverage.
 
 It does not cover:
 
-- stage HTTP route behaviour
-- queue worker polling, dispatch, and handler execution
-- service-layer command side effects
-- Telegram API calls
+- the full `worker.Run` polling loop; dispatch is exercised through one real SQS
+  poll plus production service handlers
+- real Telegram API calls
 - EventBridge Scheduler itself
-- DynamoDB pagination
-- DynamoDB scale-up behaviour
+- DynamoDB pagination past a single result page
 - AWS IAM, throttling, network, or real AWS service differences
 - JavaScript-vs-Go parity from an independent fixture
+- Lambda SQS event wrapper casing differences that never appear in Floci receive
+  output
 
 The SQS assertions intentionally compare Go-produced messages with Go-decoded
 messages. That catches adapter and AWS-emulator integration mistakes, but it can
@@ -139,5 +172,10 @@ wrong assumption.
 - `floci.go` starts and stops the Testcontainers Floci container.
 - `aws.go` creates AWS SDK clients and temporary AWS resources.
 - `checks.go` contains the DynamoDB and SQS flow assertions.
-- `webhook_checks.go` contains the HTTP webhook routing assertions.
+- `helpers.go` contains shared HTTP, queue, and recording messenger helpers.
+- `webhook_checks.go` contains HTTP webhook routing assertions.
+- `stage_checks.go` contains stage HTTP route assertions.
+- `worker_checks.go` contains queue poll and service dispatch assertions.
+- `service_checks.go` contains scheduled fan-out assertions.
+- `service_settings_checks.go` contains admin settings side-effect assertions.
 - `BUCK` defines the slow Buck `go_test` target.

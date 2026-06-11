@@ -1,0 +1,251 @@
+package integration
+
+import (
+	"context"
+	"fmt"
+	"strconv"
+	"testing"
+	"time"
+
+	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	awssqs "github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/siutsin/telegram-jung2-bot/internal/chat"
+	appdynamodb "github.com/siutsin/telegram-jung2-bot/internal/dynamodb"
+	"github.com/siutsin/telegram-jung2-bot/internal/message"
+	"github.com/siutsin/telegram-jung2-bot/internal/queue"
+	"github.com/siutsin/telegram-jung2-bot/internal/service"
+	"github.com/siutsin/telegram-jung2-bot/internal/statistics"
+)
+
+const (
+	workerChatID    int64 = 42003
+	workerChatTitle       = "Worker Integration"
+	workerUserID    int64 = 10003
+)
+
+func runWorkerServiceIntegration(
+	t *testing.T,
+	ctx context.Context,
+	dynamoClient *awsdynamodb.Client,
+	sqsClient *awssqs.Client,
+	resources testResources,
+) {
+	t.Helper()
+
+	drainQueue(t, ctx, queue.NewClient(sqsClient), resources.queueURL)
+
+	t.Run("jungHelp dispatch", func(t *testing.T) {
+		runWorkerJungHelpCase(t, ctx, dynamoClient, sqsClient, resources)
+	})
+	t.Run("topTen dispatch", func(t *testing.T) {
+		runWorkerTopTenCase(t, ctx, dynamoClient, sqsClient, resources)
+	})
+	t.Run("offFromWork dispatch", func(t *testing.T) {
+		runWorkerOffFromWorkCase(t, ctx, dynamoClient, sqsClient, resources)
+	})
+}
+
+func runWorkerJungHelpCase(
+	t *testing.T,
+	ctx context.Context,
+	dynamoClient *awsdynamodb.Client,
+	sqsClient *awssqs.Client,
+	resources testResources,
+) {
+	t.Helper()
+
+	messenger := &recordingMessenger{}
+	action := mustCommandAction(t, "/jungHelp", workerChatID, workerChatTitle, workerUserID)
+	pollServiceAction(t, ctx, dynamoClient, sqsClient, resources, messenger, action, dispatchServiceAction)
+
+	messages := messenger.recordedMessages()
+	require.Len(t, messages, 1)
+	assert.Equal(t, workerChatID, messages[0].chatID)
+	assert.Contains(t, messages[0].text, statistics.HelpMessage(workerChatTitle))
+	assert.True(t, messages[0].options.DisableWebPagePreview)
+	assert.Equal(t, "markdown", messages[0].options.ParseMode)
+}
+
+func runWorkerTopTenCase(
+	t *testing.T,
+	ctx context.Context,
+	dynamoClient *awsdynamodb.Client,
+	sqsClient *awssqs.Client,
+	resources testResources,
+) {
+	t.Helper()
+
+	seedWorkerTopTenData(t, ctx, dynamoClient, resources)
+
+	messenger := &recordingMessenger{}
+	action := mustCommandAction(t, "/topTen", workerChatID, workerChatTitle, workerUserID)
+	pollServiceAction(t, ctx, dynamoClient, sqsClient, resources, messenger, action, dispatchServiceAction)
+
+	messages := messenger.recordedMessages()
+	require.Len(t, messages, 1)
+	assert.Equal(t, workerChatID, messages[0].chatID)
+	assert.Contains(t, messages[0].text, workerChatTitle)
+	assert.Contains(t, messages[0].text, "Top 10 冗員s")
+}
+
+func runWorkerOffFromWorkCase(
+	t *testing.T,
+	ctx context.Context,
+	dynamoClient *awsdynamodb.Client,
+	sqsClient *awssqs.Client,
+	resources testResources,
+) {
+	t.Helper()
+
+	seedWorkerTopTenData(t, ctx, dynamoClient, resources)
+
+	messenger := &recordingMessenger{}
+	action := queue.Action{
+		Name: queue.ActionOffFromWork,
+		Body: queue.BodyOffFromWork,
+		Attributes: map[string]string{
+			"chatId": formatInt(workerChatID),
+			"action": queue.ActionOffFromWork,
+		},
+	}
+	pollServiceAction(t, ctx, dynamoClient, sqsClient, resources, messenger, action, dispatchOffFromWorkAction)
+
+	messages := messenger.recordedMessages()
+	require.Len(t, messages, 1)
+	assert.Equal(t, workerChatID, messages[0].chatID)
+	assert.Contains(t, messages[0].text, "夠鐘收工")
+}
+
+func seedWorkerTopTenData(
+	t *testing.T,
+	ctx context.Context,
+	dynamoClient *awsdynamodb.Client,
+	resources testResources,
+) {
+	t.Helper()
+
+	chatRepo := appdynamodb.NewChatClient(dynamoClient)
+	messageRepo := appdynamodb.NewMessageClient(dynamoClient)
+
+	settings := chat.ChatSetting{
+		ChatID:        workerChatID,
+		ChatTitle:     workerChatTitle,
+		DateCreated:   integrationNow,
+		TTL:           message.TTL(integrationNow, message.DefaultTTL),
+		EnableAllJung: true,
+	}
+	err := chatRepo.Save(ctx, resources.chatTable, settings)
+	require.NoError(t, err, "seed worker chat row")
+
+	users := []struct {
+		firstName string
+		offset    time.Duration
+	}{
+		{firstName: "Alice", offset: 3 * time.Minute},
+		{firstName: "Bob", offset: 2 * time.Minute},
+		{firstName: "Carol", offset: time.Minute},
+	}
+	for _, user := range users {
+		row := message.Message{
+			ChatID:      workerChatID,
+			DateCreated: integrationNow.Add(user.offset),
+			ChatTitle:   workerChatTitle,
+			UserID:      workerUserID,
+			FirstName:   user.firstName,
+			TTL:         message.TTL(integrationNow, message.DefaultTTL),
+		}
+		err = messageRepo.Save(ctx, resources.messageTable, row)
+		require.NoError(t, err, "seed worker message for %s", user.firstName)
+	}
+}
+
+type serviceActionDispatcher func(context.Context, service.Service, queue.Action) error
+
+func pollServiceAction(
+	t *testing.T,
+	ctx context.Context,
+	dynamoClient *awsdynamodb.Client,
+	sqsClient *awssqs.Client,
+	resources testResources,
+	messenger *recordingMessenger,
+	action queue.Action,
+	dispatch serviceActionDispatcher,
+) {
+	t.Helper()
+
+	queueClient := queue.NewClient(sqsClient)
+	producer := queue.NewProducer(resources.queueURL, queueClient)
+	svc := newIntegrationService(dynamoClient, sqsClient, resources, messenger)
+
+	err := producer.Enqueue(ctx, action)
+	require.NoError(t, err, "enqueue worker action")
+
+	err = queue.NewConsumer(resources.queueURL, queueClient).Poll(ctx, func(pollCtx context.Context, raw queue.RawMessage) error {
+		decoded := queue.DecodeMessage(raw)
+		handlerErr := dispatch(pollCtx, svc, decoded)
+		if handlerErr != nil {
+			return handlerErr
+		}
+
+		return queueClient.Delete(pollCtx, queue.DeleteMessageRequest{
+			QueueURL:      resources.queueURL,
+			ReceiptHandle: raw.ReceiptHandle,
+		})
+	})
+	require.NoError(t, err, "poll queue action")
+
+	assertQueueEmpty(t, ctx, queueClient, resources.queueURL)
+}
+
+func newIntegrationService(
+	dynamoClient *awsdynamodb.Client,
+	sqsClient *awssqs.Client,
+	resources testResources,
+	messenger *recordingMessenger,
+) service.Service {
+	chatRepo := appdynamodb.NewChatClient(dynamoClient)
+	messageRepo := appdynamodb.NewMessageClient(dynamoClient)
+	sender := queue.NewClient(sqsClient)
+
+	return service.New(
+		chatRepo,
+		resources.chatTable,
+		messageRepo,
+		resources.messageTable,
+		messenger,
+		func() time.Time { return integrationNow },
+		resources.queueURL,
+		sender,
+	)
+}
+
+func dispatchServiceAction(ctx context.Context, svc service.Service, action queue.Action) error {
+	switch action.Name {
+	case queue.ActionJungHelp:
+		return svc.JungHelp(ctx, actionChatID(action), action.Attributes["chatTitle"])
+	case queue.ActionTopTen:
+		return svc.TopTen(ctx, actionChatID(action))
+	default:
+		return fmt.Errorf("unexpected action %q", action.Name)
+	}
+}
+
+func dispatchOffFromWorkAction(ctx context.Context, svc service.Service, action queue.Action) error {
+	if action.Name != queue.ActionOffFromWork {
+		return fmt.Errorf("unexpected action %q", action.Name)
+	}
+
+	return svc.OffFromWork(ctx, actionChatID(action))
+}
+
+func actionChatID(action queue.Action) int64 {
+	value, err := strconv.ParseInt(action.Attributes["chatId"], 10, 64)
+	if err != nil {
+		return 0
+	}
+
+	return value
+}

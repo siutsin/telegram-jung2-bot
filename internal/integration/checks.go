@@ -84,6 +84,80 @@ func runDynamoDBIntegration(t *testing.T, ctx context.Context, client *awsdynamo
 	assert.Equal(t, row.Username, messages[0].Username)
 	assert.Equal(t, row.UserID, messages[0].UserID)
 	assert.True(t, messages[0].DateCreated.Equal(row.DateCreated), "dateCreated")
+
+	runDynamoDBMultiMessageQuery(t, ctx, messageRepo, resources.messageTable, settings.ChatID, created)
+	runDynamoDBListEnabled(t, ctx, chatRepo, resources.chatTable, settings)
+}
+
+func runDynamoDBMultiMessageQuery(
+	t *testing.T,
+	ctx context.Context,
+	messageRepo appdynamodb.MessageClient,
+	messageTable string,
+	chatID int64,
+	baseTime time.Time,
+) {
+	t.Helper()
+
+	extraUsers := []struct {
+		username string
+		offset   time.Duration
+	}{
+		{username: "second-user", offset: 2 * time.Minute},
+		{username: "third-user", offset: 3 * time.Minute},
+	}
+	for _, user := range extraUsers {
+		row := message.Message{
+			ChatID:      chatID,
+			DateCreated: baseTime.Add(user.offset),
+			ChatTitle:   integrationChatTitle,
+			UserID:      integrationUserID,
+			Username:    user.username,
+			TTL:         message.TTL(baseTime, message.DefaultTTL),
+		}
+		err := messageRepo.Save(ctx, messageTable, row)
+		require.NoError(t, err, "save extra message row for %s", user.username)
+	}
+
+	messages, err := messageRepo.QueryByChat(ctx, messageTable, chatID, baseTime.Add(-time.Minute))
+	require.NoError(t, err, "query multiple messages by chat")
+	require.Len(t, messages, 3)
+	assert.Equal(t, "third-user", messages[0].Username)
+	assert.Equal(t, "second-user", messages[1].Username)
+	assert.Equal(t, "floci-user", messages[2].Username)
+}
+
+func runDynamoDBListEnabled(
+	t *testing.T,
+	ctx context.Context,
+	chatRepo appdynamodb.ChatClient,
+	chatTable string,
+	primary chat.ChatSetting,
+) {
+	t.Helper()
+
+	const (
+		secondChatID    int64 = 42011
+		secondChatTitle       = "Second Floci Chat"
+	)
+
+	second := chat.ChatSetting{
+		ChatID:        secondChatID,
+		ChatTitle:     secondChatTitle,
+		DateCreated:   primary.DateCreated,
+		TTL:           primary.TTL,
+		EnableAllJung: true,
+	}
+	err := chatRepo.Save(ctx, chatTable, second)
+	require.NoError(t, err, "save second enabled chat")
+
+	rows, err := chatRepo.ListEnabled(ctx, chatTable)
+	require.NoError(t, err, "list enabled chats")
+	require.Len(t, rows, 2)
+
+	chatIDs := []int64{rows[0].ChatID, rows[1].ChatID}
+	assert.Contains(t, chatIDs, primary.ChatID)
+	assert.Contains(t, chatIDs, secondChatID)
 }
 
 func runSQSIntegration(t *testing.T, ctx context.Context, client *awssqs.Client, resources testResources) {
