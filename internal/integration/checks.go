@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"testing"
@@ -168,6 +169,10 @@ func runSQSIntegration(t *testing.T, ctx context.Context, client *awssqs.Client,
 
 	actionCases := queueActionCases(t)
 
+	t.Run("Lambda attribute casing", func(t *testing.T) {
+		runSQSAttributeCasingIntegration(t)
+	})
+
 	for _, testCase := range actionCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			err := producer.Enqueue(ctx, testCase.action)
@@ -266,5 +271,50 @@ func receiveOne(ctx context.Context, client interface {
 		if time.Now().After(deadline) {
 			return queue.ReceiveMessageResponse{}, errors.New("timed out waiting for SQS message")
 		}
+	}
+}
+
+func runSQSAttributeCasingIntegration(t *testing.T) {
+	t.Helper()
+
+	tests := []struct {
+		name string
+		raw  string
+		want queue.Action
+	}{
+		{
+			name: "lower case action attribute",
+			raw:  `{"body":"sendTopTenMessage","messageAttributes":{"action":{"stringValue":"topten"},"chatId":{"stringValue":"42001"}}}`,
+			want: queue.Action{
+				Name: queue.ActionTopTen,
+				Body: queue.BodyTopTen,
+				Attributes: map[string]string{
+					"action": queue.ActionTopTen,
+					"chatId": "42001",
+				},
+			},
+		},
+		{
+			name: "lower case wins over upper case",
+			raw:  `{"body":"sendAllJungMessage","messageAttributes":{"action":{"StringValue":"topten","stringValue":"alljung"}}}`,
+			want: queue.Action{
+				Name: queue.ActionAllJung,
+				Body: queue.BodyAllJung,
+				Attributes: map[string]string{
+					"action": queue.ActionAllJung,
+				},
+			},
+		},
+	}
+
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			var raw queue.RawMessage
+			err := json.Unmarshal([]byte(testCase.raw), &raw)
+			require.NoError(t, err, "unmarshal raw SQS message")
+
+			got := queue.DecodeMessage(raw)
+			assertAction(t, testCase.want, got)
+		})
 	}
 }

@@ -51,6 +51,9 @@ func runWebhookIntegration(
 	t.Run("invalid setOff reply", func(t *testing.T) {
 		runWebhookInvalidSetOffCase(t, ctx, dynamoClient, sqsClient, resources)
 	})
+	t.Run("non group update", func(t *testing.T) {
+		runWebhookNonGroupCase(t, ctx, dynamoClient, sqsClient, resources)
+	})
 }
 
 func runWebhookTopTenCase(
@@ -308,6 +311,38 @@ func runWebhookInvalidSetOffCase(
 	require.Len(t, messages, 1)
 	assert.Contains(t, messages[0].text, "Error: Invalid format for setOffFromWorkTimeUTC")
 	assertQueueEmpty(t, ctx, httpServer.queueClient, httpServer.queueURL)
+}
+
+func runWebhookNonGroupCase(
+	t *testing.T,
+	ctx context.Context,
+	dynamoClient *awsdynamodb.Client,
+	sqsClient *awssqs.Client,
+	resources testResources,
+) {
+	t.Helper()
+
+	httpServer := buildIntegrationHTTPServer(t, dynamoClient, sqsClient, resources, integrationServerOptions{})
+	response := doHTTP(
+		t,
+		ctx,
+		http.MethodPost,
+		httpServer.baseURL+"/webhook",
+		`{"message":{"chat":{"id":42016,"title":"Private","type":"private"},"text":"hello"}}`,
+	)
+	defer func() {
+		closeErr := response.Body.Close()
+		if closeErr != nil {
+			t.Errorf("close HTTP response body: %v", closeErr)
+		}
+	}()
+
+	assert.Equal(t, http.StatusNoContent, response.StatusCode)
+	assertQueueEmpty(t, ctx, httpServer.queueClient, httpServer.queueURL)
+
+	_, ok, err := appdynamodb.NewChatClient(dynamoClient).Get(ctx, resources.chatTable, 42016)
+	require.NoError(t, err, "get chat after non-group webhook")
+	assert.False(t, ok, "non-group webhook should not persist chat metadata")
 }
 
 func webhookTopTenPayload() string {

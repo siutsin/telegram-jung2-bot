@@ -3,8 +3,10 @@ go_test(
     srcs = [
         "aws.go",
         "checks.go",
+        "dispatch.go",
         "floci.go",
         "helpers.go",
+        "http.go",
         "integration_test.go",
         "service.go",
         "settings.go",
@@ -26,6 +28,7 @@ go_test(
         "//internal/statistics:statistics",
         "//internal/telegram:telegram",
         "//internal/workday:workday",
+        "//internal/worker:worker",
 
         "//vendor/github.com/aws/aws-sdk-go-v2/aws:aws",
         "//vendor/github.com/aws/aws-sdk-go-v2/config:config",

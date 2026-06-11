@@ -111,15 +111,18 @@ For every action, the test verifies:
 - message body
 - all message attributes
 - delete-after-receive path
+- Lambda-style lower-case `stringValue` attribute decoding, including precedence
+  over `StringValue`
 
 ### HTTP webhook routing flow
 
 - Builds `httpserver.NewServer` with real DynamoDB and SQS adapters.
 - Posts Telegram group webhooks through `httptest`.
 - Verifies HTTP `200`, saved chat rows, saved message rows, and queued actions.
+- Covers `/health`.
 - Covers `/topTen`, plain group messages without queue work, multiple commands in
-  contract order, and invalid `/setOffFromWorkTimeUTC` replies through a
-  recording messenger.
+  contract order, invalid `/setOffFromWorkTimeUTC` replies through a recording
+  messenger, and non-group updates that return HTTP `204` without persistence.
 
 ### HTTP stage route flow
 
@@ -135,15 +138,16 @@ For every action, the test verifies:
 - Receives one SQS batch through `queue.NewConsumer`.
 - Dispatches to real `service.Service` handlers.
 - Verifies Telegram replies through a recording messenger.
-- Covers `jungHelp`, `topTen`, and `offFromWork` report generation against
-  seeded DynamoDB rows.
+- Covers `jungHelp`, `topTen`, `topDiver`, `allJung`, and `offFromWork` report
+  generation against seeded DynamoDB rows.
 
 ### Service fan-out and admin settings flow
 
 - Calls `service.OnOffFromWork` against seeded due-chat rows and verifies the
   queued `offFromWork` action.
-- Calls `service.DisableAllJung` as an admin and verifies both the DynamoDB
-  chat update and Telegram reply text.
+- Calls `service.DisableAllJung`, `service.EnableAllJung`, and
+  `service.SetOffWorkTime` as an admin and verifies DynamoDB chat updates plus
+  Telegram reply text.
 
 ## Not Covered
 
@@ -158,8 +162,8 @@ It does not cover:
 - DynamoDB pagination past a single result page
 - AWS IAM, throttling, network, or real AWS service differences
 - JavaScript-vs-Go parity from an independent fixture
-- Lambda SQS event wrapper casing differences that never appear in Floci receive
-  output
+- Floci receive output differences for mixed Lambda/SQS attribute casings beyond
+  the decoded contract cases above
 
 The SQS assertions intentionally compare Go-produced messages with Go-decoded
 messages. That catches adapter and AWS-emulator integration mistakes, but it can
@@ -173,6 +177,8 @@ wrong assumption.
 - `aws.go` creates AWS SDK clients and temporary AWS resources.
 - `checks.go` contains the DynamoDB and SQS flow assertions.
 - `helpers.go` contains shared HTTP, queue, and recording messenger helpers.
+- `dispatch.go` maps queue actions onto production service handlers.
+- `http.go` contains the plain `/health` route check.
 - `webhook.go` contains HTTP webhook routing assertions.
 - `stage.go` contains stage HTTP route assertions.
 - `worker.go` contains queue poll and service dispatch assertions.

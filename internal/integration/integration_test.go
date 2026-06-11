@@ -54,6 +54,9 @@ func TestFlociAWSAdapters(t *testing.T) {
 	t.Run("SQS", func(t *testing.T) {
 		runSQSIntegration(t, ctx, clients.sqs, resources)
 	})
+	t.Run("HTTP health", func(t *testing.T) {
+		runHTTPHealthIntegration(t, ctx, clients.dynamo, clients.sqs, resources)
+	})
 	t.Run("HTTP webhook", func(t *testing.T) {
 		runWebhookIntegration(t, ctx, clients.dynamo, clients.sqs, resources)
 	})

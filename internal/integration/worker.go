@@ -2,7 +2,6 @@ package integration
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -46,6 +45,12 @@ func runWorkerServiceIntegration(
 	t.Run("offFromWork dispatch", func(t *testing.T) {
 		runWorkerOffFromWorkCase(t, ctx, dynamoClient, sqsClient, resources)
 	})
+	t.Run("topDiver dispatch", func(t *testing.T) {
+		runWorkerTopDiverCase(t, ctx, dynamoClient, sqsClient, resources)
+	})
+	t.Run("allJung dispatch", func(t *testing.T) {
+		runWorkerAllJungCase(t, ctx, dynamoClient, sqsClient, resources)
+	})
 }
 
 func runWorkerJungHelpCase(
@@ -59,7 +64,7 @@ func runWorkerJungHelpCase(
 
 	messenger := &recordingMessenger{}
 	action := mustCommandAction(t, "/jungHelp", workerChatID, workerChatTitle, workerUserID)
-	pollServiceAction(t, ctx, dynamoClient, sqsClient, resources, messenger, action, dispatchServiceAction)
+	pollServiceAction(t, ctx, dynamoClient, sqsClient, resources, messenger, action)
 
 	messages := messenger.recordedMessages()
 	require.Len(t, messages, 1)
@@ -82,7 +87,7 @@ func runWorkerTopTenCase(
 
 	messenger := &recordingMessenger{}
 	action := mustCommandAction(t, "/topTen", workerChatID, workerChatTitle, workerUserID)
-	pollServiceAction(t, ctx, dynamoClient, sqsClient, resources, messenger, action, dispatchServiceAction)
+	pollServiceAction(t, ctx, dynamoClient, sqsClient, resources, messenger, action)
 
 	messages := messenger.recordedMessages()
 	require.Len(t, messages, 1)
@@ -111,12 +116,54 @@ func runWorkerOffFromWorkCase(
 			"action": queue.ActionOffFromWork,
 		},
 	}
-	pollServiceAction(t, ctx, dynamoClient, sqsClient, resources, messenger, action, dispatchOffFromWorkAction)
+	pollServiceAction(t, ctx, dynamoClient, sqsClient, resources, messenger, action)
 
 	messages := messenger.recordedMessages()
 	require.Len(t, messages, 1)
 	assert.Equal(t, workerChatID, messages[0].chatID)
 	assert.Contains(t, messages[0].text, "夠鐘收工")
+}
+
+func runWorkerTopDiverCase(
+	t *testing.T,
+	ctx context.Context,
+	dynamoClient *awsdynamodb.Client,
+	sqsClient *awssqs.Client,
+	resources testResources,
+) {
+	t.Helper()
+
+	seedWorkerTopTenData(t, ctx, dynamoClient, resources)
+
+	messenger := &recordingMessenger{}
+	action := mustCommandAction(t, "/topDiver", workerChatID, workerChatTitle, workerUserID)
+	pollServiceAction(t, ctx, dynamoClient, sqsClient, resources, messenger, action)
+
+	messages := messenger.recordedMessages()
+	require.Len(t, messages, 1)
+	assert.Equal(t, workerChatID, messages[0].chatID)
+	assert.Contains(t, messages[0].text, "潛水員s")
+}
+
+func runWorkerAllJungCase(
+	t *testing.T,
+	ctx context.Context,
+	dynamoClient *awsdynamodb.Client,
+	sqsClient *awssqs.Client,
+	resources testResources,
+) {
+	t.Helper()
+
+	seedWorkerTopTenData(t, ctx, dynamoClient, resources)
+
+	messenger := &recordingMessenger{}
+	action := mustCommandAction(t, "/allJung", workerChatID, workerChatTitle, workerUserID)
+	pollServiceAction(t, ctx, dynamoClient, sqsClient, resources, messenger, action)
+
+	messages := messenger.recordedMessages()
+	require.Len(t, messages, 1)
+	assert.Equal(t, workerChatID, messages[0].chatID)
+	assert.Contains(t, messages[0].text, "All 冗員s")
 }
 
 func seedWorkerTopTenData(
@@ -162,8 +209,6 @@ func seedWorkerTopTenData(
 	}
 }
 
-type serviceActionDispatcher func(context.Context, service.Service, queue.Action) error
-
 func pollServiceAction(
 	t *testing.T,
 	ctx context.Context,
@@ -172,7 +217,6 @@ func pollServiceAction(
 	resources testResources,
 	messenger *recordingMessenger,
 	action queue.Action,
-	dispatch serviceActionDispatcher,
 ) {
 	t.Helper()
 
@@ -185,7 +229,7 @@ func pollServiceAction(
 
 	err = queue.NewConsumer(resources.queueURL, queueClient).Poll(ctx, func(pollCtx context.Context, raw queue.RawMessage) error {
 		decoded := queue.DecodeMessage(raw)
-		handlerErr := dispatch(pollCtx, svc, decoded)
+		handlerErr := dispatchAllServiceActions(pollCtx, svc, decoded)
 		if handlerErr != nil {
 			return handlerErr
 		}
@@ -222,27 +266,12 @@ func newIntegrationService(
 	)
 }
 
-func dispatchServiceAction(ctx context.Context, svc service.Service, action queue.Action) error {
-	switch action.Name {
-	case queue.ActionJungHelp:
-		return svc.JungHelp(ctx, actionChatID(action), action.Attributes["chatTitle"])
-	case queue.ActionTopTen:
-		return svc.TopTen(ctx, actionChatID(action))
-	default:
-		return fmt.Errorf("unexpected action %q", action.Name)
-	}
-}
-
-func dispatchOffFromWorkAction(ctx context.Context, svc service.Service, action queue.Action) error {
-	if action.Name != queue.ActionOffFromWork {
-		return fmt.Errorf("unexpected action %q", action.Name)
-	}
-
-	return svc.OffFromWork(ctx, actionChatID(action))
-}
-
 func actionChatID(action queue.Action) int64 {
-	value, err := strconv.ParseInt(action.Attributes["chatId"], 10, 64)
+	return actionChatIDFromAttribute(action.Attributes["chatId"])
+}
+
+func actionChatIDFromAttribute(raw string) int64 {
+	value, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil {
 		return 0
 	}
