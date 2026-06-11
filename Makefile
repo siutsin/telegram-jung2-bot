@@ -16,7 +16,7 @@ coverage: test
 	./hack/test-coverage.sh
 
 integration:
-	buck2 test $(TEST_MODIFIERS) $(SLOW_TEST_TARGETS) -- --env SLOW_TESTS=1
+	buck2 test $(TEST_MODIFIERS) $(SLOW_TEST_TARGETS) -- --env INTEGRATION_TESTS=1
 
 ci: vendor
 	$(MAKE) coverage

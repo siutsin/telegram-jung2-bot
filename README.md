@@ -91,13 +91,13 @@ make integration
 Starts a temporary [Floci](https://github.com/floci-io/floci) container through
 Testcontainers-Go, creates local DynamoDB tables and an SQS queue, then runs the
 slow Buck `go_test` target against the real AWS SDK adapters with
-`SLOW_TESTS=1`. It round-trips chat/message DynamoDB rows and every queue action
+`INTEGRATION_TESTS=1`. It round-trips chat/message DynamoDB rows and every queue action
 shape: all Telegram command actions plus the scheduled `onOffFromWork` and
 `offFromWork` actions. Set `FLOCI_ENDPOINT` to use an already-running
 Floci-compatible endpoint instead of launching Docker.
 
 The integration target is labelled `slow`, so `make test` and `make coverage`
-do not start Docker. The test also skips unless `SLOW_TESTS=1`; `make
+do not start Docker. The test also skips unless `INTEGRATION_TESTS=1`; `make
 integration` passes that environment variable through Buck.
 
 Supported integration environment variables:

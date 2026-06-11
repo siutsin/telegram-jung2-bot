@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	defaultRegion = "eu-west-1"
-	slowTestsEnv  = "SLOW_TESTS"
+	defaultRegion       = "eu-west-1"
+	integrationTestsEnv = "INTEGRATION_TESTS"
 )
 
 type integrationEnv struct {
@@ -25,7 +25,7 @@ type integrationEnv struct {
 
 var (
 	sharedIntegrationEnv *integrationEnv
-	integrationSlowGate  bool
+	integrationTestsGate bool
 )
 
 func bootstrapIntegration() error {
@@ -106,8 +106,8 @@ func requireIntegrationEnv(t *testing.T) (context.Context, awsClients, testResou
 	if testing.Short() {
 		t.Skip("skipping Floci integration in short mode")
 	}
-	if integrationSlowGate {
-		t.Skipf("set %s=1 to run Floci integration", slowTestsEnv)
+	if integrationTestsGate {
+		t.Skipf("set %s=1 to run Floci integration", integrationTestsEnv)
 	}
 	require.NotNil(t, sharedIntegrationEnv, "integration environment not initialised")
 

@@ -25,12 +25,12 @@ make integration
 The target runs the slow Buck `go_test` target:
 
 ```bash
-buck2 test -m toolchains//:race //internal/integration:floci_integration_test -- --env SLOW_TESTS=1
+buck2 test -m toolchains//:race //internal/integration:floci_integration_test -- --env INTEGRATION_TESTS=1
 ```
 
 Environment variables:
 
-- `SLOW_TESTS=1` is required; otherwise the test skips.
+- `INTEGRATION_TESTS=1` is required; otherwise the test skips.
 - `FLOCI_ENDPOINT` reuses an already-running Floci-compatible AWS endpoint.
 - `FLOCI_IMAGE` overrides the default `floci/floci:latest` container image.
 - `AWS_REGION` overrides the local AWS SDK region, defaulting to `eu-west-1`.

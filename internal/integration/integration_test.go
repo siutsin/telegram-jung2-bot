@@ -7,8 +7,8 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	if os.Getenv(slowTestsEnv) != "1" {
-		integrationSlowGate = true
+	if os.Getenv(integrationTestsEnv) != "1" {
+		integrationTestsGate = true
 		os.Exit(m.Run())
 	}
 

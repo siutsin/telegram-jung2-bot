@@ -148,7 +148,7 @@ complete. It must be removed before the final cleanup gate.
 ### Local AWS Integration
 
 - [x] `make integration` runs the slow Buck `go_test` target with
-  `SLOW_TESTS=1` and starts Floci locally through Testcontainers-Go unless
+  `INTEGRATION_TESTS=1` and starts Floci locally through Testcontainers-Go unless
   `FLOCI_ENDPOINT` points at an existing endpoint.
 - [x] README documents the fast/slow split and the supported Floci integration
   environment variables.
