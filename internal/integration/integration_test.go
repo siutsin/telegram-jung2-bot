@@ -28,6 +28,11 @@ func TestFlociDynamoDB(t *testing.T) {
 	runDynamoDBIntegration(t, ctx, clients.dynamo, resources)
 }
 
+func TestFlociDynamoDBPagination(t *testing.T) {
+	ctx, clients, resources := startIntegrationTest(t)
+	runDynamoDBPaginationIntegration(t, ctx, clients.dynamo, resources)
+}
+
 func TestFlociSQS(t *testing.T) {
 	ctx, clients, resources := startIntegrationTest(t)
 	runSQSIntegration(t, ctx, clients.sqs, resources)
@@ -46,6 +51,11 @@ func TestFlociHTTPWebhook(t *testing.T) {
 func TestFlociHTTPStage(t *testing.T) {
 	ctx, clients, resources := startIntegrationTest(t)
 	runStageHTTPIntegration(t, ctx, clients.dynamo, clients.sqs, resources)
+}
+
+func TestFlociWorkerRun(t *testing.T) {
+	ctx, clients, resources := startIntegrationTest(t)
+	runWorkerRunIntegration(t, ctx, clients.dynamo, clients.sqs, resources)
 }
 
 func TestFlociWorkerService(t *testing.T) {

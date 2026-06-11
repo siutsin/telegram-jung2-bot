@@ -31,14 +31,17 @@ stops the container after all tests. Each `TestFloci*` provisions its own
 DynamoDB tables and SQS queue via `startIntegrationTest`, then deletes them in
 `t.Cleanup`.
 
-Buck runs one `go_test` target; Go runs eight top-level tests. Failures name the
+Buck runs one `go_test` target; Go runs ten top-level tests. Failures name the
 failing `TestFloci*` (and subtests where used) in Buck stderr/stdout.
 
 - `TestFlociDynamoDB` — chat/message CRUD, due-chat scan, `ListEnabled`
-- `TestFlociSQS` — all command and schedule queue actions, attribute casing
+- `TestFlociDynamoDBPagination` — `ListEnabled` across multi-page DynamoDB scans
+- `TestFlociSQS` — all command and schedule queue actions, attribute casing,
+  Floci receive round-trip
 - `TestFlociHTTPHealth` — `/health`
 - `TestFlociHTTPWebhook` — group webhooks, multi-command order, invalid admin cmd
 - `TestFlociHTTPStage` — stage ping, webhook, scheduler, scale-up routes
+- `TestFlociWorkerRun` — production `worker.Run` poll loop with cancel
 - `TestFlociWorkerService` — SQS poll → `service.Service` → recorded replies
 - `TestFlociServiceOnOffFromWork` — `OnOffFromWork` fan-out to `offFromWork`
 - `TestFlociServiceAdminSettings` — `DisableAllJung`, `EnableAllJung`,
@@ -49,14 +52,13 @@ failing `TestFloci*` (and subtests where used) in Buck stderr/stdout.
 Adapter smoke tests against local Floci — not full production parity.
 
 **In scope:** real SDK clients, temporary tables/queue, production builders and
-handlers, queue encode/receive/decode/delete, `httptest` HTTP routing.
+handlers, queue encode/receive/decode/delete, `httptest` HTTP routing,
+`worker.Run`, multi-page `ListEnabled`, Floci SQS receive plus Lambda-style
+attribute casing on received payloads.
 
-**Out of scope:** real Telegram API, EventBridge, full `worker.Run` loop,
-multi-page DynamoDB scans, IAM/throttling, JS-vs-Go fixtures, mixed Lambda/SQS
-casing beyond the explicit decode contract cases.
-
-SQS checks round-trip Go-encoded messages through Go decode. That catches
-adapter and emulator mistakes but not shared encode/decode bugs.
+**Out of scope:** real Telegram API, EventBridge service itself, IAM/throttling,
+JS-vs-Go fixtures. SQS checks still round-trip Go-encoded messages through Go
+decode, so shared encode/decode bugs need independent fixtures.
 
 ## Files
 

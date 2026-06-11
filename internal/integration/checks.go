@@ -26,6 +26,9 @@ const (
 	integrationChatID    = 42001
 	integrationChatTitle = "Floci Integration"
 	integrationUserID    = 10001
+
+	paginationChatCount       = 120
+	paginationBaseID    int64 = 50000
 )
 
 type queueActionCase struct {
@@ -172,6 +175,9 @@ func runSQSIntegration(t *testing.T, ctx context.Context, client *awssqs.Client,
 	t.Run("Lambda attribute casing", func(t *testing.T) {
 		runSQSAttributeCasingIntegration(t)
 	})
+	t.Run("Floci receive round-trip", func(t *testing.T) {
+		runSQSFlociReceiveCasingIntegration(t, ctx, client, resources)
+	})
 
 	for _, testCase := range actionCases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -272,6 +278,118 @@ func receiveOne(ctx context.Context, client interface {
 			return queue.ReceiveMessageResponse{}, errors.New("timed out waiting for SQS message")
 		}
 	}
+}
+
+func runDynamoDBPaginationIntegration(
+	t *testing.T,
+	ctx context.Context,
+	client *awsdynamodb.Client,
+	resources testResources,
+) {
+	t.Helper()
+
+	chatRepo := appdynamodb.NewChatClient(client)
+	created := integrationNow
+
+	for index := range paginationChatCount {
+		settings := chat.ChatSetting{
+			ChatID:        paginationBaseID + int64(index),
+			ChatTitle:     fmt.Sprintf("Pagination Chat %d", index),
+			DateCreated:   created,
+			TTL:           message.TTL(created, message.DefaultTTL),
+			EnableAllJung: true,
+		}
+		err := chatRepo.Save(ctx, resources.chatTable, settings)
+		require.NoError(t, err, "seed pagination chat %d", index)
+	}
+
+	rows, err := chatRepo.ListEnabled(ctx, resources.chatTable)
+	require.NoError(t, err, "list enabled chats across scan pages")
+	require.Len(t, rows, paginationChatCount)
+
+	chatIDs := make(map[int64]struct{}, len(rows))
+	for _, row := range rows {
+		chatIDs[row.ChatID] = struct{}{}
+	}
+	for index := range paginationChatCount {
+		_, ok := chatIDs[paginationBaseID+int64(index)]
+		assert.True(t, ok, "expected pagination chat %d", index)
+	}
+}
+
+func runSQSFlociReceiveCasingIntegration(
+	t *testing.T,
+	ctx context.Context,
+	client *awssqs.Client,
+	resources testResources,
+) {
+	t.Helper()
+
+	queueClient := queue.NewClient(client)
+	producer := queue.NewProducer(resources.queueURL, queueClient)
+
+	want := schedule.BuildOnOffFromWorkAction("2026-06-11T18:30:00Z")
+
+	err := producer.Enqueue(ctx, want)
+	require.NoError(t, err, "enqueue Floci receive casing action")
+
+	response, err := receiveOne(ctx, queueClient, resources.queueURL)
+	require.NoError(t, err, "receive Floci round-trip message")
+	require.Len(t, response.Messages, 1)
+
+	raw := response.Messages[0]
+	rawJSON, err := json.Marshal(raw)
+	require.NoError(t, err, "marshal Floci raw message")
+	assert.Contains(t, string(rawJSON), "StringValue", "Floci receive should expose StringValue attributes")
+
+	got := queue.DecodeMessage(raw)
+	assertAction(t, want, got)
+
+	lambdaRaw := lambdaStyleRawMessage(t, raw)
+	gotLambda := queue.DecodeMessage(lambdaRaw)
+	assertAction(t, want, gotLambda)
+
+	err = queueClient.Delete(ctx, queue.DeleteMessageRequest{
+		QueueURL:      resources.queueURL,
+		ReceiptHandle: raw.ReceiptHandle,
+	})
+	require.NoError(t, err, "delete Floci receive casing message")
+}
+
+func lambdaStyleRawMessage(t *testing.T, raw queue.RawMessage) queue.RawMessage {
+	t.Helper()
+
+	payload, err := json.Marshal(raw)
+	require.NoError(t, err, "marshal raw message for Lambda casing")
+
+	var generic map[string]any
+	err = json.Unmarshal(payload, &generic)
+	require.NoError(t, err, "unmarshal raw message for Lambda casing")
+
+	attributes, ok := generic["messageAttributes"].(map[string]any)
+	require.True(t, ok, "raw message should include messageAttributes")
+
+	for _, attribute := range attributes {
+		attributeMap, ok := attribute.(map[string]any)
+		if !ok {
+			continue
+		}
+		stringValue, ok := attributeMap["StringValue"].(string)
+		if !ok || stringValue == "" {
+			continue
+		}
+		attributeMap["stringValue"] = stringValue
+		delete(attributeMap, "StringValue")
+	}
+
+	converted, err := json.Marshal(generic)
+	require.NoError(t, err, "marshal Lambda-style raw message")
+
+	var lambdaRaw queue.RawMessage
+	err = json.Unmarshal(converted, &lambdaRaw)
+	require.NoError(t, err, "unmarshal Lambda-style raw message")
+
+	return lambdaRaw
 }
 
 func runSQSAttributeCasingIntegration(t *testing.T) {

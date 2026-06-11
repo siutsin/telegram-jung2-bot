@@ -17,6 +17,7 @@ import (
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
 	"github.com/siutsin/telegram-jung2-bot/internal/service"
 	"github.com/siutsin/telegram-jung2-bot/internal/statistics"
+	"github.com/siutsin/telegram-jung2-bot/internal/worker"
 )
 
 const (
@@ -24,6 +25,75 @@ const (
 	workerChatTitle       = "Worker Integration"
 	workerUserID    int64 = 10003
 )
+
+func runWorkerRunIntegration(
+	t *testing.T,
+	ctx context.Context,
+	dynamoClient *awsdynamodb.Client,
+	sqsClient *awssqs.Client,
+	resources testResources,
+) {
+	t.Helper()
+
+	messenger := &recordingMessenger{}
+	svc := newIntegrationService(dynamoClient, sqsClient, resources, messenger)
+	queueClient := queue.NewClient(sqsClient)
+
+	queueWorker, err := worker.NewPollingWorker(
+		resources.queueURL,
+		queueClient,
+		queueClient,
+		buildWorkerHandlers(svc),
+	)
+	require.NoError(t, err, "create polling worker")
+
+	workerCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- queueWorker.Run(workerCtx)
+	}()
+
+	action := mustCommandAction(t, "/jungHelp", workerChatID, workerChatTitle, workerUserID)
+	producer := queue.NewProducer(resources.queueURL, queueClient)
+	err = producer.Enqueue(ctx, action)
+	require.NoError(t, err, "enqueue worker run action")
+
+	require.Eventually(t, func() bool {
+		return len(messenger.recordedMessages()) > 0
+	}, 15*time.Second, 100*time.Millisecond, "worker run should dispatch jungHelp")
+
+	messages := messenger.recordedMessages()
+	require.Len(t, messages, 1)
+	assert.Equal(t, workerChatID, messages[0].chatID)
+	assert.Contains(t, messages[0].text, statistics.HelpMessage(workerChatTitle))
+
+	cancel()
+
+	select {
+	case runErr := <-done:
+		require.NoError(t, runErr, "worker run should stop after cancel")
+	case <-time.After(15 * time.Second):
+		t.Fatal("timed out waiting for worker run to stop")
+	}
+
+	assertQueueEmpty(t, ctx, queueClient, resources.queueURL)
+}
+
+func buildWorkerHandlers(svc service.Service) worker.Handlers {
+	return worker.Handlers{
+		JungHelp:       svc.JungHelp,
+		TopTen:         svc.TopTen,
+		TopDiver:       svc.TopDiver,
+		AllJung:        svc.AllJung,
+		OffFromWork:    svc.OffFromWork,
+		EnableAllJung:  svc.EnableAllJung,
+		DisableAllJung: svc.DisableAllJung,
+		SetOffWorkTime: svc.SetOffWorkTime,
+		OnOffFromWork:  svc.OnOffFromWork,
+	}
+}
 
 func runWorkerServiceIntegration(
 	t *testing.T,
