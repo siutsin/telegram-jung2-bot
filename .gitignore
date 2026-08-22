@@ -33,8 +33,5 @@ logs/
 .vscode/
 .DS_Store
 
-# Reference material
-/legacy/
-
 # Claude local settings
 /.claude/settings.local.json

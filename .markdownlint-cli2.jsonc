@@ -2,8 +2,8 @@
   "globs": [
     "**/*.md",
     "!buck-out/**",
-    "!l[e]gacy/**",
     "!node_modules/**",
+    "!.scratchpad/**",
     "!vendor/**"
   ],
   "config": {

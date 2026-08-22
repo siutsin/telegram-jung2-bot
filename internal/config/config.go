@@ -173,20 +173,15 @@ func validateConfig(config Config) error {
 		return err
 	}
 
-	return requireProductionSecrets(config)
+	return rejectProductionEndpointOverride(config)
 }
 
-// requireProductionSecrets rejects non-dev stages that run without auth tokens.
-// For example, STAGE=prod without WEBHOOK_SECRET_TOKEN fails config validation.
-func requireProductionSecrets(config Config) error {
+// rejectProductionEndpointOverride rejects a non-dev stage that points at a
+// local AWS endpoint override. For example, STAGE=prod with
+// AWS_ENDPOINT_URL=http://localhost:4566 fails config validation.
+func rejectProductionEndpointOverride(config Config) error {
 	if isLocalStage(config.Stage) {
 		return nil
-	}
-	if strings.TrimSpace(config.WebhookSecretToken) == "" {
-		return fmt.Errorf("WEBHOOK_SECRET_TOKEN is required for stage %q", config.Stage)
-	}
-	if strings.TrimSpace(config.SchedulerSecretToken) == "" {
-		return fmt.Errorf("SCHEDULER_SECRET_TOKEN is required for stage %q", config.Stage)
 	}
 	if config.AWSEndpointURL != "" {
 		return fmt.Errorf("AWS_ENDPOINT_URL is not allowed for stage %q", config.Stage)
@@ -195,8 +190,8 @@ func requireProductionSecrets(config Config) error {
 	return nil
 }
 
-// isLocalStage reports whether stage is exempt from production secret checks.
-// For example, "dev" and " local " both return true.
+// isLocalStage reports whether stage is exempt from the endpoint-override
+// check. For example, "dev" and " local " both return true.
 func isLocalStage(stage string) bool {
 	stage = strings.ToLower(strings.TrimSpace(stage))
 

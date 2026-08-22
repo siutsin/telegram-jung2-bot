@@ -1,6 +1,6 @@
 .git
 buck-out
-legacy
+.scratchpad
 node_modules
 vendor
 .env.development

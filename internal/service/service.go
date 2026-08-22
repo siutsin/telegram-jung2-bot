@@ -264,7 +264,7 @@ func (service Service) sendStatistics(ctx context.Context, chatID int64, options
 
 // isTelegramStatusError reports whether err is a Telegram API 4xx or 5xx error.
 // For example, "telegram API returned HTTP 429" matches, while "timeout" does
-// not. Matches legacy statistics.js non-fatal Telegram HTTP handling.
+// not.
 func isTelegramStatusError(err error) bool {
 	if err == nil {
 		return false

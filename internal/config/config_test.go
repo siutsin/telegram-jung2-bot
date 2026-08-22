@@ -208,57 +208,22 @@ func TestServerAddressIgnoresFalseDockerFlag(t *testing.T) {
 	assert.Equal(t, "127.0.0.1:3000", serverAddress("", "0"))
 }
 
-func TestLoadRequiresProductionSecrets(t *testing.T) {
+// TestLoadAllowsMissingProductionSecrets covers prod booting with both
+// WEBHOOK_SECRET_TOKEN and SCHEDULER_SECRET_TOKEN unset. The two secrets
+// are optional everywhere: httpserver's validateWebhookSecret and
+// validateSchedulerSecret both treat an empty configured secret as "no
+// check", so Load must not reject a prod stage for omitting them.
+func TestLoadAllowsMissingProductionSecrets(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name    string
-		mutate  func(env map[string]string)
-		wantErr string
-	}{
-		{
-			name: "missing webhook secret",
-			mutate: func(env map[string]string) {
-				env["STAGE"] = "prod"
-				env["SCHEDULER_SECRET_TOKEN"] = "scheduler-secret"
-			},
-			wantErr: "WEBHOOK_SECRET_TOKEN is required for stage \"prod\"",
-		},
-		{
-			name: "missing scheduler secret",
-			mutate: func(env map[string]string) {
-				env["STAGE"] = "prod"
-				env["WEBHOOK_SECRET_TOKEN"] = "webhook-secret"
-			},
-			wantErr: "SCHEDULER_SECRET_TOKEN is required for stage \"prod\"",
-		},
-		{
-			name: "dev allows missing secrets",
-			mutate: func(env map[string]string) {
-				env["STAGE"] = "dev"
-			},
-		},
-	}
+	env := validEnv()
+	env["STAGE"] = "prod"
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
+	config, err := Load(env)
 
-			env := validEnv()
-			if test.mutate != nil {
-				test.mutate(env)
-			}
-
-			_, err := Load(env)
-			if test.wantErr == "" {
-				require.NoError(t, err)
-				return
-			}
-
-			require.Error(t, err)
-			assert.EqualError(t, err, test.wantErr)
-		})
-	}
+	require.NoError(t, err)
+	assert.Empty(t, config.WebhookSecretToken)
+	assert.Empty(t, config.SchedulerSecretToken)
 }
 
 func TestLoadRejectsInvalidTimeouts(t *testing.T) {

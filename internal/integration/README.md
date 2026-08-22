@@ -91,18 +91,3 @@ receive, `app.Run` shutdown with a live HTTP listener.
 parity checks. Remove them after production cutover when the old Node bot is
 retired, the queue no longer carries legacy-shaped messages, and only Go
 producers enqueue work.
-
-## Files
-
-- `integration_test.go` — `TestMain`, gate, top-level `TestFloci*`
-- `setup.go` — shared runtime bootstrap, per-test resources
-- `floci.go` — Testcontainers Floci start/stop
-- `aws.go` — AWS clients, table/queue provision
-- `checks.go` — DynamoDB and SQS assertions
-- `pagination.go` — multi-page DynamoDB scan/query checks
-- `legacyfixtures.go` — legacy JS queue payload fixtures
-- `telegram.go` — httptest Telegram Bot API harness
-- `app.go` — `app.Run` lifecycle smoke test
-- `http.go`, `webhook.go`, `stage.go` — HTTP route checks
-- `worker.go`, `service.go`, `settings.go` — service and worker flows
-- `dispatch.go`, `helpers.go` — handler mapping and shared helpers

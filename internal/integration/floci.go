@@ -22,14 +22,12 @@ type flociContainer struct {
 
 func startFloci(ctx context.Context, image string, containerName string) (flociContainer, error) {
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: testcontainers.ContainerRequest{
-			Name:         containerName,
-			Image:        image,
-			ExposedPorts: []string{flociPort},
-			WaitingFor: wait.ForHTTP("/_floci/init").
-				WithPort(flociPort).
-				WithStartupTimeout(60 * time.Second),
-		},
+		Name:         containerName,
+		Image:        image,
+		ExposedPorts: []string{flociPort},
+		WaitingFor: wait.ForHTTP("/_floci/init").
+			WithPort(flociPort).
+			WithStartupTimeout(60 * time.Second),
 		Started: true,
 	})
 	if err != nil {

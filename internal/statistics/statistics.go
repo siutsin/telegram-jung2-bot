@@ -245,7 +245,7 @@ func truncateReportByJSLength(text string) string {
 	return string(runes)
 }
 
-// jsStringLength counts UTF-16 code units like legacy JavaScript String.length.
+// jsStringLength counts UTF-16 code units, same as JavaScript String.length.
 // For example, "冗" becomes 1 and an astral character becomes 2.
 func jsStringLength(value string) int {
 	length := 0

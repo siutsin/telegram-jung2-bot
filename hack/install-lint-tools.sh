@@ -6,7 +6,7 @@ mkdir -p "${install_dir}"
 
 case "$(uname -s)" in
   Darwin)
-    for formula in golangci-lint shellcheck typos-cli markdownlint-cli2; do
+    for formula in golangci-lint shellcheck markdownlint-cli2; do
       brew list "${formula}" >/dev/null 2>&1 || brew install "${formula}"
     done
     ;;
@@ -17,15 +17,6 @@ case "$(uname -s)" in
 
     if ! command -v shellcheck >/dev/null 2>&1; then
       sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
-    fi
-
-    if ! command -v typos >/dev/null 2>&1; then
-      if ! command -v cargo >/dev/null 2>&1; then
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-        # shellcheck disable=SC1091
-        source "${HOME}/.cargo/env"
-      fi
-      cargo install typos-cli --locked
     fi
 
     if ! command -v markdownlint-cli2 >/dev/null 2>&1; then

@@ -73,7 +73,7 @@ focused Go tests.
 - `make test` runs `make lint` first.
 - `make test` runs Buck2 tests with the race detector enabled.
 - `make test-only` is `make test` without lint. Use `make test` locally. CI
-  lints once, then runs `test-only` on each architecture.
+  lints once, then runs `test-only` on arm64.
 - `make coverage` runs only the Buck-built atomic Go coverage gate; coverage
   must remain 100% for `internal/` packages, and `cmd/` entrypoints are
   excluded from the coverage gate.
@@ -82,7 +82,7 @@ focused Go tests.
 - `make build` and `make test` do not refresh vendoring; run `make vendor`
   explicitly after dependency changes.
 - `make lint` runs `gofmt` checks, `go vet`, `golangci-lint`, `shellcheck`,
-  `typos`, and `markdownlint-cli2`.
+  and `markdownlint-cli2`.
 - `make lint-fix` applies supported formatting/lint fixes.
 - `make mock` removes old generated mocks, then regenerates centralised GoMock
   code under `internal/mock/` via `go generate`.

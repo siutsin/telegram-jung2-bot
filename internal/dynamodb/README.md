@@ -71,30 +71,6 @@ This package owns:
 - DynamoDB item decoding
 - pagination loops
 
-## Public API
-
-- `NewMessageClient` returns `MessageClient`
-- `NewChatClient` returns `ChatClient`
-- `NewScaleUpper` returns `ScaleUpper`
-
-## Files
-
-- `chat.go`: chat read, write, statistics, and due-chat adapter
-- `client.go`: adapter types, constructors, and the private DynamoDB SDK interface
-- `codec.go`: DynamoDB value encoding and decoding
-- `message.go`: message save and query adapter
-- `pagination.go`: shared paginated fetch loop
-- `scale.go`: table read-capacity scale-up adapter
-- `update.go`: shared `UpdateItem` bridge
-
-## Internal helpers
-
-- `collectPages` stays generic because the same pagination flow is reused for
-  message rows, chat settings, and chat IDs.
-- `buildMessageSaveUpdate` preserves the deployed message persistence shape.
-- `updateContractUpdate` is the bridge from SDK-free update shapes to the final
-  DynamoDB `UpdateItem` call.
-
 ## Validation
 
 Calls fail when:

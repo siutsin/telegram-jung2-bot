@@ -86,18 +86,6 @@ This package owns:
 - stage route handling
 - HTTP response shaping
 
-## File Layout
-
-- `httpserver.go` defines package contracts, dependency structs, health, and
-  production server construction
-- `routes.go` wires native and stage-compatible HTTP routes
-- `webhook.go` handles Telegram webhook parsing, persistence, command parsing,
-  and enqueueing
-- `response.go` writes plain and stage JSON HTTP responses
-- `validation.go` checks required dependencies and body-size defaults
-- `*_test.go` files mirror the same boundaries: server setup, routes,
-  webhook flow, validation, and shared generated mock helpers
-
 ## Validation
 
 Server creation fails when:
@@ -120,6 +108,3 @@ The tests keep deployed-route contract coverage with table-driven cases for:
 - webhook parse responses
 - non-command messages that should save without enqueueing
 - dependency validation and dependency error responses
-
-Tests that assert side effects, such as saved rows, queue action attributes, or
-Telegram replies, stay explicit so contract details remain easy to inspect.
