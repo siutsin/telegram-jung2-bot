@@ -11,6 +11,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Filter changed paths
+        id: filter
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          filters: |
+            code:
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+              - 'vendor/**'
+              - 'BUCK'
+              - '**/BUCK'
+              - 'toolchains/**'
+              - 'Makefile'
+              - 'hack/**'
+              - 'Dockerfile'
+
   # Run on arm64. Buck2 latest cannot link Go 1.27 stdlib on linux/amd64:
   # `sync/atomic: invalid reference to internal/runtime/atomic.Load`.
   lint:
@@ -46,6 +75,8 @@ jobs:
   # Architecture-independent, so run it once. Enforces the 100% coverage
   # gate for internal/ packages (cmd/ entrypoints are excluded).
   coverage:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
