@@ -1,0 +1,19 @@
+go_binary(
+    name = "app",
+    srcs = ["main.go"],
+    deps = [
+        "//internal/app:app",
+        "//internal/config:config",
+        "//internal/dynamodb:dynamodb",
+        "//internal/httpserver:httpserver",
+        "//internal/queue:queue",
+        "//internal/service:service",
+        "//internal/telegram:telegram",
+        "//internal/worker:worker",
+        "//vendor/github.com/aws/aws-sdk-go-v2/aws:aws",
+        "//vendor/github.com/aws/aws-sdk-go-v2/config:config",
+        "//vendor/github.com/aws/aws-sdk-go-v2/service/dynamodb:dynamodb",
+        "//vendor/github.com/aws/aws-sdk-go-v2/service/sqs:sqs",
+    ],
+    visibility = ["PUBLIC"],
+)

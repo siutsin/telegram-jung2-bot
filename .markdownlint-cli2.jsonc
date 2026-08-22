@@ -1,0 +1,13 @@
+{
+  "globs": [
+    "**/*.md",
+    "!buck-out/**",
+    "!node_modules/**",
+    "!.scratchpad/**",
+    "!vendor/**"
+  ],
+  "config": {
+    "MD013": false,
+    "MD041": false
+  }
+}

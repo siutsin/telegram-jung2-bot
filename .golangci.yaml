@@ -1,0 +1,82 @@
+version: "2"
+
+run:
+  allow-parallel-runners: true
+  relative-path-mode: gomod
+  tests: true
+  timeout: 5m
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - copyloopvar
+    - durationcheck
+    - errorlint
+    - gocognit
+    - gosec
+    - loggercheck
+    - misspell
+    - modernize
+    - nilerr
+    - nilnesserr
+    - nilnil
+    - noctx
+    - noinlineerr
+    - nolintlint
+    - revive
+    - testifylint
+    - unconvert
+    - unparam
+  settings:
+    errcheck:
+      check-blank: true
+      check-type-assertions: true
+    gocognit:
+      min-complexity: 15
+    govet:
+      enable:
+        - nilness
+        - shadow
+    misspell:
+      locale: UK
+    nolintlint:
+      allow-unused: false
+      require-explanation: true
+      require-specific: true
+    revive:
+      rules:
+        - name: comment-spacings
+        - name: indent-error-flow
+        - name: unexported-return
+          # Package-local factories return unexported types on purpose.
+          disabled: true
+    testifylint:
+      enable-all: true
+  exclusions:
+    generated: lax
+    paths:
+      - ^internal/mock/
+    rules:
+      - path: (.+)_test\.go
+        linters:
+          - dupl
+          - goconst
+          - lll
+          - noctx
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    gofmt:
+      rewrite-rules:
+        - pattern: interface{}
+          replacement: any
+    goimports:
+      local-prefixes:
+        - github.com/siutsin/telegram-jung2-bot
+  exclusions:
+    generated: lax
+    paths:
+      - ^internal/mock/

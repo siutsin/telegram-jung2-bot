@@ -1,0 +1,125 @@
+name: Claude Code
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  check-author:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      should-review: ${{ steps.check.outputs.should-review }}
+    steps:
+      - name: Check PR author
+        id: check
+        env:
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          REPO_OWNER: ${{ github.repository_owner }}
+        run: |
+          should_review=false
+          if [ "$PR_AUTHOR" = "$REPO_OWNER" ]; then
+            should_review=true
+          fi
+          echo "should-review=$should_review" >> "$GITHUB_OUTPUT"
+
+  claude:
+    needs: check-author
+    if: |
+      needs.check-author.outputs.should-review == 'true' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: automation
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Check if Claude review can run
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.url }}
+        run: |
+          should_run=true
+          files=$(gh api "$PR_URL/files" --paginate --jq '.[].filename')
+          if echo "$files" | grep -qx '.github/workflows/claude.yaml'; then
+            should_run=false
+          fi
+          echo "should-run=$should_run" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout repository
+        if: steps.check.outputs.should-run == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Run Claude review
+        if: steps.check.outputs.should-run == 'true'
+        uses: anthropics/claude-code-action@9d7150bc8a3dae8149739a88019d192b579ad90c # v1.0.193
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          track_progress: false
+          claude_args: |
+            --model claude-sonnet-5 --effort high --allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*)"
+          prompt: |
+            Review only. Do not push commits, edit PR metadata, change labels, write repository content, or run code from the PR.
+
+            Use only read-only GitHub CLI commands such as `gh pr view` and `gh pr diff`.
+            Review the PR changes with focus on:
+            1. Idiomatic Go: context.Context for network/AWS/Telegram/shutdown-aware
+               operations, errors wrapped with %w, log/slog for structured
+               logging, narrow and stable package APIs.
+            2. Production contract preservation, per AGENTS.md: DynamoDB table
+               names/keys/attributes, SQS action names and both message
+               attribute casings (stringValue wins over StringValue),
+               Telegram command names/aliases/response text/ordering, the
+               fixed workday bitmask (Sun=1, Mon=2, Tue=4, Wed=8, Thu=16,
+               Fri=32, Sat=64), the stored UTC+8 dateCreated format, and the
+               3800-character truncation limit.
+            3. Package boundary discipline: domain packages must stay free of
+               AWS SDK clients, Telegram HTTP clients, HTTP server code, and
+               env readers; production wiring belongs in cmd/ or an adapter
+               package, not the domain package.
+            4. Concurrency correctness where the diff touches goroutines,
+               channels, errgroup, or shared mutable state - flag anything
+               the race detector wouldn't reliably catch.
+            5. Security vulnerabilities and bugs or edge cases generally.
+
+            Skip auto-generated files (internal/mock/**, vendor/**, lock files).
+            Keep output short and concise. Use bullet points where possible.
+            Only comment on issues worth fixing. Skip praise and nitpicks.
+
+  claude-status:
+    if: always()
+    needs:
+      - check-author
+      - claude
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Check Claude result
+        env:
+          CHECK_AUTHOR_RESULT: ${{ needs.check-author.result }}
+          CLAUDE_RESULT: ${{ needs.claude.result }}
+        run: |
+          if [ "$CHECK_AUTHOR_RESULT" = "failure" ] || [ "$CHECK_AUTHOR_RESULT" = "cancelled" ]; then
+            exit 1
+          fi
+          if [ "$CLAUDE_RESULT" = "failure" ] || [ "$CLAUDE_RESULT" = "cancelled" ]; then
+            exit 1
+          fi
