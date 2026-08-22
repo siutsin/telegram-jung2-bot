@@ -9,4 +9,12 @@
   },
   minimumReleaseAge: '7 days',
   rebaseWhen: 'behind-base-branch',
+  packageRules: [
+    {
+      matchPackageNames: [
+        'go.uber.org/mock',
+      ],
+      abandonmentThreshold: null,
+    },
+  ],
 }
