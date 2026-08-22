@@ -1,5 +1,31 @@
 # telegram-jung2-bot
 
+Add the bot to your group at [@jung2_bot](https://bit.ly/github-jung2bot)
+
+**冗員**[jung2jyun4] Excess personnel in Cantonese
+
+This bot is created for counting the number of messages per participant in a
+chat group.
+
+## Usage
+
+| command     | info                                                                                                                      |
+|-------------|---------------------------------------------------------------------------------------------------------------------------|
+| `/topTen`   | Show the percentage of top ten participants for the past seven days                                                       |
+| `/topDiver` | Show the percentage of top ten divers for the past seven days (Requires at least one message from the user to be counted) |
+| `/allJung`  | Show the percentage of all participants for the past seven days                                                           |
+| `/jungHelp` | Show help message                                                                                                         |
+
+### Admin Only
+
+| command                  | info                                                                                                                                                                                         |
+|--------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `/enableAllJung`         | Enable `/allJung` command                                                                                                                                                                    |
+| `/disableAllJung`        | Disable `/allJung` command                                                                                                                                                                   |
+| `/setOffFromWorkTimeUTC` | Set offFromWork time in UTC. Format: `/setOffFromWorkTimeUTC {{ 0000-2345, 15 minutes interval }} {{ MON,TUE,WED,THU,FRI,SAT,SUN }}`. E.g. `/setOffFromWorkTimeUTC 1800 MON,TUE,WED,THU,FRI` |
+
+## Architecture
+
 Telegram group chat statistics bot. Tracks message counts, produces rankings,
 and schedules off-work reports.
 
