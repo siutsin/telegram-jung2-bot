@@ -2,7 +2,13 @@ name: Test
 
 on:
   push:
+    branches: [master]
   pull_request:
+    branches: [master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # Run on arm64. Buck2 latest cannot link Go 1.27 stdlib on linux/amd64:
