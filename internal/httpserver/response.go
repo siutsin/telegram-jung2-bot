@@ -39,6 +39,9 @@ func writeNamedJSONResponse(writer http.ResponseWriter, statusCode int, name str
 func writeJSONResponse(writer http.ResponseWriter, statusCode int, body any) {
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(statusCode)
+	if !allowsResponseBody(statusCode) {
+		return
+	}
 	err := json.NewEncoder(writer).Encode(body)
 	if err != nil {
 		logHTTPError("encode JSON response", statusCode, err)

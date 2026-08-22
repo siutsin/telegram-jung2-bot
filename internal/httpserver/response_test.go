@@ -68,6 +68,21 @@ func TestWriteJSONResponseLogsEncodeError(t *testing.T) {
 	assert.Equal(t, "application/json", recorder.Header().Get("Content-Type"))
 }
 
+// TestWriteJSONResponseSkipsBodyForNoContent covers a 204 stage-webhook
+// response (an edited_message or non-group-chat update). Encoding a body
+// after a 204 header trips Go's net/http body-not-allowed check, so
+// writeJSONResponse must not attempt it.
+func TestWriteJSONResponseSkipsBodyForNoContent(t *testing.T) {
+	t.Parallel()
+
+	recorder := httptest.NewRecorder()
+
+	writeJSONResponse(recorder, http.StatusNoContent, map[string]string{"statusCode": "204"})
+
+	assert.Equal(t, http.StatusNoContent, recorder.Code)
+	assert.Empty(t, recorder.Body.String())
+}
+
 func TestReadRequestBodyLogsCloseError(t *testing.T) {
 	t.Parallel()
 
