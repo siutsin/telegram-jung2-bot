@@ -1,5 +1,7 @@
 name: Create and publish a Docker image - jung2bot
 
+# Also matches prereleases such as jung2bot-6.0.0-rc.1. The tag name becomes
+# the image tag.
 on:
   push:
     tags:
@@ -39,6 +41,8 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # Go and JS share this repository, so never move latest.
+          flavor: latest=false
 
       - name: Build and push
         uses: docker/build-push-action@v7
