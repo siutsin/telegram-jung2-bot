@@ -21,6 +21,9 @@ Optional environment variables:
 - `FLOCI_IMAGE` — image override (default `floci/floci:latest`).
 - `FLOCI_PORT` — host port for the Apple container fallback below (default
   `4566`).
+- `FLOCI_CPUS` — CPUs allocated by the Apple container fallback (default `4`).
+- `FLOCI_MEMORY` — memory allocated by the Apple container fallback (default
+  `2G`).
 - `AWS_REGION` — local AWS SDK region (default `eu-west-1`).
 
 Testcontainers also starts a short-lived `reaper_*` (Ryuk) container to clean
@@ -39,9 +42,12 @@ started another way.
 ## Layout
 
 `TestMain` starts Floci once (or uses `FLOCI_ENDPOINT`), builds AWS clients, and
-stops the container after all tests. Each `TestFloci*` provisions its own
-DynamoDB tables and SQS queue via `startIntegrationTest`, then deletes them in
-`t.Cleanup`.
+stops the container after all tests. Each `TestFloci*` that exercises AWS
+provisions its own DynamoDB tables and SQS queue via `startIntegrationTest`,
+then deletes them in `t.Cleanup`. Local fixture and lifecycle tests only use
+the shared isolated runtime because they do not access AWS resources.
+Resource-backed tests run at most three at a time so Floci stays responsive while
+independent test cases still execute concurrently.
 
 Buck runs one `go_test` target; Go runs seventeen top-level tests. Failures name
 the failing `TestFloci*` (and subtests where used) in Buck stderr/stdout.

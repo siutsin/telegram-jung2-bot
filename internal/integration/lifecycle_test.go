@@ -18,8 +18,11 @@ import (
 	appmock "github.com/siutsin/telegram-jung2-bot/internal/mock"
 )
 
+// TestFlociAppRunGracefulShutdownAfterComponentCrash proves every failed component drains traffic safely.
 func TestFlociAppRunGracefulShutdownAfterComponentCrash(t *testing.T) {
-	ctx, _, _ := startIntegrationTest(t)
+	t.Parallel()
+
+	ctx, _ := requireIntegrationRuntime(t)
 	for _, testCase := range []struct {
 		name           string
 		crash          func(lifecycleApp) error
@@ -99,6 +102,7 @@ type lifecycleApp struct {
 	releaseDrain   func()
 }
 
+// startLifecycleApp uses real listeners so lifecycle failures exercise HTTP shutdown behaviour.
 func startLifecycleApp(t *testing.T, ctx context.Context) lifecycleApp {
 	t.Helper()
 
@@ -113,10 +117,14 @@ func startLifecycleApp(t *testing.T, ctx context.Context) lifecycleApp {
 	webhookAddress := freeTCPAddress(t)
 	metricsAddress := freeTCPAddress(t)
 	queueWorker := appmock.NewMockQueueWorker(gomock.NewController(t))
-	queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(context.Context) error {
+	queueWorker.EXPECT().Run(gomock.Any()).DoAndReturn(func(runCtx context.Context) error {
 		close(workerStarted)
-		<-crashWorker
-		return workerErr
+		select {
+		case <-crashWorker:
+			return workerErr
+		case <-runCtx.Done():
+			return runCtx.Err()
+		}
 	})
 	webhookServer := lifecycleWebhookServer(readiness, drainStarted, releaseDrain)
 	metricsServer := lifecycleMetricsServer()
@@ -154,6 +162,7 @@ func startLifecycleApp(t *testing.T, ctx context.Context) lifecycleApp {
 	}
 }
 
+// lifecycleWebhookServer supplies controllable readiness and in-flight work for shutdown assertions.
 func lifecycleWebhookServer(readiness *atomic.Bool, drainStarted chan<- struct{}, releaseDrain <-chan struct{}) *http.Server {
 	return &http.Server{
 		ReadHeaderTimeout: time.Second,
@@ -173,6 +182,7 @@ func lifecycleWebhookServer(readiness *atomic.Bool, drainStarted chan<- struct{}
 	}
 }
 
+// lifecycleMetricsServer provides a real independent server that can fail separately from HTTP.
 func lifecycleMetricsServer() *http.Server {
 	return &http.Server{
 		ReadHeaderTimeout: time.Second,
@@ -180,6 +190,7 @@ func lifecycleMetricsServer() *http.Server {
 	}
 }
 
+// startDrainRequest keeps an HTTP request active until the test permits graceful shutdown.
 func startDrainRequest(client *http.Client, url string) <-chan error {
 	done := make(chan error, 1)
 	go func() {
@@ -208,6 +219,7 @@ func startDrainRequest(client *http.Client, url string) <-chan error {
 	return done
 }
 
+// lifecycleResponseStatus makes readiness probes retryable without leaking response bodies.
 func lifecycleResponseStatus(client *http.Client, url string) int {
 	response, err := client.Get(url)
 	if err != nil {
@@ -222,6 +234,7 @@ func lifecycleResponseStatus(client *http.Client, url string) int {
 	return status
 }
 
+// lifecycleCannotConnect confirms shutdown closes listeners instead of merely marking them unready.
 func lifecycleCannotConnect(address string) bool {
 	connection, err := net.DialTimeout("tcp", address, time.Millisecond)
 	if err != nil {

@@ -103,6 +103,7 @@ func buildWorkerHandlers(svc service.Service) worker.Handlers {
 	}
 }
 
+// runWorkerServiceIntegration keeps report actions isolated while reusing verified worker teardown.
 func runWorkerServiceIntegration(
 	t *testing.T,
 	ctx context.Context,
@@ -111,8 +112,6 @@ func runWorkerServiceIntegration(
 	resources testResources,
 ) {
 	t.Helper()
-
-	drainQueue(t, ctx, queue.NewClient(sqsClient), resources.queueURL)
 
 	t.Run("jungHelp dispatch", func(t *testing.T) {
 		runWorkerJungHelpCase(t, ctx, dynamoClient, sqsClient, resources)
@@ -288,6 +287,7 @@ func seedWorkerTopTenData(
 	}
 }
 
+// pollServiceAction exercises a production worker without repeating redundant queue cleanup.
 func pollServiceAction(
 	t *testing.T,
 	ctx context.Context,
@@ -300,7 +300,6 @@ func pollServiceAction(
 	t.Helper()
 
 	queueClient := queue.NewClient(sqsClient)
-	drainQueue(t, ctx, queueClient, resources.queueURL)
 
 	producer := queue.NewProducer(resources.queueURL, queueClient)
 	svc := newIntegrationService(dynamoClient, sqsClient, resources, messenger)
@@ -328,6 +327,7 @@ func pollServiceAction(
 	}, workerDispatchTimeout, 100*time.Millisecond, "worker should dispatch action %s", action.Name)
 }
 
+// stopIntegrationWorker drains once after cancellation so later cases start with a verified empty queue.
 func stopIntegrationWorker(
 	t *testing.T,
 	cancel context.CancelFunc,
@@ -350,7 +350,6 @@ func stopIntegrationWorker(
 	}
 
 	drainQueue(t, ctx, queueClient, queueURL)
-	assertQueueEmpty(t, ctx, queueClient, queueURL)
 }
 
 func runWorkerHandlersIntegration(

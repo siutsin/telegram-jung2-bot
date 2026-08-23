@@ -46,6 +46,7 @@ go_test(
         "//vendor/github.com/stretchr/testify/assert:assert",
         "//vendor/github.com/stretchr/testify/require:require",
         "//vendor/go.uber.org/mock/gomock:gomock",
+        "//vendor/golang.org/x/sync/errgroup:errgroup",
         "//vendor/github.com/testcontainers/testcontainers-go:testcontainers-go",
         "//vendor/github.com/testcontainers/testcontainers-go/wait:wait",
     ],

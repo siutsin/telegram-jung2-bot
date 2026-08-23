@@ -4,6 +4,8 @@ set -euo pipefail
 floci_image="${FLOCI_IMAGE:-floci/floci:latest}"
 floci_container_name="${FLOCI_CONTAINER_NAME:-telegram-jung2-bot-it-floci}"
 floci_port="${FLOCI_PORT:-4566}"
+floci_cpus="${FLOCI_CPUS:-4}"
+floci_memory="${FLOCI_MEMORY:-2G}"
 
 started_container=""
 
@@ -32,6 +34,7 @@ start_floci_via_apple_container() {
 
   container rm -f "${floci_container_name}" >/dev/null 2>&1 || true
   container run -d --name "${floci_container_name}" \
+    --cpus "${floci_cpus}" --memory "${floci_memory}" \
     -p "${floci_port}:4566" "${floci_image}" >/dev/null
 
   started_container="${floci_container_name}"

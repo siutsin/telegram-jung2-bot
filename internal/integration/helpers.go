@@ -180,6 +180,7 @@ func readResponseBody(t *testing.T, response *http.Response) string {
 	return string(payload)
 }
 
+// drainQueue removes residual messages and verifies the queue becomes empty.
 func drainQueue(t *testing.T, ctx context.Context, queueClient queueClient, queueURL string) {
 	t.Helper()
 
