@@ -36,7 +36,8 @@ The webhook server binds to port 3000 by default. The metrics server exposes
 
 ## Where is the JavaScript version?
 
-This project started in 2016, more than a decade ago (!), as my technical
+This project started in [2016](https://github.com/siutsin/telegram-jung2-bot/pull/1),
+more than a decade ago (!), as my technical
 playground. It was a way to learn Node.js and the Telegram Bot API, and
 to put a meme bot in my Telegram groups. For whatever reason it
 spread, and thousands of groups were using it at that time.
