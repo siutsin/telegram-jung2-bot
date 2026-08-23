@@ -55,6 +55,18 @@ Startup fails when:
 - an optional URL is set but invalid
 - a timeout override is not a positive integer
 
+## Server settings
+
+`SERVER_ADDRESS` configures the webhook server. It defaults to `127.0.0.1:3000`
+or `0.0.0.0:3000` when `DOCKER` is true.
+
+`METRICS_SERVER_ADDRESS` configures the Prometheus server. It defaults to
+`127.0.0.1:9090` or `0.0.0.0:9090` when `DOCKER` is true.
+
+`HTTP_TIMEOUT_SECONDS`, `SHUTDOWN_TIMEOUT_SECONDS`, and
+`READINESS_DRAIN_SECONDS` are positive integer durations. Their defaults are
+10 seconds, 10 seconds, and 5 seconds respectively.
+
 ## Fallbacks
 
 These do not fail startup:

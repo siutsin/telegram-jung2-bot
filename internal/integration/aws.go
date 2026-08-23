@@ -12,6 +12,7 @@ import (
 	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	ddbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	awssqs "github.com/aws/aws-sdk-go-v2/service/sqs"
+	"golang.org/x/sync/errgroup"
 )
 
 type awsClients struct {
@@ -26,6 +27,7 @@ type testResources struct {
 	queueURL     string
 }
 
+// newAWSClients connects production adapters to the isolated Floci endpoint.
 func newAWSClients(ctx context.Context, endpoint string, region string) (awsClients, error) {
 	cfg, err := awsconfig.LoadDefaultConfig(ctx,
 		awsconfig.WithRegion(region),
@@ -45,6 +47,7 @@ func newAWSClients(ctx context.Context, endpoint string, region string) (awsClie
 	}, nil
 }
 
+// provisionResources creates independent tables and a queue so parallel tests cannot interfere.
 func provisionResources(ctx context.Context, clients awsClients) (testResources, func(), error) {
 	suffix := strconv.FormatInt(time.Now().UnixNano(), 36)
 	resources := testResources{
@@ -58,37 +61,43 @@ func provisionResources(ctx context.Context, clients awsClients) (testResources,
 		cleanupResources(cleanupCtx, clients, resources)
 	}
 
-	err := createDynamoTable(ctx, clients.dynamo, resources.messageTable, []ddbtypes.AttributeDefinition{
-		{AttributeName: awscore.String("chatId"), AttributeType: ddbtypes.ScalarAttributeTypeN},
-		{AttributeName: awscore.String("dateCreated"), AttributeType: ddbtypes.ScalarAttributeTypeS},
-	}, []ddbtypes.KeySchemaElement{
-		{AttributeName: awscore.String("chatId"), KeyType: ddbtypes.KeyTypeHash},
-		{AttributeName: awscore.String("dateCreated"), KeyType: ddbtypes.KeyTypeRange},
+	group, groupCtx := errgroup.WithContext(ctx)
+	group.Go(func() error {
+		return createDynamoTable(groupCtx, clients.dynamo, resources.messageTable, []ddbtypes.AttributeDefinition{
+			{AttributeName: awscore.String("chatId"), AttributeType: ddbtypes.ScalarAttributeTypeN},
+			{AttributeName: awscore.String("dateCreated"), AttributeType: ddbtypes.ScalarAttributeTypeS},
+		}, []ddbtypes.KeySchemaElement{
+			{AttributeName: awscore.String("chatId"), KeyType: ddbtypes.KeyTypeHash},
+			{AttributeName: awscore.String("dateCreated"), KeyType: ddbtypes.KeyTypeRange},
+		})
 	})
+	group.Go(func() error {
+		return createDynamoTable(groupCtx, clients.dynamo, resources.chatTable, []ddbtypes.AttributeDefinition{
+			{AttributeName: awscore.String("chatId"), AttributeType: ddbtypes.ScalarAttributeTypeN},
+		}, []ddbtypes.KeySchemaElement{
+			{AttributeName: awscore.String("chatId"), KeyType: ddbtypes.KeyTypeHash},
+		})
+	})
+	group.Go(func() error {
+		output, err := clients.sqs.CreateQueue(groupCtx, &awssqs.CreateQueueInput{
+			QueueName: awscore.String(resources.queueName),
+		})
+		if err != nil {
+			return fmt.Errorf("create SQS queue: %w", err)
+		}
+		resources.queueURL = awscore.ToString(output.QueueUrl)
+
+		return nil
+	})
+	err := group.Wait()
 	if err != nil {
 		return resources, cleanup, err
 	}
-
-	err = createDynamoTable(ctx, clients.dynamo, resources.chatTable, []ddbtypes.AttributeDefinition{
-		{AttributeName: awscore.String("chatId"), AttributeType: ddbtypes.ScalarAttributeTypeN},
-	}, []ddbtypes.KeySchemaElement{
-		{AttributeName: awscore.String("chatId"), KeyType: ddbtypes.KeyTypeHash},
-	})
-	if err != nil {
-		return resources, cleanup, err
-	}
-
-	output, err := clients.sqs.CreateQueue(ctx, &awssqs.CreateQueueInput{
-		QueueName: awscore.String(resources.queueName),
-	})
-	if err != nil {
-		return resources, cleanup, fmt.Errorf("create SQS queue: %w", err)
-	}
-	resources.queueURL = awscore.ToString(output.QueueUrl)
 
 	return resources, cleanup, nil
 }
 
+// createDynamoTable waits for availability so tests never race table activation.
 func createDynamoTable(
 	ctx context.Context,
 	client *awsdynamodb.Client,
@@ -109,6 +118,7 @@ func createDynamoTable(
 	return waitForTableActive(ctx, client, tableName)
 }
 
+// waitForTableActive avoids issuing test operations before Floci accepts table requests.
 func waitForTableActive(ctx context.Context, client *awsdynamodb.Client, tableName string) error {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
@@ -132,6 +142,7 @@ func waitForTableActive(ctx context.Context, client *awsdynamodb.Client, tableNa
 	}
 }
 
+// cleanupResources prevents test data from consuming the shared emulator across later tests.
 func cleanupResources(ctx context.Context, clients awsClients, resources testResources) {
 	if resources.queueURL != "" {
 		_, err := clients.sqs.DeleteQueue(ctx, &awssqs.DeleteQueueInput{

@@ -12,7 +12,6 @@ import (
 	"github.com/siutsin/telegram-jung2-bot/internal/chat"
 	appdynamodb "github.com/siutsin/telegram-jung2-bot/internal/dynamodb"
 	"github.com/siutsin/telegram-jung2-bot/internal/message"
-	"github.com/siutsin/telegram-jung2-bot/internal/queue"
 	"github.com/siutsin/telegram-jung2-bot/internal/schedule"
 	"github.com/siutsin/telegram-jung2-bot/internal/workday"
 )
@@ -23,6 +22,7 @@ const (
 	settingsUserID    int64 = 10004
 )
 
+// runServiceAdminSettingsIntegration protects administrative side effects on a fresh test stack.
 func runServiceAdminSettingsIntegration(
 	t *testing.T,
 	ctx context.Context,
@@ -32,7 +32,6 @@ func runServiceAdminSettingsIntegration(
 ) {
 	t.Helper()
 
-	drainQueue(t, ctx, queue.NewClient(sqsClient), resources.queueURL)
 	seedSettingsChat(t, ctx, dynamoClient, resources)
 
 	t.Run("disableAllJung", func(t *testing.T) {

@@ -14,7 +14,7 @@ import (
 func newHandler(dependencies serverDeps) http.Handler {
 	mux := http.NewServeMux()
 	registerRoute(mux, http.MethodGet, "/health", func(writer http.ResponseWriter, request *http.Request) {
-		writeResponse(writer, health())
+		writeResponse(writer, health(dependencies.Readiness))
 	})
 	registerRoute(mux, http.MethodPost, "/webhook", func(writer http.ResponseWriter, request *http.Request) {
 		writeResponse(writer, webhookResponse(writer, request, dependencies))

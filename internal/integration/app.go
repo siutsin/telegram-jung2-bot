@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -19,24 +20,6 @@ import (
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
 	"github.com/siutsin/telegram-jung2-bot/internal/worker"
 )
-
-type listenerHTTPServer struct {
-	server   *http.Server
-	listener net.Listener
-}
-
-func (runner *listenerHTTPServer) ListenAndServe() error {
-	err := runner.server.Serve(runner.listener)
-	if err == http.ErrServerClosed {
-		return nil
-	}
-
-	return err
-}
-
-func (runner *listenerHTTPServer) Shutdown(ctx context.Context) error {
-	return runner.server.Shutdown(ctx)
-}
 
 func runAppRunIntegration(
 	t *testing.T,
@@ -60,6 +43,7 @@ func runAppRunIntegration(
 	require.NoError(t, err, "create app queue worker")
 
 	queueProducer := queue.NewProducer(resources.queueURL, queueClient)
+	readiness := &atomic.Bool{}
 	deps := httpserver.Dependencies{
 		ChatTable:    resources.chatTable,
 		MessageTable: resources.messageTable,
@@ -70,15 +54,26 @@ func runAppRunIntegration(
 		Now: func() time.Time {
 			return integrationNow
 		},
+		Readiness: readiness,
 	}
-	httpServer, err := httpserver.NewServer("", 5*time.Second, "", deps)
+	httpAddress := freeTCPAddress(t)
+	httpServer, err := httpserver.NewServer(httpAddress, 5*time.Second, "", deps)
 	require.NoError(t, err, "create app HTTP server")
-
-	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", "127.0.0.1:0")
-	require.NoError(t, err, "listen for app integration server")
-
-	runner := &listenerHTTPServer{server: httpServer, listener: listener}
-	application := app.New(runner, queueWorker, app.Options{ShutdownTimeout: 5 * time.Second})
+	metricsAddress := freeTCPAddress(t)
+	metricsServer := &http.Server{
+		Addr:              metricsAddress,
+		Handler:           http.NotFoundHandler(),
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       5 * time.Second,
+		WriteTimeout:      5 * time.Second,
+		IdleTimeout:       5 * time.Second,
+	}
+	application := app.New(
+		app.NewHTTPServer("HTTP", httpAddress, httpServer),
+		app.NewHTTPServer("metrics", metricsAddress, metricsServer),
+		queueWorker,
+		app.Options{Readiness: readiness, ReadinessDrain: time.Nanosecond, ShutdownTimeout: 5 * time.Second},
+	)
 
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -88,7 +83,7 @@ func runAppRunIntegration(
 		done <- application.Run(runCtx)
 	}()
 
-	healthURL := "http://" + listener.Addr().String() + "/health"
+	healthURL := "http://" + httpAddress + "/health"
 	require.Eventually(t, func() bool {
 		request, requestErr := http.NewRequestWithContext(ctx, http.MethodGet, healthURL, nil)
 		if requestErr != nil {
@@ -144,4 +139,15 @@ func runAppRunIntegration(
 	}
 
 	assertQueueEmpty(t, ctx, queueClient, resources.queueURL)
+}
+
+func freeTCPAddress(t *testing.T) string {
+	t.Helper()
+
+	listener, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", "127.0.0.1:0")
+	require.NoError(t, err, "reserve TCP address")
+	address := listener.Addr().String()
+	require.NoError(t, listener.Close(), "release TCP address")
+
+	return address
 }

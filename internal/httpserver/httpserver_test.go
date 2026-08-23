@@ -3,6 +3,7 @@ package httpserver
 import (
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -13,7 +14,29 @@ import (
 func TestHealth(t *testing.T) {
 	t.Parallel()
 
-	assert.Equal(t, response{statusCode: 200, message: "ok"}, health())
+	readiness := &atomic.Bool{}
+	assert.Equal(t, response{statusCode: http.StatusServiceUnavailable, message: "not ready"}, health(readiness))
+
+	readiness.Store(true)
+	assert.Equal(t, response{statusCode: http.StatusOK, message: "ok"}, health(readiness))
+}
+
+func TestHealthRouteReadsReadiness(t *testing.T) {
+	t.Parallel()
+
+	_, dependencies := newMockDependencies(t)
+	handler := newHandler(serverDeps{Dependencies: dependencies})
+	dependencies.Readiness.Store(false)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/health", nil))
+	assert.Equal(t, http.StatusServiceUnavailable, recorder.Code)
+	assert.Equal(t, "not ready", recorder.Body.String())
+
+	dependencies.Readiness.Store(true)
+	recorder = httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/health", nil))
+	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.Equal(t, "ok", recorder.Body.String())
 }
 
 func TestNewServerBuildsConfiguredHTTPServer(t *testing.T) {

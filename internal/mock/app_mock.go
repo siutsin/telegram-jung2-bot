@@ -11,6 +11,7 @@ package mock
 
 import (
 	context "context"
+	net "net"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
@@ -40,32 +41,46 @@ func (m *MockHTTPRunner) EXPECT() *MockHTTPRunnerMockRecorder {
 	return m.recorder
 }
 
-// ListenAndServe mocks base method.
-func (m *MockHTTPRunner) ListenAndServe() error {
+// Close mocks base method.
+func (m *MockHTTPRunner) Close() error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListenAndServe")
+	ret := m.ctrl.Call(m, "Close")
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// ListenAndServe indicates an expected call of ListenAndServe.
-func (mr *MockHTTPRunnerMockRecorder) ListenAndServe() *gomock.Call {
+// Close indicates an expected call of Close.
+func (mr *MockHTTPRunnerMockRecorder) Close() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListenAndServe", reflect.TypeOf((*MockHTTPRunner)(nil).ListenAndServe))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockHTTPRunner)(nil).Close))
+}
+
+// Serve mocks base method.
+func (m *MockHTTPRunner) Serve(arg0 net.Listener) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Serve", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Serve indicates an expected call of Serve.
+func (mr *MockHTTPRunnerMockRecorder) Serve(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Serve", reflect.TypeOf((*MockHTTPRunner)(nil).Serve), arg0)
 }
 
 // Shutdown mocks base method.
-func (m *MockHTTPRunner) Shutdown(ctx context.Context) error {
+func (m *MockHTTPRunner) Shutdown(arg0 context.Context) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Shutdown", ctx)
+	ret := m.ctrl.Call(m, "Shutdown", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Shutdown indicates an expected call of Shutdown.
-func (mr *MockHTTPRunnerMockRecorder) Shutdown(ctx any) *gomock.Call {
+func (mr *MockHTTPRunnerMockRecorder) Shutdown(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Shutdown", reflect.TypeOf((*MockHTTPRunner)(nil).Shutdown), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Shutdown", reflect.TypeOf((*MockHTTPRunner)(nil).Shutdown), arg0)
 }
 
 // MockQueueWorker is a mock of queueRunner interface.
@@ -93,15 +108,15 @@ func (m *MockQueueWorker) EXPECT() *MockQueueWorkerMockRecorder {
 }
 
 // Run mocks base method.
-func (m *MockQueueWorker) Run(ctx context.Context) error {
+func (m *MockQueueWorker) Run(arg0 context.Context) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Run", ctx)
+	ret := m.ctrl.Call(m, "Run", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Run indicates an expected call of Run.
-func (mr *MockQueueWorkerMockRecorder) Run(ctx any) *gomock.Call {
+func (mr *MockQueueWorkerMockRecorder) Run(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Run", reflect.TypeOf((*MockQueueWorker)(nil).Run), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Run", reflect.TypeOf((*MockQueueWorker)(nil).Run), arg0)
 }

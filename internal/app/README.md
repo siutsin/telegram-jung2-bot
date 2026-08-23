@@ -6,8 +6,9 @@ This package runs the service lifecycle.
 
 It:
 
-- starts both processes
-- shuts down the HTTP server on exit
+- starts the webhook HTTP server, metrics HTTP server, and queue worker
+- exposes readiness only after both HTTP listeners bind
+- drains readiness and shuts down both HTTP servers on exit
 
 It does not load env vars or assemble production dependencies.
 
@@ -17,7 +18,8 @@ It does not load env vars or assemble production dependencies.
 
 ```mermaid
 flowchart TD
-    httpServer[HTTPRunner] --> newApp[New]
+    httpServer[Webhook HTTPRunner] --> newApp[New]
+    metricsServer[Metrics HTTPRunner] --> newApp
     queueWorker[QueueWorker] --> newApp
     opts[Options] --> newApp
     httpServer --> app[runtimeApp]
@@ -33,29 +35,33 @@ flowchart TD
 flowchart TD
     ctx[Context] --> run[runtimeApp.Run]
     app[runtimeApp] --> run
-    run --> serve[HTTP server]
+    run --> serve[Webhook and metrics servers]
     run --> poll[Queue worker]
-    serve --> stop[Shutdown HTTP server]
+    serve --> stop[Clear readiness and shut down both servers]
     poll --> stop
     ctx --> stop
 ```
 
-- `Run` starts the HTTP server and queue worker together.
+- `Run` binds both HTTP listeners before it starts all components.
+- `Run` marks readiness true only after both listeners bind.
 - If either process returns, `Run` cancels the shared run context.
-- On cancellation or process exit, `Run` shuts down the HTTP server with a timeout.
+- On cancellation or process exit, `Run` marks readiness false, waits for the
+  configured drain time, then shuts down both HTTP servers with a timeout.
 
 ## Scope
 
 This package owns:
 
 - process lifecycle
-- shutdown timeout selection
+- readiness state
+- readiness drain and shutdown timeout selection
 
 ## Validation
 
 `Run` fails when:
 
-- the HTTP server is missing
+- the webhook HTTP server is missing
+- the metrics HTTP server is missing
 - the queue worker is missing
 - a process returns an error
-- HTTP shutdown returns an error
+- either HTTP shutdown returns an error

@@ -11,8 +11,9 @@ import (
 )
 
 const (
-	defaultRegion       = "eu-west-1"
-	integrationTestsEnv = "INTEGRATION_TESTS"
+	defaultRegion                   = "eu-west-1"
+	integrationTestsEnv             = "INTEGRATION_TESTS"
+	maxParallelIntegrationResources = 3
 )
 
 type integrationRuntime struct {
@@ -24,10 +25,12 @@ type integrationRuntime struct {
 }
 
 var (
-	sharedRuntime        *integrationRuntime
-	integrationTestsGate bool
+	sharedRuntime            *integrationRuntime
+	integrationTestsGate     bool
+	integrationResourceSlots = make(chan struct{}, maxParallelIntegrationResources)
 )
 
+// bootstrapIntegrationRuntime creates the shared emulator clients before parallel tests start.
 func bootstrapIntegrationRuntime() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 
@@ -74,6 +77,7 @@ func bootstrapIntegrationRuntime() error {
 	return nil
 }
 
+// teardownIntegrationRuntime releases the shared runtime after all tests have stopped using it.
 func teardownIntegrationRuntime() {
 	if sharedRuntime != nil && sharedRuntime.cleanup != nil {
 		sharedRuntime.cleanup()
@@ -81,12 +85,14 @@ func teardownIntegrationRuntime() {
 	}
 }
 
+// startIntegrationTest bounds emulator load while preserving isolated AWS resources per test.
 func startIntegrationTest(t *testing.T) (context.Context, awsClients, testResources) {
 	t.Helper()
 
 	fmt.Fprintf(os.Stderr, "=== RUN   %s\n", t.Name())
 
 	ctx, clients := requireIntegrationRuntime(t)
+	acquireIntegrationResourceSlot(t)
 
 	resources, resourceCleanup, err := provisionResources(ctx, clients)
 	require.NoError(t, err, "provision test resources")
@@ -95,6 +101,19 @@ func startIntegrationTest(t *testing.T) (context.Context, awsClients, testResour
 	return ctx, clients, resources
 }
 
+// acquireIntegrationResourceSlot prevents parallel tests from exhausting the Floci container.
+func acquireIntegrationResourceSlot(t *testing.T) {
+	t.Helper()
+
+	select {
+	case integrationResourceSlots <- struct{}{}:
+		t.Cleanup(func() { <-integrationResourceSlots })
+	case <-t.Context().Done():
+		t.Fatalf("acquire integration resource slot: %v", t.Context().Err())
+	}
+}
+
+// requireIntegrationRuntime skips opt-in tests unless their shared Floci runtime is ready.
 func requireIntegrationRuntime(t *testing.T) (context.Context, awsClients) {
 	t.Helper()
 
@@ -109,6 +128,7 @@ func requireIntegrationRuntime(t *testing.T) (context.Context, awsClients) {
 	return sharedRuntime.ctx, sharedRuntime.clients
 }
 
+// integrationEndpoint reports the shared endpoint for diagnostics without exposing runtime state.
 func integrationEndpoint() string {
 	if sharedRuntime == nil {
 		return ""
@@ -117,6 +137,7 @@ func integrationEndpoint() string {
 	return sharedRuntime.endpoint
 }
 
+// integrationContainerName reports the shared container for failure diagnostics.
 func integrationContainerName() string {
 	if sharedRuntime == nil {
 		return ""
@@ -125,10 +146,12 @@ func integrationContainerName() string {
 	return sharedRuntime.containerName
 }
 
+// reportCleanupError preserves the primary test result while surfacing cleanup failures.
 func reportCleanupError(action string, err error) {
 	fmt.Fprintf(os.Stderr, "cleanup %s: %v\n", action, err)
 }
 
+// getenvDefault keeps local integration overrides optional and repeatable.
 func getenvDefault(name string, fallback string) string {
 	value := os.Getenv(name)
 	if value != "" {

@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	"github.com/siutsin/telegram-jung2-bot/internal/chat"
@@ -50,6 +51,7 @@ type Dependencies struct {
 	Now                  func() time.Time
 	WebhookSecretToken   string
 	SchedulerSecretToken string
+	Readiness            *atomic.Bool
 }
 
 type serverDeps struct {
@@ -78,7 +80,12 @@ func NewServer(address string, timeout time.Duration, stage string, dependencies
 	}, nil
 }
 
-// Health returns the health check response.
-func health() response {
+// health returns the readiness response.
+// For example, a false readiness value returns 503 while true returns 200.
+func health(readiness *atomic.Bool) response {
+	if readiness == nil || !readiness.Load() {
+		return response{statusCode: http.StatusServiceUnavailable, message: "not ready"}
+	}
+
 	return response{statusCode: 200, message: "ok"}
 }

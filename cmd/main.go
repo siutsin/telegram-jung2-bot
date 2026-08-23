@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	awscfg "github.com/aws/aws-sdk-go-v2/config"
 	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	awssqs "github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/siutsin/telegram-jung2-bot/internal/app"
 	"github.com/siutsin/telegram-jung2-bot/internal/config"
@@ -75,14 +77,21 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	httpServer, err := newHTTPServer(loadedConfig, chatClient, messageClient, queueClient, telegramClient, scaleUpper)
+	readiness := &atomic.Bool{}
+	httpServer, err := newHTTPServer(loadedConfig, readiness, chatClient, messageClient, queueClient, telegramClient, scaleUpper)
 	if err != nil {
 		return err
 	}
+	metricsServer := newMetricsServer(loadedConfig)
 	application := app.New(
-		httpServer,
+		app.NewHTTPServer("HTTP", loadedConfig.ServerAddress, httpServer),
+		app.NewHTTPServer("metrics", loadedConfig.MetricsServerAddress, metricsServer),
 		queueWorker,
-		app.Options{ShutdownTimeout: loadedConfig.ShutdownTimeout},
+		app.Options{
+			Readiness:       readiness,
+			ReadinessDrain:  loadedConfig.ReadinessDrain,
+			ShutdownTimeout: loadedConfig.ShutdownTimeout,
+		},
 	)
 
 	return application.Run(ctx)
@@ -134,6 +143,7 @@ func newTelegramClient(loadedConfig config.Config) telegram.Client {
 // newHTTPServer builds the production HTTP server.
 func newHTTPServer(
 	loadedConfig config.Config,
+	readiness *atomic.Bool,
 	chats dynamodb.ChatClient,
 	messages dynamodb.MessageClient,
 	sender interface {
@@ -153,6 +163,7 @@ func newHTTPServer(
 		Now:                  time.Now,
 		WebhookSecretToken:   loadedConfig.WebhookSecretToken,
 		SchedulerSecretToken: loadedConfig.SchedulerSecretToken,
+		Readiness:            readiness,
 	}
 
 	return httpserver.NewServer(
@@ -161,6 +172,18 @@ func newHTTPServer(
 		loadedConfig.Stage,
 		dependencies,
 	)
+}
+
+// newMetricsServer builds the dedicated Prometheus metrics server.
+func newMetricsServer(loadedConfig config.Config) *http.Server {
+	return &http.Server{
+		Addr:              loadedConfig.MetricsServerAddress,
+		Handler:           promhttp.Handler(),
+		ReadHeaderTimeout: loadedConfig.HTTPTimeout,
+		ReadTimeout:       loadedConfig.HTTPTimeout,
+		WriteTimeout:      loadedConfig.HTTPTimeout,
+		IdleTimeout:       loadedConfig.HTTPTimeout,
+	}
 }
 
 // newQueueWorker builds the production queue worker.
