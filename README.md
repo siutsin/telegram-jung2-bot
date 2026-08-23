@@ -29,9 +29,10 @@ chat group.
 Telegram group chat statistics bot. Tracks message counts, produces rankings,
 and schedules off-work reports.
 
-Go HTTP webhook, SQS worker, Telegram, and DynamoDB. Kubernetes CronJobs call
-the internal `/onOffFromWork` and `/onScaleUp` routes. Code is in `cmd/` and
-`internal/`. Buck2 builds and tests.
+Go HTTP webhook, Prometheus metrics, SQS worker, Telegram, and DynamoDB.
+The webhook server binds to port 3000 by default. The metrics server exposes
+`/metrics` on port 9090. Kubernetes uses `/health` for readiness. Code is in
+`cmd/` and `internal/`. Buck2 builds and tests.
 
 ## Where is the JavaScript version?
 

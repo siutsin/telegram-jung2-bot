@@ -68,6 +68,7 @@ flowchart TD
 ```
 
 - stage-prefixed routes preserve the deployed route shape
+- `/health` returns `200` only while the app is ready for new traffic
 - `/jung2bot/{stage}/ping` returns `{"health":"ok"}`
 - `/jung2bot/{stage}/` accepts webhook `POST` requests and returns a
   `{"statusCode":...}` JSON object

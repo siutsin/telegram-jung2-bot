@@ -43,7 +43,7 @@ stops the container after all tests. Each `TestFloci*` provisions its own
 DynamoDB tables and SQS queue via `startIntegrationTest`, then deletes them in
 `t.Cleanup`.
 
-Buck runs one `go_test` target; Go runs sixteen top-level tests. Failures name
+Buck runs one `go_test` target; Go runs seventeen top-level tests. Failures name
 the failing `TestFloci*` (and subtests where used) in Buck stderr/stdout.
 
 - `TestFlociDynamoDB` — chat/message CRUD, due-chat scan
@@ -57,6 +57,10 @@ the failing `TestFloci*` (and subtests where used) in Buck stderr/stdout.
 - `TestFlociHTTPWebhookTelegramClient` — webhook reply via real `telegram.Client` + httptest
 - `TestFlociHTTPStage` — stage ping, webhook, scheduler, scale-up routes
 - `TestFlociAppRun` — `app.Run` with HTTP server, worker, health, and queue action
+- `TestFlociAppRunGracefulShutdownAfterComponentCrash` — each queue worker,
+  HTTP server, and metrics server failure makes readiness fail and shuts down
+  both servers. The worker and metrics failures also drain an in-flight HTTP
+  request.
 - `TestFlociWorkerRun` — production `worker.Run` poll loop with cancel
 - `TestFlociWorkerHandlers` — `worker.Handlers` dispatch to `service.Service`
 - `TestFlociWorkerService` — single-poll service dispatch for report actions

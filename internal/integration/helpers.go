@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -114,6 +115,8 @@ func buildIntegrationHTTPServer(
 		messenger = noopMessenger{}
 	}
 
+	readiness := &atomic.Bool{}
+	readiness.Store(true)
 	deps := httpserver.Dependencies{
 		ChatTable:            resources.chatTable,
 		MessageTable:         resources.messageTable,
@@ -126,6 +129,7 @@ func buildIntegrationHTTPServer(
 		Now: func() time.Time {
 			return integrationNow
 		},
+		Readiness: readiness,
 	}
 
 	server, err := httpserver.NewServer(":0", 5*time.Second, options.stage, deps)

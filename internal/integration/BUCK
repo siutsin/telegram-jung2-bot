@@ -2,6 +2,7 @@ go_test(
     name = "floci_integration_test",
     srcs = [
         "app.go",
+        "lifecycle_test.go",
         "aws.go",
         "checks.go",
         "floci.go",
@@ -26,6 +27,7 @@ go_test(
         "//internal/command:command",
         "//internal/dynamodb:dynamodb",
         "//internal/httpserver:httpserver",
+        "//internal/mock:mock",
         "//internal/message:message",
         "//internal/queue:queue",
         "//internal/schedule:schedule",
@@ -43,6 +45,7 @@ go_test(
         "//vendor/github.com/aws/aws-sdk-go-v2/service/sqs:sqs",
         "//vendor/github.com/stretchr/testify/assert:assert",
         "//vendor/github.com/stretchr/testify/require:require",
+        "//vendor/go.uber.org/mock/gomock:gomock",
         "//vendor/github.com/testcontainers/testcontainers-go:testcontainers-go",
         "//vendor/github.com/testcontainers/testcontainers-go/wait:wait",
     ],

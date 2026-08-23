@@ -17,6 +17,7 @@ var dynamoDBTableNamePattern = regexp.MustCompile(`^[A-Za-z0-9_.-]{3,255}$`)
 const (
 	defaultHTTPTimeout     = 10 * time.Second
 	defaultShutdownTimeout = 10 * time.Second
+	defaultReadinessDrain  = 5 * time.Second
 )
 
 // Config contains validated startup configuration.
@@ -31,8 +32,10 @@ type Config struct {
 	LogLevel             string
 	Stage                string
 	ServerAddress        string
+	MetricsServerAddress string
 	HTTPTimeout          time.Duration
 	ShutdownTimeout      time.Duration
+	ReadinessDrain       time.Duration
 	ScaleUpReadCapacity  int
 	WebhookSecretToken   string
 	SchedulerSecretToken string
@@ -49,9 +52,11 @@ type rawConfig struct {
 	LogLevel               string `env:"LOG_LEVEL" envDefault:"info"`
 	Stage                  string `env:"STAGE" envDefault:"dev"`
 	ServerAddress          string `env:"SERVER_ADDRESS"`
+	MetricsServerAddress   string `env:"METRICS_SERVER_ADDRESS"`
 	Docker                 string `env:"DOCKER"`
 	HTTPTimeoutSeconds     string `env:"HTTP_TIMEOUT_SECONDS"`
 	ShutdownTimeoutSeconds string `env:"SHUTDOWN_TIMEOUT_SECONDS"`
+	ReadinessDrainSeconds  string `env:"READINESS_DRAIN_SECONDS"`
 	ScaleUpReadCapacity    string `env:"SCALE_UP_READ_CAPACITY"`
 	WebhookSecretToken     string `env:"WEBHOOK_SECRET_TOKEN"`
 	SchedulerSecretToken   string `env:"SCHEDULER_SECRET_TOKEN"`
@@ -118,6 +123,15 @@ func configFromRaw(raw rawConfig) (Config, error) {
 		shutdownTimeout = parsedTimeout
 	}
 
+	readinessDrain := defaultReadinessDrain
+	if raw.ReadinessDrainSeconds != "" {
+		parsedDrain, parseErr := parsePositiveSeconds("READINESS_DRAIN_SECONDS", raw.ReadinessDrainSeconds)
+		if parseErr != nil {
+			return Config{}, parseErr
+		}
+		readinessDrain = parsedDrain
+	}
+
 	scaleUpReadCapacity := 0
 	parsedScaleUpReadCapacity, err := strconv.Atoi(raw.ScaleUpReadCapacity)
 	if err == nil && parsedScaleUpReadCapacity > 0 {
@@ -129,6 +143,7 @@ func configFromRaw(raw rawConfig) (Config, error) {
 		LogLevel:             raw.LogLevel,
 		Stage:                strings.ToLower(strings.TrimSpace(raw.Stage)),
 		ServerAddress:        serverAddress(raw.ServerAddress, raw.Docker),
+		MetricsServerAddress: metricsServerAddress(raw.MetricsServerAddress, raw.Docker),
 		TelegramAPIBaseURL:   raw.TelegramAPIBaseURL,
 		TelegramBotToken:     raw.TelegramBotToken,
 		MessageTable:         raw.MessageTable,
@@ -137,6 +152,7 @@ func configFromRaw(raw rawConfig) (Config, error) {
 		AWSEndpointURL:       raw.AWSEndpointURL,
 		HTTPTimeout:          httpTimeout,
 		ShutdownTimeout:      shutdownTimeout,
+		ReadinessDrain:       readinessDrain,
 		ScaleUpReadCapacity:  scaleUpReadCapacity,
 		WebhookSecretToken:   raw.WebhookSecretToken,
 		SchedulerSecretToken: raw.SchedulerSecretToken,
@@ -212,14 +228,26 @@ func validateLogLevel(level string) error {
 // serverAddress returns the default bind address for the current environment.
 // For example, empty input becomes "127.0.0.1:3000" or "0.0.0.0:3000" in Docker.
 func serverAddress(value string, docker string) string {
+	return address(value, docker, 3000)
+}
+
+// metricsServerAddress returns the default metrics bind address.
+// For example, empty input becomes "127.0.0.1:9090" or "0.0.0.0:9090" in Docker.
+func metricsServerAddress(value string, docker string) string {
+	return address(value, docker, 9090)
+}
+
+// address returns the default bind address for a port.
+// For example, empty Docker input and port 3000 becomes "127.0.0.1:3000".
+func address(value string, docker string, port int) string {
 	if value != "" {
 		return value
 	}
 	if dockerEnabled(docker) {
-		return "0.0.0.0:3000"
+		return fmt.Sprintf("0.0.0.0:%d", port)
 	}
 
-	return "127.0.0.1:3000"
+	return fmt.Sprintf("127.0.0.1:%d", port)
 }
 
 // dockerEnabled reports whether DOCKER requests the container bind address.

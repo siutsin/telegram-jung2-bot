@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -46,6 +47,9 @@ func newMockDependencies(t *testing.T) (*httpserverMocks, Dependencies) {
 		scaleUpper: httpservermock.NewMockScaleUpper(controller),
 	}
 
+	readiness := &atomic.Bool{}
+	readiness.Store(true)
+
 	return mocks, Dependencies{
 		Messages:  mocks.messages,
 		Chats:     mocks.chats,
@@ -54,6 +58,7 @@ func newMockDependencies(t *testing.T) (*httpserverMocks, Dependencies) {
 		Now: func() time.Time {
 			return time.Date(2026, 5, 2, 12, 0, 0, 0, time.UTC)
 		},
+		Readiness: readiness,
 	}
 }
 
