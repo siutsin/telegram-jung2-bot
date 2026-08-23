@@ -2,51 +2,42 @@
 
 ## Purpose
 
-This package runs the service lifecycle.
+This package starts and stops the service.
 
-It:
+It runs three parts:
 
-- starts the webhook HTTP server, metrics HTTP server, and queue worker
-- exposes readiness only after both HTTP listeners bind
-- drains readiness and shuts down both HTTP servers on exit
+- the webhook HTTP server
+- the metrics HTTP server
+- the queue worker
 
-It does not load env vars or assemble production dependencies.
+Kubernetes reads `/health`. A ready result means it can send traffic. A not
+ready result means it must stop sending new traffic.
+
+This package does not read environment variables or build production
+dependencies.
 
 ## Flow
 
-### runtimeApp creation flow
+### What happens when the app runs
 
 ```mermaid
 flowchart TD
-    httpServer[Webhook HTTPRunner] --> newApp[New]
-    metricsServer[Metrics HTTPRunner] --> newApp
-    queueWorker[QueueWorker] --> newApp
-    opts[Options] --> newApp
-    httpServer --> app[runtimeApp]
-    queueWorker --> app
+    start[Start the app] --> ports[Open both HTTP ports]
+    ports --> ready[Set health to ready]
+    ready --> run[Run the servers and queue worker]
+    run --> stop[One part stops or shutdown starts]
+    stop --> unready[Set health to not ready]
+    unready --> drain[Wait for current requests]
+    drain --> shutdown[Stop both HTTP servers]
 ```
 
-- `New` only wraps the provided HTTP server and queue worker.
-- Startup assembly happens outside this package.
-
-### Runtime flow
-
-```mermaid
-flowchart TD
-    ctx[Context] --> run[runtimeApp.Run]
-    app[runtimeApp] --> run
-    run --> serve[Webhook and metrics servers]
-    run --> poll[Queue worker]
-    serve --> stop[Clear readiness and shut down both servers]
-    poll --> stop
-    ctx --> stop
-```
-
-- `Run` binds both HTTP listeners before it starts all components.
-- `Run` marks readiness true only after both listeners bind.
-- If either process returns, `Run` cancels the shared run context.
-- On cancellation or process exit, `Run` marks readiness false, waits for the
-  configured drain time, then shuts down both HTTP servers with a timeout.
+1. The app opens the webhook and metrics ports.
+2. The app sets `/health` to ready.
+3. The app runs the webhook server, metrics server, and queue worker.
+4. If one part stops or shutdown starts, the app sets `/health` to not ready.
+5. Kubernetes stops sending new traffic.
+6. The app waits for requests that already started.
+7. The app stops both HTTP servers.
 
 ## Scope
 
