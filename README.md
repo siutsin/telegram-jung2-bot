@@ -26,51 +26,70 @@ chat group.
 
 ## Architecture
 
-Telegram group chat statistics bot. Tracks message counts, produces rankings,
-and schedules off-work reports.
+The bot counts group messages, ranks speakers, and sends off-work reports.
+[Telegram](https://core.telegram.org/bots) and the scheduler hit HTTP. HTTP
+writes [DynamoDB](https://aws.amazon.com/dynamodb/) and enqueues
+[SQS](https://aws.amazon.com/sqs/). The worker consumes SQS and calls DynamoDB
+and Telegram.
 
-Go HTTP webhook, Prometheus metrics, SQS worker, Telegram, and DynamoDB.
-The webhook server binds to port 3000 by default. The metrics server exposes
-`/metrics` on port 9090. Kubernetes uses `/health` for readiness. Code is in
-`cmd/` and `internal/`. Buck2 builds and tests.
+| Process | Address | Role                                                                                |
+|---------|---------|-------------------------------------------------------------------------------------|
+| HTTP    | `:3000` | [Webhook](https://core.telegram.org/bots/webhooks), `/health`, and scheduler routes |
+| Metrics | `:9090` | `/metrics`                                                                          |
+| Worker  |         | SQS actions                                                                         |
 
-`/metrics` includes Go and process data plus these service metrics:
+Code lives in `cmd/` and `internal/`. [Buck2](https://buck2.build/) builds and
+tests.
 
-- Lifecycle: `telegram_jung2_bot_ready`.
-- HTTP: `telegram_jung2_bot_http_requests_total`,
-  `telegram_jung2_bot_http_request_duration_seconds`, and
-  `telegram_jung2_bot_http_requests_in_flight`. HTTP metrics use fixed method,
-  status, and route labels.
-- Webhooks: `telegram_jung2_bot_webhook_updates_total` and
-  `telegram_jung2_bot_webhook_commands_enqueued_total`.
-- Worker: `telegram_jung2_bot_worker_actions_total` and
-  `telegram_jung2_bot_worker_action_duration_seconds`.
-- Dependencies and schedules: `telegram_jung2_bot_dependency_requests_total`,
-  `telegram_jung2_bot_dependency_request_duration_seconds`, and
-  `telegram_jung2_bot_off_work_reports_enqueued_total`.
+### Metrics
+
+[Prometheus](https://prometheus.io/) `/metrics` includes Go and process
+collectors plus:
+
+| Metric                                                   | Meaning                           |
+|----------------------------------------------------------|-----------------------------------|
+| `telegram_jung2_bot_ready`                               | Readiness                         |
+| `telegram_jung2_bot_http_requests_total`                 | HTTP requests                     |
+| `telegram_jung2_bot_http_request_duration_seconds`       | HTTP duration                     |
+| `telegram_jung2_bot_http_requests_in_flight`             | In-flight HTTP requests           |
+| `telegram_jung2_bot_webhook_updates_total`               | Webhook outcomes                  |
+| `telegram_jung2_bot_webhook_commands_enqueued_total`     | Commands queued                   |
+| `telegram_jung2_bot_worker_actions_total`                | Queue actions                     |
+| `telegram_jung2_bot_worker_action_duration_seconds`      | Queue action duration             |
+| `telegram_jung2_bot_dependency_requests_total`           | DynamoDB, SQS, and Telegram calls |
+| `telegram_jung2_bot_dependency_request_duration_seconds` | Outbound call duration            |
+| `telegram_jung2_bot_off_work_reports_enqueued_total`     | Scheduled report enqueue results  |
+
+HTTP metrics use fixed method, status, and route labels.
 
 ## Where is the JavaScript version?
 
 This project started in [2016](https://github.com/siutsin/telegram-jung2-bot/pull/1),
 more than a decade ago (!), as my technical
-playground. It was a way to learn Node.js and the Telegram Bot API, and
-to put a meme bot in my Telegram groups. For whatever reason it
-spread, and thousands of groups were using it at that time.
+playground. It was a way to learn [Node.js](https://nodejs.org/) and the
+[Telegram Bot API](https://core.telegram.org/bots/api), and to put a meme bot
+in my Telegram groups. For whatever reason it spread, and thousands of groups
+were using it at that time.
 
-Over time it became a lab for experiments: Heroku, PM2, Serverless Framework,
-AWS ECS, Kubernetes, and more that I cannot even remember. The funny thing
-is that I have not used this bot myself for a very long time.
+Over time it became a lab for experiments:
+[Heroku](https://www.heroku.com/), [PM2](https://pm2.keymetrics.io/),
+[Serverless Framework](https://www.serverless.com/),
+[AWS ECS](https://aws.amazon.com/ecs/), [Kubernetes](https://kubernetes.io/),
+and more that I cannot even remember. The funny thing is that I have not used
+this bot myself for a very long time.
 
 The JavaScript ecosystem has constant supply-chain issues, and the number of
 dependencies and their transitive dependencies is scary. I rewrote the
-service in Go so that it would need almost no maintenance, whilst keeping it
-running until no one is using it.
+service in [Go](https://go.dev/) so that it would need almost no maintenance,
+whilst keeping it running until no one is using it.
 
 ## Prerequisites
 
-- [Buck2](https://buck2.build/docs/getting_started/)
+- Buck2
 - Go 1.27+
-- Docker, for the optional Floci AWS integration check
+- [Apple Container](https://github.com/apple/container) for local images, or
+  [Docker](https://docs.docker.com/) if it is unavailable. Either covers the
+  optional [Floci](https://floci.io/) check
 
 ## Commands
 
