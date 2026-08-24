@@ -27,20 +27,24 @@ chat group.
 ## Architecture
 
 The bot counts group messages, ranks speakers, and sends off-work reports.
-Telegram and the scheduler hit HTTP. HTTP writes DynamoDB and enqueues SQS.
-The worker consumes SQS and calls DynamoDB and Telegram.
+[Telegram](https://core.telegram.org/bots) and the scheduler hit HTTP. HTTP
+writes [DynamoDB](https://aws.amazon.com/dynamodb/) and enqueues
+[SQS](https://aws.amazon.com/sqs/). The worker consumes SQS and calls DynamoDB
+and Telegram.
 
-| Process | Address | Role                                     |
-|---------|---------|------------------------------------------|
-| HTTP    | `:3000` | Webhook, `/health`, and scheduler routes |
-| Metrics | `:9090` | `/metrics`                               |
-| Worker  |         | SQS actions                              |
+| Process | Address | Role                                                                                |
+|---------|---------|-------------------------------------------------------------------------------------|
+| HTTP    | `:3000` | [Webhook](https://core.telegram.org/bots/webhooks), `/health`, and scheduler routes |
+| Metrics | `:9090` | `/metrics`                                                                          |
+| Worker  |         | SQS actions                                                                         |
 
-Code lives in `cmd/` and `internal/`. Buck2 builds and tests.
+Code lives in `cmd/` and `internal/`. [Buck2](https://buck2.build/) builds and
+tests.
 
 ### Metrics
 
-`/metrics` includes Go and process collectors plus:
+[Prometheus](https://prometheus.io/) `/metrics` includes Go and process
+collectors plus:
 
 | Metric                                                   | Meaning                           |
 |----------------------------------------------------------|-----------------------------------|
@@ -62,24 +66,29 @@ HTTP metrics use fixed method, status, and route labels.
 
 This project started in [2016](https://github.com/siutsin/telegram-jung2-bot/pull/1),
 more than a decade ago (!), as my technical
-playground. It was a way to learn Node.js and the Telegram Bot API, and
-to put a meme bot in my Telegram groups. For whatever reason it
-spread, and thousands of groups were using it at that time.
+playground. It was a way to learn [Node.js](https://nodejs.org/) and the
+[Telegram Bot API](https://core.telegram.org/bots/api), and to put a meme bot
+in my Telegram groups. For whatever reason it spread, and thousands of groups
+were using it at that time.
 
-Over time it became a lab for experiments: Heroku, PM2, Serverless Framework,
-AWS ECS, Kubernetes, and more that I cannot even remember. The funny thing
-is that I have not used this bot myself for a very long time.
+Over time it became a lab for experiments:
+[Heroku](https://www.heroku.com/), [PM2](https://pm2.keymetrics.io/),
+[Serverless Framework](https://www.serverless.com/),
+[AWS ECS](https://aws.amazon.com/ecs/), [Kubernetes](https://kubernetes.io/),
+and more that I cannot even remember. The funny thing is that I have not used
+this bot myself for a very long time.
 
 The JavaScript ecosystem has constant supply-chain issues, and the number of
 dependencies and their transitive dependencies is scary. I rewrote the
-service in Go so that it would need almost no maintenance, whilst keeping it
-running until no one is using it.
+service in [Go](https://go.dev/) so that it would need almost no maintenance,
+whilst keeping it running until no one is using it.
 
 ## Prerequisites
 
 - [Buck2](https://buck2.build/docs/getting_started/)
 - Go 1.27+
-- Docker, for the optional Floci AWS integration check
+- [Docker](https://docs.docker.com/), for the optional
+  [Floci](https://floci.io/) AWS integration check
 
 ## Commands
 
