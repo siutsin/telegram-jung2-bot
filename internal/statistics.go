@@ -278,7 +278,7 @@ func HelpMessage(chatTitle string) string {
 
 冗員[jung2jyun4] Excess personnel in Cantonese
 
-This bot is created for counting the number of message per participant in the group.
+This bot is created for counting the number of messages per participant in the group.
 
 Commands:
 /topTen  show top ten 冗員s
@@ -287,12 +287,12 @@ Commands:
 /jungHelp  show help message
 
 Admin Only:
-/enableAllJung  enable `+"`/alljung`"+` command
-/disableAllJung  disable `+"`/alljung`"+` command
-/setOffFromWorkTimeUTC  set offFromWork time (UTC time)
+/enableAllJung  enable `+"`/allJung`"+` command
+/disableAllJung  disable `+"`/allJung`"+` command
+/setOffFromWorkTimeUTC  set UTC off-work time. E.g. 1800 MON,TUE,WED,THU,FRI
 
 [Bug Report/Suggestion](https://github.com/siutsin/telegram-jung2-bot/issues)
-[Service Status](https://stats.uptimerobot.com/kglZJSkYZg)
+[Service Status](https://www.webgazer.io/s?id=597)
 
 May your 冗 power powerful
 `, escapeMarkdownTitle(chatTitle))

@@ -248,18 +248,18 @@ func TestHelpMessage(t *testing.T) {
 	assert.Equal(t, "\n"+
 		"圍爐區: Group\n\n"+
 		"冗員[jung2jyun4] Excess personnel in Cantonese\n\n"+
-		"This bot is created for counting the number of message per participant in the group.\n\n"+
+		"This bot is created for counting the number of messages per participant in the group.\n\n"+
 		"Commands:\n"+
 		"/topTen  show top ten 冗員s\n"+
 		"/topDiver  show top ten 潛水員s (潛得太深會搵唔到)\n"+
 		"/allJung  show all 冗員s\n"+
 		"/jungHelp  show help message\n\n"+
 		"Admin Only:\n"+
-		"/enableAllJung  enable `/alljung` command\n"+
-		"/disableAllJung  disable `/alljung` command\n"+
-		"/setOffFromWorkTimeUTC  set offFromWork time (UTC time)\n\n"+
+		"/enableAllJung  enable `/allJung` command\n"+
+		"/disableAllJung  disable `/allJung` command\n"+
+		"/setOffFromWorkTimeUTC  set UTC off-work time. E.g. 1800 MON,TUE,WED,THU,FRI\n\n"+
 		"[Bug Report/Suggestion](https://github.com/siutsin/telegram-jung2-bot/issues)\n"+
-		"[Service Status](https://stats.uptimerobot.com/kglZJSkYZg)\n\n"+
+		"[Service Status](https://www.webgazer.io/s?id=597)\n\n"+
 		"May your 冗 power powerful\n",
 		helpMessage,
 	)
