@@ -215,13 +215,16 @@ func buildDiverBody(summary rowSummary, options ReportOptions) string {
 
 // buildFooter builds the report footer text.
 // For example, totalMessage 20 becomes a footer starting with
-// "Total messages: 20".
+// "Total messages: 20". OffFromWork true appends the setOff footnote.
 func buildFooter(summary rowSummary, options ReportOptions) string {
 	footer := fmt.Sprintf("\nTotal messages: %d\n\n", summary.totalMessage)
 	if options.Reverse {
 		footer += "between, 深潛會搵唔到 ho chi is\n"
 	}
 	footer += fmt.Sprintf("Last Update: %s", options.Now.Format(updateTimestampLayout))
+	if options.OffFromWork {
+		footer += "\n\n---\nUse /setOffFromWorkTimeUTC to set the off-work time.\nSee /jungHelp for more info."
+	}
 	return footer
 }
 
@@ -278,7 +281,7 @@ func HelpMessage(chatTitle string) string {
 
 冗員[jung2jyun4] Excess personnel in Cantonese
 
-This bot is created for counting the number of message per participant in the group.
+This bot is created for counting the number of messages per participant in the group.
 
 Commands:
 /topTen  show top ten 冗員s
@@ -287,12 +290,12 @@ Commands:
 /jungHelp  show help message
 
 Admin Only:
-/enableAllJung  enable `+"`/alljung`"+` command
-/disableAllJung  disable `+"`/alljung`"+` command
-/setOffFromWorkTimeUTC  set offFromWork time (UTC time)
+/enableAllJung  enable `+"`/allJung`"+` command
+/disableAllJung  disable `+"`/allJung`"+` command
+/setOffFromWorkTimeUTC  set UTC off-work time. E.g. 1800 MON,TUE,WED,THU,FRI
 
 [Bug Report/Suggestion](https://github.com/siutsin/telegram-jung2-bot/issues)
-[Service Status](https://stats.uptimerobot.com/kglZJSkYZg)
+[Service Status](https://www.webgazer.io/s?id=597)
 
 May your 冗 power powerful
 `, escapeMarkdownTitle(chatTitle))
@@ -300,8 +303,18 @@ May your 冗 power powerful
 
 // displayName returns the preferred ranking display name.
 // For example, firstName "Ada" and lastName "Lovelace" become "Ada Lovelace".
+// firstName "Grace" or lastName "Hopper" alone become "Grace" or "Hopper".
+// Empty names with username "grace" or "@grace" become "grace".
 func displayName(row StoredMessage) string {
-	return strings.Join([]string{row.FirstName, row.LastName}, " ")
+	name := strings.TrimSpace(row.FirstName + " " + row.LastName)
+	if name != "" {
+		return name
+	}
+	username := strings.TrimPrefix(strings.TrimSpace(row.Username), "@")
+	if username != "" {
+		return username
+	}
+	return " "
 }
 
 // timeAgo formats a relative timestamp.
