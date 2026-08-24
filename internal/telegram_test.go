@@ -169,6 +169,26 @@ func TestSendMessageRedactsTokenFromTransportError(t *testing.T) {
 	assert.NotContains(t, err.Error(), botToken)
 }
 
+// TestTelegramTransportErrorClassifiesContextErrors keeps cancellation details safe and actionable.
+func TestTelegramTransportErrorClassifiesContextErrors(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		err  error
+		want string
+	}{
+		{name: "cancelled", err: context.Canceled, want: "call Telegram sendMessage: request cancelled"},
+		{name: "timed out", err: context.DeadlineExceeded, want: "call Telegram sendMessage: request timed out"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert.EqualError(t, telegramTransportError("sendMessage", test.err), test.want)
+		})
+	}
+}
+
 func TestGetChatAdministratorsDecodesResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		assert.Equal(t, "/bottoken/getChatAdministrators", request.URL.Path)
