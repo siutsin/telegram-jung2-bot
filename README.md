@@ -34,6 +34,21 @@ The webhook server binds to port 3000 by default. The metrics server exposes
 `/metrics` on port 9090. Kubernetes uses `/health` for readiness. Code is in
 `cmd/` and `internal/`. Buck2 builds and tests.
 
+`/metrics` includes Go and process data plus these service metrics:
+
+- Lifecycle: `telegram_jung2_bot_ready`.
+- HTTP: `telegram_jung2_bot_http_requests_total`,
+  `telegram_jung2_bot_http_request_duration_seconds`, and
+  `telegram_jung2_bot_http_requests_in_flight`. HTTP metrics use fixed method,
+  status, and route labels.
+- Webhooks: `telegram_jung2_bot_webhook_updates_total` and
+  `telegram_jung2_bot_webhook_commands_enqueued_total`.
+- Worker: `telegram_jung2_bot_worker_actions_total` and
+  `telegram_jung2_bot_worker_action_duration_seconds`.
+- Dependencies and schedules: `telegram_jung2_bot_dependency_requests_total`,
+  `telegram_jung2_bot_dependency_request_duration_seconds`, and
+  `telegram_jung2_bot_off_work_reports_enqueued_total`.
+
 ## Where is the JavaScript version?
 
 This project started in [2016](https://github.com/siutsin/telegram-jung2-bot/pull/1),

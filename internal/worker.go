@@ -45,12 +45,13 @@ type pollingWorker struct {
 	queueURL string
 	handlers Handlers
 	deleter  queueDeleter
+	metrics  *Metrics
 }
 
 type actionDispatcher func(ctx context.Context, action queue.Action) error
 
 // NewPollingWorker builds a queue worker from the configured queue contracts.
-func NewPollingWorker(queueURL string, receiver queueReceiver, deleter queueDeleter, handlers Handlers) (pollingWorker, error) {
+func NewPollingWorker(queueURL string, receiver queueReceiver, deleter queueDeleter, handlers Handlers, metrics ...*Metrics) (pollingWorker, error) {
 	if receiver == nil {
 		return pollingWorker{}, fmt.Errorf("queue receiver is required")
 	}
@@ -63,6 +64,7 @@ func NewPollingWorker(queueURL string, receiver queueReceiver, deleter queueDele
 		queueURL: queueURL,
 		handlers: handlers,
 		deleter:  deleter,
+		metrics:  firstMetrics(metrics),
 	}, nil
 }
 
@@ -78,12 +80,23 @@ func (worker pollingWorker) Run(ctx context.Context) error {
 		default:
 		}
 		err := worker.consumer.Poll(ctx, func(pollCtx context.Context, message queue.RawMessage) error {
-			return processMessage(pollCtx, worker.queueURL, message, worker.handlers, worker.deleter)
+			return worker.processMessage(pollCtx, message)
 		})
 		if err != nil {
 			return err
 		}
 	}
+}
+
+// processMessage records the result of one worker action before returning it.
+func (worker pollingWorker) processMessage(ctx context.Context, raw queue.RawMessage) error {
+	started := time.Now()
+	action, outcome, err := processMessageResult(ctx, worker.queueURL, raw, worker.handlers, worker.deleter)
+	if worker.metrics != nil {
+		worker.metrics.RecordWorkerAction(action, outcome, time.Since(started))
+	}
+
+	return err
 }
 
 // dispatch routes an action to its handler.
@@ -102,32 +115,48 @@ func dispatch(ctx context.Context, action queue.Action, handlers Handlers) error
 	return dispatcher(ctx, action)
 }
 
-// processMessage decodes, dispatches, and deletes a queue message.
-// For example, one raw SQS message becomes queue.DecodeMessage(raw), one handler
-// call, and one delete request.
-func processMessage(ctx context.Context, queueURL string, raw queue.RawMessage, handlers Handlers, deleter queueDeleter) error {
+// processMessageResult decodes, dispatches, deletes, and classifies a queue message.
+func processMessageResult(ctx context.Context, queueURL string, raw queue.RawMessage, handlers Handlers, deleter queueDeleter) (string, string, error) {
 	action := queue.DecodeMessage(raw)
 	dispatchErr := dispatch(ctx, action, handlers)
 	if dispatchErr != nil {
 		slog.Error("queue message dispatch failed", "action", action.Name, "err", dispatchErr)
 		if !isPermanentDispatchError(dispatchErr) {
-			return dispatchErr
+			return workerActionName(action.Name), "failed", dispatchErr
 		}
-	} else {
-		err := deleteProcessedMessage(ctx, deleter, queueURL, raw, action.Name)
-		if err != nil {
-			return err
-		}
-
-		return nil
 	}
 
 	err := deleteProcessedMessage(ctx, deleter, queueURL, raw, action.Name)
 	if err != nil {
-		return err
+		return workerActionName(action.Name), "failed", err
+	}
+	outcome := "processed"
+	if dispatchErr != nil {
+		outcome = "discarded"
 	}
 
-	return nil
+	return workerActionName(action.Name), outcome, nil
+}
+
+// firstMetrics returns the optional metrics collector supplied at application wiring.
+func firstMetrics(metrics []*Metrics) *Metrics {
+	if len(metrics) == 0 {
+		return nil
+	}
+
+	return metrics[0]
+}
+
+// workerActionName maps malformed actions to one bounded metric label.
+func workerActionName(action string) string {
+	switch action {
+	case queue.ActionJungHelp, queue.ActionTopTen, queue.ActionTopDiver,
+		queue.ActionAllJung, queue.ActionOffFromWork, queue.ActionEnableAllJung,
+		queue.ActionDisableAllJung, queue.ActionSetOffWorkTime, queue.ActionOnOffFromWork:
+		return action
+	default:
+		return "unknown"
+	}
 }
 
 // deleteProcessedMessage deletes a successfully handled queue message.

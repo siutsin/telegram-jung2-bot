@@ -3,6 +3,7 @@ package dynamodb
 import (
 	"context"
 	"fmt"
+	"time"
 
 	awscore "github.com/aws/aws-sdk-go-v2/aws"
 	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -19,7 +20,8 @@ type itemUpdateRequest struct {
 // updateItem applies a contract update expression in DynamoDB.
 // For example, a request with Key{"chatId": 42} becomes one UpdateItem call
 // with DynamoDB-encoded key and values.
-func updateItem(ctx context.Context, dynamoClient dynamoRequester, updateRequest itemUpdateRequest) error {
+func updateItem(ctx context.Context, dynamoClient dynamoRequester, metrics dependencyObserver, updateRequest itemUpdateRequest) error {
+	started := time.Now()
 	_, err := dynamoClient.UpdateItem(ctx, &awsdynamodb.UpdateItemInput{
 		TableName:                 awscore.String(updateRequest.tableName),
 		Key:                       encodeDynamoValues(updateRequest.key),
@@ -27,6 +29,7 @@ func updateItem(ctx context.Context, dynamoClient dynamoRequester, updateRequest
 		ExpressionAttributeNames:  updateRequest.expressionAttributeNames,
 		ExpressionAttributeValues: encodeDynamoValues(updateRequest.expressionAttributeValues),
 	})
+	observeDependency(metrics, "update", started, err)
 	if err != nil {
 		return fmt.Errorf("update DynamoDB item: %w", err)
 	}
@@ -42,13 +45,14 @@ func updateItem(ctx context.Context, dynamoClient dynamoRequester, updateRequest
 func updateContractUpdate(
 	ctx context.Context,
 	dynamoClient dynamoRequester,
+	metrics dependencyObserver,
 	tableName string,
 	key map[string]any,
 	updateExpression string,
 	expressionAttributeNames map[string]string,
 	expressionAttributeValues map[string]any,
 ) error {
-	return updateItem(ctx, dynamoClient, itemUpdateRequest{
+	return updateItem(ctx, dynamoClient, metrics, itemUpdateRequest{
 		expressionAttributeNames:  expressionAttributeNames,
 		expressionAttributeValues: expressionAttributeValues,
 		key:                       key,

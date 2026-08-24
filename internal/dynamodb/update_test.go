@@ -56,7 +56,7 @@ func TestUpdateItem(t *testing.T) {
 					return &awsdynamodb.UpdateItemOutput{}, nil
 				})
 
-			err := updateItem(context.Background(), dynamoClient, itemUpdateRequest{
+			err := updateItem(context.Background(), dynamoClient, nil, itemUpdateRequest{
 				tableName:        "chats",
 				key:              map[string]any{"chatId": int64(42)},
 				updateExpression: "SET #ot = :ot",
@@ -107,6 +107,7 @@ func TestUpdateContractUpdate(t *testing.T) {
 	err := updateContractUpdate(
 		context.Background(),
 		dynamoClient,
+		nil,
 		"chats",
 		map[string]any{"chatId": int64(42)},
 		"SET #ot = :ot",

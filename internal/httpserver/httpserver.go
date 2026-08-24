@@ -1,7 +1,7 @@
 // Package httpserver owns transport-independent webhook handling.
 package httpserver
 
-//go:generate sh -c "GOFLAGS=-mod=mod go run go.uber.org/mock/mockgen -source=httpserver.go -destination=../mock/httpserver/httpserver_mock.go -package=httpservermock -mock_names messageSaver=MockMessageSaver,chatSaver=MockChatSaver,enqueuer=MockEnqueuer,messenger=MockMessenger,scaleUpper=MockScaleUpper"
+//go:generate sh -c "GOFLAGS=-mod=mod go run go.uber.org/mock/mockgen -source=httpserver.go -destination=../mock/httpserver/httpserver_mock.go -package=httpservermock -mock_names messageSaver=MockMessageSaver,chatSaver=MockChatSaver,enqueuer=MockEnqueuer,messenger=MockMessenger,scaleUpper=MockScaleUpper,metricsRecorder=MockMetricsRecorder"
 
 import (
 	"context"
@@ -40,6 +40,13 @@ type scaleUpper interface {
 	ScaleUp(ctx context.Context) error
 }
 
+// metricsRecorder instruments fixed HTTP routes and records webhook outcomes.
+type metricsRecorder interface {
+	HTTPHandler(route string, handler http.Handler) http.Handler
+	RecordWebhookCommand(action string)
+	RecordWebhookUpdate(outcome string)
+}
+
 type Dependencies struct {
 	ChatTable            string
 	MessageTable         string
@@ -52,6 +59,7 @@ type Dependencies struct {
 	WebhookSecretToken   string
 	SchedulerSecretToken string
 	Readiness            *atomic.Bool
+	Metrics              metricsRecorder
 }
 
 type serverDeps struct {

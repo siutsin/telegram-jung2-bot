@@ -145,6 +145,24 @@ func TestClientRequiresQueue(t *testing.T) {
 	}
 }
 
+// TestClientRecordsSQSMetric proves a real SQS send notifies the generated observer.
+func TestClientRecordsSQSMetric(t *testing.T) {
+	t.Parallel()
+
+	controller := gomock.NewController(t)
+	queueAPI := mock.NewMockQueueRequester(controller)
+	metrics := mock.NewMockQueueDependencyObserver(controller)
+	queueAPI.EXPECT().
+		SendMessage(gomock.Any(), gomock.Any()).
+		Return(&awssqs.SendMessageOutput{}, nil)
+	metrics.EXPECT().ObserveDependency("sqs", "send", gomock.Any(), nil)
+	client := NewClient(queueAPI, metrics)
+	err := client.SendMessage(context.Background(), SendMessageRequest{})
+
+	require.NoError(t, err)
+	assert.Same(t, metrics, client.metrics)
+}
+
 func TestClientWrapsQueueErrors(t *testing.T) {
 	t.Parallel()
 

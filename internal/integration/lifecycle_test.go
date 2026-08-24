@@ -15,7 +15,6 @@ import (
 
 	bot "github.com/siutsin/telegram-jung2-bot/internal"
 
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/stretchr/testify/require"
 	gomock "go.uber.org/mock/gomock"
 
@@ -130,8 +129,10 @@ func startLifecycleApp(t *testing.T, ctx context.Context) lifecycleApp {
 			return runCtx.Err()
 		}
 	})
+	metrics := bot.NewMetrics(readiness)
 	webhookServer := lifecycleWebhookServer(readiness, drainStarted, releaseDrain)
-	metricsServer := lifecycleMetricsServer()
+	webhookServer.Handler = metrics.HTTPHandler("webhook", webhookServer.Handler)
+	metricsServer := lifecycleMetricsServer(metrics)
 	application := bot.NewApp(
 		bot.NewHTTPServer("HTTP", webhookAddress, webhookServer),
 		bot.NewHTTPServer("metrics", metricsAddress, metricsServer),
@@ -186,11 +187,11 @@ func lifecycleWebhookServer(readiness *atomic.Bool, drainStarted chan<- struct{}
 	}
 }
 
-// lifecycleMetricsServer uses the production handler to cover real metrics output.
-func lifecycleMetricsServer() *http.Server {
+// lifecycleMetricsServer uses the production handler to cover service metrics.
+func lifecycleMetricsServer(metrics *bot.Metrics) *http.Server {
 	return &http.Server{
 		ReadHeaderTimeout: time.Second,
-		Handler:           promhttp.Handler(),
+		Handler:           metrics.Handler(),
 	}
 }
 
@@ -238,7 +239,7 @@ func lifecycleResponseStatus(client *http.Client, url string) int {
 	return status
 }
 
-// lifecycleMetricsExpose proves the metrics listener returns Prometheus runtime data.
+// lifecycleMetricsExpose proves the metrics listener returns service and Go data.
 func lifecycleMetricsExpose(client *http.Client, url string) bool {
 	response, err := client.Get(url)
 	if err != nil {
@@ -258,7 +259,10 @@ func lifecycleMetricsExpose(client *http.Client, url string) bool {
 		return false
 	}
 
-	return strings.Contains(string(body), "go_goroutines")
+	metrics := string(body)
+	return strings.Contains(metrics, "go_goroutines") &&
+		strings.Contains(metrics, "telegram_jung2_bot_ready 1") &&
+		strings.Contains(metrics, "telegram_jung2_bot_http_requests_total{code=\"200\",method=\"get\",route=\"webhook\"}")
 }
 
 // lifecycleCannotConnect confirms shutdown rejects new TCP connections.

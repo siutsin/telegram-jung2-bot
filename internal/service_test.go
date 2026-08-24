@@ -38,6 +38,7 @@ func TestNewBuildsService(t *testing.T) {
 	messageClient := &fakeMessageClient{}
 	messenger := &fakeMessenger{}
 	sender := &fakeSender{}
+	metrics := NewMetrics(nil)
 
 	service := NewService(
 		chatStore,
@@ -48,6 +49,7 @@ func TestNewBuildsService(t *testing.T) {
 		func() time.Time { return now },
 		"queue-url",
 		sender,
+		metrics,
 	)
 
 	assert.Equal(t, chatStore, service.chatMaintainer)
@@ -58,6 +60,7 @@ func TestNewBuildsService(t *testing.T) {
 	assert.Equal(t, now, service.nowFunc())
 	assert.Equal(t, "queue-url", service.queueURL)
 	assert.Equal(t, sender, service.sender)
+	assert.Same(t, metrics, service.metrics)
 }
 
 func TestOnOffFromWorkEnqueuesDueChats(t *testing.T) {
@@ -67,6 +70,7 @@ func TestOnOffFromWorkEnqueuesDueChats(t *testing.T) {
 	service := testService()
 	service.chatMaintainer = &fakeChatStore{dueChatIDs: []int64{123}}
 	service.sender = sender
+	service.metrics = NewMetrics(nil)
 
 	err := service.OnOffFromWork(context.Background(), "2026-05-01T18:00:00+01:00")
 
@@ -286,6 +290,7 @@ func TestOnOffFromWorkReturnsFanOutErrors(t *testing.T) {
 	service = testService()
 	service.chatMaintainer = &fakeChatStore{dueChatIDs: []int64{123}}
 	service.sender = &fakeSender{err: errors.New("boom")}
+	service.metrics = NewMetrics(nil)
 
 	err = service.OnOffFromWork(context.Background(), "2026-05-01T18:00:00Z")
 

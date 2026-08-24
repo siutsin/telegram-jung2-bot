@@ -10,6 +10,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	gomock "go.uber.org/mock/gomock"
+
+	mock "github.com/siutsin/telegram-jung2-bot/internal/mock"
 )
 
 func TestParseUpdateDecodesSupportedMessage(t *testing.T) {
@@ -25,6 +28,25 @@ func TestParseUpdateDecodesSupportedMessage(t *testing.T) {
 	assert.Equal(t, []Entity{{Type: "bot_command"}}, update.Message.Entities)
 	require.NotNil(t, update.Message.From)
 	assert.Equal(t, int64(456), update.Message.From.ID)
+}
+
+// TestWithDependencyObserverRecordsTelegramMetric proves a real Telegram call notifies the generated observer.
+func TestWithDependencyObserverRecordsTelegramMetric(t *testing.T) {
+	t.Parallel()
+
+	controller := gomock.NewController(t)
+	metrics := mock.NewMockTelegramDependencyObserver(controller)
+	metrics.EXPECT().ObserveDependency("telegram", "send_message", gomock.Any(), nil)
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		_, err := response.Write([]byte(`{"ok":true}`))
+		assert.NoError(t, err)
+	}))
+	defer server.Close()
+	client := NewClient("token", WithBaseURL(server.URL), WithHTTPClient(server.Client()), WithDependencyObserver(metrics))
+	err := client.SendMessage(context.Background(), 123, "hi")
+
+	require.NoError(t, err)
+	assert.Same(t, metrics, client.metrics)
 }
 
 func TestParseUpdateAcceptsUnsupportedUpdate(t *testing.T) {

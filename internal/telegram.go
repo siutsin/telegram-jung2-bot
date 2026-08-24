@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // ReportLimit is the project safety limit below Telegram's 4096 character cap.
@@ -23,6 +24,7 @@ type Client struct {
 	baseURL    string
 	botToken   string
 	httpClient *http.Client
+	metrics    dependencyObserver
 }
 
 type SendMessageOptions struct {
@@ -32,6 +34,13 @@ type SendMessageOptions struct {
 
 // ClientOption customises a Telegram client.
 type ClientOption func(*Client)
+
+//go:generate sh -c "GOFLAGS=-mod=mod go run go.uber.org/mock/mockgen -source=telegram.go -destination=mock/telegram_mock.go -package=mock -mock_names dependencyObserver=MockTelegramDependencyObserver"
+
+// dependencyObserver records a completed Telegram API request.
+type dependencyObserver interface {
+	ObserveDependency(dependency string, operation string, duration time.Duration, err error)
+}
 
 // WithBaseURL overrides the Telegram API base URL for tests or local proxies.
 // For example, "https://api.example.com/" becomes baseURL
@@ -48,6 +57,13 @@ func WithHTTPClient(httpClient *http.Client) ClientOption {
 		if httpClient != nil {
 			client.httpClient = httpClient
 		}
+	}
+}
+
+// WithDependencyObserver records Telegram API request metrics.
+func WithDependencyObserver(metrics dependencyObserver) ClientOption {
+	return func(client *Client) {
+		client.metrics = metrics
 	}
 }
 
@@ -114,6 +130,8 @@ func (client Client) SendMessage(ctx context.Context, chatID int64, text string)
 // API sendMessage fields. For example, ParseMode "Markdown" adds
 // parse_mode="Markdown" to the request body.
 func (client Client) SendMessageWithOptions(ctx context.Context, chatID int64, text string, options SendMessageOptions) (err error) {
+	started := time.Now()
+	defer func() { client.observe("send_message", started, err) }()
 	payload := sendMessagePayload(chatID, text, options)
 	response, err := client.do(ctx, http.MethodPost, "sendMessage", nil, payload)
 	if err != nil {
@@ -150,6 +168,8 @@ func sendMessagePayload(chatID int64, text string, options SendMessageOptions) [
 
 // GetChatAdministrators returns the administrators of a Telegram chat.
 func (client Client) GetChatAdministrators(ctx context.Context, chatID int64) (administrators []Administrator, err error) {
+	started := time.Now()
+	defer func() { client.observe("get_administrators", started, err) }()
 	query := url.Values{"chat_id": {fmt.Sprint(chatID)}}
 	response, err := client.do(ctx, http.MethodGet, "getChatAdministrators", query, nil)
 	if err != nil {
@@ -173,6 +193,13 @@ func (client Client) GetChatAdministrators(ctx context.Context, chatID int64) (a
 	}
 
 	return result.Result, nil
+}
+
+// observe records a completed Telegram API request when metrics are enabled.
+func (client Client) observe(operation string, started time.Time, err error) {
+	if client.metrics != nil {
+		client.metrics.ObserveDependency("telegram", operation, time.Since(started), err)
+	}
 }
 
 // IsAdmin reports whether userID is an administrator of chatID.

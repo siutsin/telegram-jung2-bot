@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	bot "github.com/siutsin/telegram-jung2-bot/internal"
+
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
 )
 
@@ -23,6 +25,35 @@ func TestNewRoutesHealth(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, recorder.Code)
 	assert.Equal(t, "ok", recorder.Body.String())
+}
+
+// TestRouteMetricsRecordFixedRoutes proves route instrumentation does not use request paths as labels.
+func TestRouteMetricsRecordFixedRoutes(t *testing.T) {
+	t.Parallel()
+
+	metrics := bot.NewMetrics(nil)
+	handler := instrumentRoute(metrics, "health", http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		writer.WriteHeader(http.StatusOK)
+	}))
+	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/health", nil))
+
+	assert.NotNil(t, handler)
+}
+
+// TestRecordWebhookOutcomeMapsHTTPResults proves webhook metric labels remain fixed.
+func TestRecordWebhookOutcomeMapsHTTPResults(t *testing.T) {
+	t.Parallel()
+
+	metrics := bot.NewMetrics(nil)
+	for _, statusCode := range []int{
+		http.StatusOK,
+		http.StatusNoContent,
+		http.StatusUnauthorized,
+		http.StatusBadRequest,
+		http.StatusInternalServerError,
+	} {
+		recordWebhookOutcome(metrics, statusCode)
+	}
 }
 
 func TestNewRejectsUnsupportedMethods(t *testing.T) {

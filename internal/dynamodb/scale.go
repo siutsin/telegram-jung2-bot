@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	awscore "github.com/aws/aws-sdk-go-v2/aws"
 	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -13,9 +14,11 @@ import (
 
 // ScaleUp raises DynamoDB read capacity to the configured target.
 func (service ScaleUpper) ScaleUp(ctx context.Context) error {
+	started := time.Now()
 	output, err := service.dynamo.DescribeTable(ctx, &awsdynamodb.DescribeTableInput{
 		TableName: awscore.String(service.tableName),
 	})
+	observeDependency(service.metrics, "describe", started, err)
 	if err != nil {
 		return fmt.Errorf("describe DynamoDB table: %w", err)
 	}
@@ -32,6 +35,7 @@ func (service ScaleUpper) ScaleUp(ctx context.Context) error {
 		readCapacity = int64(service.desiredRead)
 	}
 
+	started = time.Now()
 	_, err = service.dynamo.UpdateTable(ctx, &awsdynamodb.UpdateTableInput{
 		TableName: awscore.String(service.tableName),
 		ProvisionedThroughput: &ddbtypes.ProvisionedThroughput{
@@ -39,6 +43,7 @@ func (service ScaleUpper) ScaleUp(ctx context.Context) error {
 			WriteCapacityUnits: throughput.WriteCapacityUnits,
 		},
 	})
+	observeDependency(service.metrics, "update_table", started, err)
 	if err != nil {
 		if isIgnoredScaleUpError(err) {
 			slog.Warn("ignore DynamoDB scale-up error", "table", service.tableName, "err", err)

@@ -29,12 +29,13 @@ func (client MessageClient) Save(ctx context.Context, tableName string, row bot.
 		row.TTL = bot.TTL(row.DateCreated, bot.DefaultTTL)
 	}
 
-	return updateItem(ctx, client.dynamo, buildMessageSaveUpdate(tableName, row))
+	return updateItem(ctx, client.dynamo, client.metrics, buildMessageSaveUpdate(tableName, row))
 }
 
 // QueryByChat loads message rows for one bot.
 func (client MessageClient) QueryByChat(ctx context.Context, tableName string, chatID int64, since time.Time) ([]bot.StoredMessage, error) {
 	return collectPages(ctx, func(pageCtx context.Context, startKey map[string]any) (page[bot.StoredMessage], error) {
+		started := time.Now()
 		queryRequest := queryMessagesRequest(tableName, chatID, since, startKey)
 		output, err := client.dynamo.Query(pageCtx, &awsdynamodb.QueryInput{
 			TableName:                 awscore.String(queryRequest.tableName),
@@ -43,6 +44,7 @@ func (client MessageClient) QueryByChat(ctx context.Context, tableName string, c
 			ScanIndexForward:          awscore.Bool(queryRequest.scanIndexForward),
 			ExpressionAttributeValues: encodeDynamoValues(queryRequest.expressionAttributeValues),
 		})
+		observeDependency(client.metrics, "query", started, err)
 		if err != nil {
 			return page[bot.StoredMessage]{}, fmt.Errorf("query DynamoDB messages: %w", err)
 		}
