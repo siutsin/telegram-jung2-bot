@@ -90,6 +90,9 @@ focused Go tests.
 - Use Buck2's official `prelude//go/tools/gobuckify:gobuckify` target for Go
   vendor BUCK generation through `make vendor`; do not reintroduce a custom
   generator.
+- The project supports Docker and Apple Container image builds. For local image
+  validation, use Apple Container (`container build`) first when it is
+  available. Use Docker when Apple Container is unavailable.
 - Create agent worktrees outside this repo's directory tree (e.g. `/tmp/...`),
   not nested inside it (e.g. `.scratchpad/worktrees/...`). A worktree nested
   inside the repo makes Buck2 resolve the wrong root and fail with
