@@ -10,8 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/siutsin/telegram-jung2-bot/internal/chat"
-	"github.com/siutsin/telegram-jung2-bot/internal/message"
+	bot "github.com/siutsin/telegram-jung2-bot/internal"
+
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
 )
 
@@ -21,11 +21,11 @@ type response struct {
 }
 
 type messageSaver interface {
-	Save(ctx context.Context, tableName string, row message.Message) error
+	Save(ctx context.Context, tableName string, row bot.StoredMessage) error
 }
 
 type chatSaver interface {
-	Save(ctx context.Context, tableName string, settings chat.ChatSetting) error
+	Save(ctx context.Context, tableName string, settings bot.ChatSetting) error
 }
 
 type enqueuer interface {

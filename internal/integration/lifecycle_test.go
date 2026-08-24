@@ -13,11 +13,12 @@ import (
 	"testing"
 	"time"
 
+	bot "github.com/siutsin/telegram-jung2-bot/internal"
+
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/stretchr/testify/require"
 	gomock "go.uber.org/mock/gomock"
 
-	"github.com/siutsin/telegram-jung2-bot/internal/app"
 	appmock "github.com/siutsin/telegram-jung2-bot/internal/mock"
 )
 
@@ -131,11 +132,11 @@ func startLifecycleApp(t *testing.T, ctx context.Context) lifecycleApp {
 	})
 	webhookServer := lifecycleWebhookServer(readiness, drainStarted, releaseDrain)
 	metricsServer := lifecycleMetricsServer()
-	application := app.New(
-		app.NewHTTPServer("HTTP", webhookAddress, webhookServer),
-		app.NewHTTPServer("metrics", metricsAddress, metricsServer),
+	application := bot.NewApp(
+		bot.NewHTTPServer("HTTP", webhookAddress, webhookServer),
+		bot.NewHTTPServer("metrics", metricsAddress, metricsServer),
 		queueWorker,
-		app.Options{Readiness: readiness, ReadinessDrain: time.Nanosecond, ShutdownTimeout: time.Second},
+		bot.AppOptions{Readiness: readiness, ReadinessDrain: time.Nanosecond, ShutdownTimeout: time.Second},
 	)
 	runDone := make(chan error, 1)
 	go func() { runDone <- application.Run(ctx) }()

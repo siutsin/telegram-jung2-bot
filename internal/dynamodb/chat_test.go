@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	bot "github.com/siutsin/telegram-jung2-bot/internal"
+
 	awscore "github.com/aws/aws-sdk-go-v2/aws"
 	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	ddbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -14,9 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/siutsin/telegram-jung2-bot/internal/chat"
 	mock "github.com/siutsin/telegram-jung2-bot/internal/mock"
-	"github.com/siutsin/telegram-jung2-bot/internal/workday"
 )
 
 func TestChatClientGet(t *testing.T) {
@@ -27,7 +27,7 @@ func TestChatClientGet(t *testing.T) {
 		output      *awsdynamodb.GetItemOutput
 		getErr      error
 		wantFound   bool
-		want        chat.ChatSetting
+		want        bot.ChatSetting
 		wantErrText string
 	}{
 		{name: "missing", output: &awsdynamodb.GetItemOutput{}, wantFound: false},
@@ -39,7 +39,7 @@ func TestChatClientGet(t *testing.T) {
 				"enableAllJung": &ddbtypes.AttributeValueMemberBOOL{Value: true},
 			}},
 			wantFound: true,
-			want: chat.ChatSetting{
+			want: bot.ChatSetting{
 				ChatID:        123,
 				DateCreated:   time.Date(2026, 5, 2, 20, 30, 0, 0, time.FixedZone("", 8*60*60)),
 				EnableAllJung: true,
@@ -88,13 +88,13 @@ func TestChatClientUpdateAndSaveStatistics(t *testing.T) {
 		{
 			name: "update",
 			run: func(ctx context.Context, client ChatClient) error {
-				return client.Update(ctx, chat.BuildAllJungUpdate("chats", 123, false))
+				return client.Update(ctx, bot.BuildAllJungUpdate("chats", 123, false))
 			},
 		},
 		{
 			name: "save",
 			run: func(ctx context.Context, client ChatClient) error {
-				return client.Save(ctx, "chats", chat.ChatSetting{
+				return client.Save(ctx, "chats", bot.ChatSetting{
 					ChatID:      123,
 					ChatTitle:   "Ops",
 					DateCreated: time.Date(2026, 5, 2, 12, 30, 0, 0, time.UTC),
@@ -193,18 +193,18 @@ func dueChatItems() []map[string]ddbtypes.AttributeValue {
 func TestDueScanRowMatches(t *testing.T) {
 	t.Parallel()
 
-	monWithUnknownBits := workday.Mon | 128
-	tuesday := workday.Tue
+	monWithUnknownBits := bot.Mon | 128
+	tuesday := bot.Tue
 	tests := []struct {
 		name string
-		row  chat.Row
+		row  bot.Row
 		day  string
 		want bool
 	}{
-		{name: "missing defaults with empty off time", row: chat.Row{}, day: "MON", want: true},
-		{name: "missing rejects non-empty off time", row: chat.Row{OffTime: "1800"}, day: "MON", want: false},
-		{name: "workday match masks unknown bits", row: chat.Row{Workday: &monWithUnknownBits}, day: "MON", want: true},
-		{name: "workday miss", row: chat.Row{Workday: &tuesday}, day: "MON", want: false},
+		{name: "missing defaults with empty off time", row: bot.Row{}, day: "MON", want: true},
+		{name: "missing rejects non-empty off time", row: bot.Row{OffTime: "1800"}, day: "MON", want: false},
+		{name: "workday match masks unknown bits", row: bot.Row{Workday: &monWithUnknownBits}, day: "MON", want: true},
+		{name: "workday miss", row: bot.Row{Workday: &tuesday}, day: "MON", want: false},
 	}
 
 	for _, test := range tests {

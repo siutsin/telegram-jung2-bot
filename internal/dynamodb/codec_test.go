@@ -4,12 +4,11 @@ import (
 	"testing"
 	"time"
 
+	bot "github.com/siutsin/telegram-jung2-bot/internal"
+
 	ddbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/siutsin/telegram-jung2-bot/internal/chat"
-	"github.com/siutsin/telegram-jung2-bot/internal/message"
 )
 
 func TestEncodeDynamoValues(t *testing.T) {
@@ -78,7 +77,7 @@ func TestDecodeMessage(t *testing.T) {
 	tests := []struct {
 		name        string
 		item        map[string]ddbtypes.AttributeValue
-		want        message.Message
+		want        bot.StoredMessage
 		wantErrText string
 	}{
 		{
@@ -93,7 +92,7 @@ func TestDecodeMessage(t *testing.T) {
 				"userId":      &ddbtypes.AttributeValueMemberN{Value: "789"},
 				"username":    &ddbtypes.AttributeValueMemberS{Value: "ada"},
 			},
-			want: message.Message{
+			want: bot.StoredMessage{
 				ChatID:      123,
 				ChatTitle:   "Ops",
 				DateCreated: time.Date(2026, 5, 2, 20, 30, 0, 0, time.FixedZone("", 8*60*60)),
@@ -144,7 +143,7 @@ func TestDecodeChat(t *testing.T) {
 		"workday":       &ddbtypes.AttributeValueMemberN{Value: "62"},
 	})
 
-	assert.Equal(t, chat.Row{
+	assert.Equal(t, bot.Row{
 		ChatID:        123,
 		ChatTitle:     "Ops",
 		DateCreated:   "2026-05-02T20:30:00+08:00",

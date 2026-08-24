@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"strconv"
 
-	ddbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	bot "github.com/siutsin/telegram-jung2-bot/internal"
 
-	"github.com/siutsin/telegram-jung2-bot/internal/chat"
-	"github.com/siutsin/telegram-jung2-bot/internal/message"
+	ddbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 // encodeDynamoValues converts loose contract values into DynamoDB attributes.
@@ -46,15 +45,15 @@ func encodeDynamoValue(value any) ddbtypes.AttributeValue {
 }
 
 // decodeMessage converts one DynamoDB item into a stored message row.
-// For example, an item with chatId and dateCreated becomes message.Message with
+// For example, an item with chatId and dateCreated becomes bot.StoredMessage with
 // parsed DateCreated.
-func decodeMessage(item map[string]ddbtypes.AttributeValue) (message.Message, error) {
-	timestamp, err := message.ParseDateCreated(stringAttribute(item, "dateCreated"))
+func decodeMessage(item map[string]ddbtypes.AttributeValue) (bot.StoredMessage, error) {
+	timestamp, err := bot.ParseDateCreated(stringAttribute(item, "dateCreated"))
 	if err != nil {
-		return message.Message{}, err
+		return bot.StoredMessage{}, err
 	}
 
-	return message.Message{
+	return bot.StoredMessage{
 		ChatID:      int64Attribute(item, "chatId"),
 		ChatTitle:   stringAttribute(item, "chatTitle"),
 		DateCreated: timestamp,
@@ -67,10 +66,10 @@ func decodeMessage(item map[string]ddbtypes.AttributeValue) (message.Message, er
 }
 
 // decodeChat converts one DynamoDB item into a chat row.
-// For example, an item with offTime and workday becomes chat.Row with those
+// For example, an item with offTime and workday becomes bot.Row with those
 // fields populated.
-func decodeChat(item map[string]ddbtypes.AttributeValue) chat.Row {
-	return chat.Row{
+func decodeChat(item map[string]ddbtypes.AttributeValue) bot.Row {
+	return bot.Row{
 		ChatID:        int64Attribute(item, "chatId"),
 		ChatTitle:     stringAttribute(item, "chatTitle"),
 		DateCreated:   stringAttribute(item, "dateCreated"),

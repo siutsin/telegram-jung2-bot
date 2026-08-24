@@ -4,16 +4,14 @@ import (
 	"context"
 	"testing"
 
+	bot "github.com/siutsin/telegram-jung2-bot/internal"
+
 	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	awssqs "github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/stretchr/testify/require"
 
-	"github.com/siutsin/telegram-jung2-bot/internal/chat"
 	appdynamodb "github.com/siutsin/telegram-jung2-bot/internal/dynamodb"
-	"github.com/siutsin/telegram-jung2-bot/internal/message"
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
-	"github.com/siutsin/telegram-jung2-bot/internal/schedule"
-	"github.com/siutsin/telegram-jung2-bot/internal/workday"
 )
 
 func runServiceOnOffFromWorkIntegration(
@@ -37,7 +35,7 @@ func runServiceOnOffFromWorkIntegration(
 	require.NoError(t, err, "receive offFromWork queue message")
 
 	gotAction := queue.DecodeMessage(queueResponse.Messages[0])
-	wantAction := schedule.BuildOffFromWorkAction(integrationChatID)
+	wantAction := bot.BuildOffFromWorkAction(integrationChatID)
 	assertAction(t, wantAction, gotAction)
 
 	err = queueClient.Delete(ctx, queue.DeleteMessageRequest{
@@ -56,14 +54,14 @@ func seedOnOffFromWorkChat(
 	t.Helper()
 
 	chatRepo := appdynamodb.NewChatClient(dynamoClient)
-	settings := chat.ChatSetting{
+	settings := bot.ChatSetting{
 		ChatID:      integrationChatID,
 		ChatTitle:   integrationChatTitle,
 		DateCreated: integrationNow,
-		TTL:         message.TTL(integrationNow, message.DefaultTTL),
+		TTL:         bot.TTL(integrationNow, bot.DefaultTTL),
 	}
 	err := chatRepo.Save(ctx, resources.chatTable, settings)
 	require.NoError(t, err, "seed onOffFromWork chat")
-	err = chatRepo.Update(ctx, chat.BuildOffWorkUpdate(resources.chatTable, settings.ChatID, "1830", workday.Thu))
+	err = chatRepo.Update(ctx, bot.BuildOffWorkUpdate(resources.chatTable, settings.ChatID, "1830", bot.Thu))
 	require.NoError(t, err, "seed onOffFromWork off-work settings")
 }

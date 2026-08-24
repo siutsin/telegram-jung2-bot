@@ -13,20 +13,17 @@ import (
 	"syscall"
 	"time"
 
+	bot "github.com/siutsin/telegram-jung2-bot/internal"
+
 	awscore "github.com/aws/aws-sdk-go-v2/aws"
 	awscfg "github.com/aws/aws-sdk-go-v2/config"
 	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	awssqs "github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/siutsin/telegram-jung2-bot/internal/app"
-	"github.com/siutsin/telegram-jung2-bot/internal/config"
 	"github.com/siutsin/telegram-jung2-bot/internal/dynamodb"
 	"github.com/siutsin/telegram-jung2-bot/internal/httpserver"
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
-	"github.com/siutsin/telegram-jung2-bot/internal/service"
-	"github.com/siutsin/telegram-jung2-bot/internal/telegram"
-	"github.com/siutsin/telegram-jung2-bot/internal/worker"
 )
 
 // main starts the bot process.
@@ -43,7 +40,7 @@ func main() {
 
 // run loads config, assembles the application, and starts it.
 func run(ctx context.Context) error {
-	loadedConfig, err := config.LoadEnviron(os.Environ())
+	loadedConfig, err := bot.LoadEnviron(os.Environ())
 	if err != nil {
 		return err
 	}
@@ -63,7 +60,7 @@ func run(ctx context.Context) error {
 	messageClient := dynamodb.NewMessageClient(dynamoClient)
 	chatClient := dynamodb.NewChatClient(dynamoClient)
 	scaleUpper := dynamodb.NewScaleUpper(dynamoClient, loadedConfig.MessageTable, loadedConfig.ScaleUpReadCapacity)
-	actions := service.New(
+	actions := bot.NewService(
 		chatClient,
 		loadedConfig.ChatIDTable,
 		messageClient,
@@ -83,11 +80,11 @@ func run(ctx context.Context) error {
 		return err
 	}
 	metricsServer := newMetricsServer(loadedConfig)
-	application := app.New(
-		app.NewHTTPServer("HTTP", loadedConfig.ServerAddress, httpServer),
-		app.NewHTTPServer("metrics", loadedConfig.MetricsServerAddress, metricsServer),
+	application := bot.NewApp(
+		bot.NewHTTPServer("HTTP", loadedConfig.ServerAddress, httpServer),
+		bot.NewHTTPServer("metrics", loadedConfig.MetricsServerAddress, metricsServer),
 		queueWorker,
-		app.Options{
+		bot.AppOptions{
 			Readiness:       readiness,
 			ReadinessDrain:  loadedConfig.ReadinessDrain,
 			ShutdownTimeout: loadedConfig.ShutdownTimeout,
@@ -132,24 +129,24 @@ func newSQSClient(awsConfig awscore.Config, endpointURL string) *awssqs.Client {
 }
 
 // newTelegramClient builds the Telegram API client.
-func newTelegramClient(loadedConfig config.Config) telegram.Client {
-	return telegram.NewClient(
+func newTelegramClient(loadedConfig bot.Config) bot.Client {
+	return bot.NewClient(
 		loadedConfig.TelegramBotToken,
-		telegram.WithBaseURL(loadedConfig.TelegramAPIBaseURL),
-		telegram.WithHTTPClient(&http.Client{Timeout: loadedConfig.HTTPTimeout}),
+		bot.WithBaseURL(loadedConfig.TelegramAPIBaseURL),
+		bot.WithHTTPClient(&http.Client{Timeout: loadedConfig.HTTPTimeout}),
 	)
 }
 
 // newHTTPServer builds the production HTTP server.
 func newHTTPServer(
-	loadedConfig config.Config,
+	loadedConfig bot.Config,
 	readiness *atomic.Bool,
 	chats dynamodb.ChatClient,
 	messages dynamodb.MessageClient,
 	sender interface {
 		SendMessage(ctx context.Context, request queue.SendMessageRequest) error
 	},
-	messenger telegram.Client,
+	messenger bot.Client,
 	scaleUpper dynamodb.ScaleUpper,
 ) (*http.Server, error) {
 	dependencies := httpserver.Dependencies{
@@ -175,7 +172,7 @@ func newHTTPServer(
 }
 
 // newMetricsServer builds the dedicated Prometheus metrics server.
-func newMetricsServer(loadedConfig config.Config) *http.Server {
+func newMetricsServer(loadedConfig bot.Config) *http.Server {
 	return &http.Server{
 		Addr:              loadedConfig.MetricsServerAddress,
 		Handler:           promhttp.Handler(),
@@ -190,14 +187,14 @@ func newMetricsServer(loadedConfig config.Config) *http.Server {
 func newQueueWorker(queueURL string, queueClient interface {
 	ReceiveMessage(ctx context.Context, request queue.ReceiveMessageRequest) (queue.ReceiveMessageResponse, error)
 	Delete(ctx context.Context, request queue.DeleteMessageRequest) error
-}, actions service.Service) (interface {
+}, actions bot.Service) (interface {
 	Run(ctx context.Context) error
 }, error) {
-	return worker.NewPollingWorker(
+	return bot.NewPollingWorker(
 		queueURL,
 		queueClient,
 		queueClient,
-		worker.Handlers{
+		bot.Handlers{
 			JungHelp:       actions.JungHelp,
 			TopTen:         actions.TopTen,
 			TopDiver:       actions.TopDiver,

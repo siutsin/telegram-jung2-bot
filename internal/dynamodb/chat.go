@@ -5,13 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	bot "github.com/siutsin/telegram-jung2-bot/internal"
+
 	awscore "github.com/aws/aws-sdk-go-v2/aws"
 	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
-
-	"github.com/siutsin/telegram-jung2-bot/internal/chat"
-	"github.com/siutsin/telegram-jung2-bot/internal/message"
-	"github.com/siutsin/telegram-jung2-bot/internal/schedule"
-	"github.com/siutsin/telegram-jung2-bot/internal/workday"
 )
 
 type dueChatScanRequest struct {
@@ -22,34 +19,34 @@ type dueChatScanRequest struct {
 }
 
 // Get loads one stored chat row.
-func (client ChatClient) Get(ctx context.Context, tableName string, chatID int64) (chat.ChatSetting, bool, error) {
+func (client ChatClient) Get(ctx context.Context, tableName string, chatID int64) (bot.ChatSetting, bool, error) {
 	output, err := client.dynamo.GetItem(ctx, &awsdynamodb.GetItemInput{
 		TableName: awscore.String(tableName),
 		Key:       encodeDynamoValues(map[string]any{"chatId": chatID}),
 	})
 	if err != nil {
-		return chat.ChatSetting{}, false, fmt.Errorf("get DynamoDB chat row: %w", err)
+		return bot.ChatSetting{}, false, fmt.Errorf("get DynamoDB chat row: %w", err)
 	}
 	if len(output.Item) == 0 {
-		return chat.ChatSetting{}, false, nil
+		return bot.ChatSetting{}, false, nil
 	}
 
-	settings, err := chat.ParseRow(decodeChat(output.Item))
+	settings, err := bot.ParseRow(decodeChat(output.Item))
 	if err != nil {
-		return chat.ChatSetting{}, false, fmt.Errorf("parse DynamoDB chat row: %w", err)
+		return bot.ChatSetting{}, false, fmt.Errorf("parse DynamoDB chat row: %w", err)
 	}
 
 	return settings, true, nil
 }
 
 // Update stores a chat setting update expression.
-func (client ChatClient) Update(ctx context.Context, update chat.UpdateExpression) error {
+func (client ChatClient) Update(ctx context.Context, update bot.UpdateExpression) error {
 	return updateContractUpdate(ctx, client.dynamo, update.TableName, update.Key, update.UpdateExpression, update.ExpressionAttributeNames, update.ExpressionAttributeValues)
 }
 
 // Save stores a chat record row.
-func (client ChatClient) Save(ctx context.Context, tableName string, settings chat.ChatSetting) error {
-	metadataUpdate := chat.BuildMetadataUpdate(tableName, settings)
+func (client ChatClient) Save(ctx context.Context, tableName string, settings bot.ChatSetting) error {
+	metadataUpdate := bot.BuildMetadataUpdate(tableName, settings)
 	return updateContractUpdate(ctx, client.dynamo, metadataUpdate.TableName, metadataUpdate.Key, metadataUpdate.UpdateExpression, metadataUpdate.ExpressionAttributeNames, metadataUpdate.ExpressionAttributeValues)
 }
 
@@ -60,7 +57,7 @@ func (client ChatClient) SaveStatistics(ctx context.Context, tableName string, c
 
 // DueChatIDs scans and filters due chats for one scheduled window.
 func (client ChatClient) DueChatIDs(ctx context.Context, tableName string, timestamp time.Time) ([]int64, error) {
-	window := schedule.WindowFromTime(timestamp)
+	window := bot.WindowFromTime(timestamp)
 	scanRequest := scanDueChatsRequest(tableName, window.OffTime, window.Weekday)
 	return collectPages(ctx, func(pageCtx context.Context, startKey map[string]any) (page[int64], error) {
 		output, err := client.dynamo.Scan(pageCtx, &awsdynamodb.ScanInput{
@@ -93,12 +90,12 @@ func (client ChatClient) DueChatIDs(ctx context.Context, tableName string, times
 
 // dueScanRowMatches applies the deployed post-scan weekday filter.
 // For example, a row with MON|TUE matches day "MON" but not "SUN".
-func dueScanRowMatches(row chat.Row, day string) bool {
+func dueScanRowMatches(row bot.Row, day string) bool {
 	if row.Workday == nil {
 		return row.OffTime == ""
 	}
 
-	return workday.MatchesDay(day, workday.Workdays(*row.Workday&int(workday.AllDays)))
+	return bot.MatchesDay(day, bot.Workdays(*row.Workday&int(bot.AllDays)))
 }
 
 // scanDueChatsRequest builds a due-chat scan request.
@@ -151,7 +148,7 @@ func buildChatCountUpdate(tableName string, chatID int64, userCount int, message
 			":uc":  userCount,
 			":mc":  messageCount,
 			":mpu": messagePerUser(userCount, messageCount),
-			":ct":  message.FormatDateCreated(now),
+			":ct":  bot.FormatDateCreated(now),
 		},
 	}
 }
@@ -162,5 +159,5 @@ func isDefaultOffWorkScan(offTime string, weekday string) bool {
 	if offTime != "1000" {
 		return false
 	}
-	return workday.MatchesDay(weekday, workday.Weekdays)
+	return bot.MatchesDay(weekday, bot.Weekdays)
 }

@@ -6,18 +6,15 @@ import (
 	"testing"
 	"time"
 
+	bot "github.com/siutsin/telegram-jung2-bot/internal"
+
 	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	awssqs "github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/siutsin/telegram-jung2-bot/internal/chat"
 	appdynamodb "github.com/siutsin/telegram-jung2-bot/internal/dynamodb"
-	"github.com/siutsin/telegram-jung2-bot/internal/message"
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
-	"github.com/siutsin/telegram-jung2-bot/internal/service"
-	"github.com/siutsin/telegram-jung2-bot/internal/statistics"
-	"github.com/siutsin/telegram-jung2-bot/internal/worker"
 )
 
 const (
@@ -42,7 +39,7 @@ func runWorkerRunIntegration(
 	svc := newIntegrationService(dynamoClient, sqsClient, resources, messenger)
 	queueClient := queue.NewClient(sqsClient)
 
-	queueWorker, err := worker.NewPollingWorker(
+	queueWorker, err := bot.NewPollingWorker(
 		resources.queueURL,
 		queueClient,
 		queueClient,
@@ -70,7 +67,7 @@ func runWorkerRunIntegration(
 	messages := messenger.recordedMessages()
 	require.Len(t, messages, 1)
 	assert.Equal(t, workerChatID, messages[0].chatID)
-	assert.Contains(t, messages[0].text, statistics.HelpMessage(workerChatTitle))
+	assert.Contains(t, messages[0].text, bot.HelpMessage(workerChatTitle))
 
 	cancel()
 
@@ -78,7 +75,7 @@ func runWorkerRunIntegration(
 	case runErr := <-done:
 		if workerCtx.Err() != nil {
 			// Cancel during an in-flight SQS long poll returns context.Canceled;
-			// app.Run normalises that through normaliseWorkerRunError.
+			// bot.Run normalises that through normaliseWorkerRunError.
 			break
 		}
 		require.NoError(t, runErr, "worker run should stop after cancel")
@@ -89,8 +86,8 @@ func runWorkerRunIntegration(
 	assertQueueEmpty(t, ctx, queueClient, resources.queueURL)
 }
 
-func buildWorkerHandlers(svc service.Service) worker.Handlers {
-	return worker.Handlers{
+func buildWorkerHandlers(svc bot.Service) bot.Handlers {
+	return bot.Handlers{
 		JungHelp:       svc.JungHelp,
 		TopTen:         svc.TopTen,
 		TopDiver:       svc.TopDiver,
@@ -146,7 +143,7 @@ func runWorkerJungHelpCase(
 	messages := messenger.recordedMessages()
 	require.Len(t, messages, 1)
 	assert.Equal(t, workerChatID, messages[0].chatID)
-	assert.Contains(t, messages[0].text, statistics.HelpMessage(workerChatTitle))
+	assert.Contains(t, messages[0].text, bot.HelpMessage(workerChatTitle))
 	assert.True(t, messages[0].options.DisableWebPagePreview)
 	assert.Equal(t, "markdown", messages[0].options.ParseMode)
 }
@@ -254,11 +251,11 @@ func seedWorkerTopTenData(
 	chatRepo := appdynamodb.NewChatClient(dynamoClient)
 	messageRepo := appdynamodb.NewMessageClient(dynamoClient)
 
-	settings := chat.ChatSetting{
+	settings := bot.ChatSetting{
 		ChatID:        workerChatID,
 		ChatTitle:     workerChatTitle,
 		DateCreated:   integrationNow,
-		TTL:           message.TTL(integrationNow, message.DefaultTTL),
+		TTL:           bot.TTL(integrationNow, bot.DefaultTTL),
 		EnableAllJung: true,
 	}
 	err := chatRepo.Save(ctx, resources.chatTable, settings)
@@ -274,13 +271,13 @@ func seedWorkerTopTenData(
 		{firstName: "Carol", userID: workerUserID + 3, offset: -time.Minute},
 	}
 	for _, user := range users {
-		row := message.Message{
+		row := bot.StoredMessage{
 			ChatID:      workerChatID,
 			DateCreated: integrationNow.Add(user.offset),
 			ChatTitle:   workerChatTitle,
 			UserID:      user.userID,
 			FirstName:   user.firstName,
-			TTL:         message.TTL(integrationNow, message.DefaultTTL),
+			TTL:         bot.TTL(integrationNow, bot.DefaultTTL),
 		}
 		err = messageRepo.Save(ctx, resources.messageTable, row)
 		require.NoError(t, err, "seed worker message for %s", user.firstName)
@@ -307,7 +304,7 @@ func pollServiceAction(
 	err := producer.Enqueue(ctx, action)
 	require.NoError(t, err, "enqueue worker action")
 
-	queueWorker, err := worker.NewPollingWorker(
+	queueWorker, err := bot.NewPollingWorker(
 		resources.queueURL,
 		queueClient,
 		queueClient,
@@ -400,7 +397,7 @@ func runWorkerHandlersCase(
 	svc := newIntegrationService(dynamoClient, sqsClient, resources, messenger)
 	queueClient := queue.NewClient(sqsClient)
 
-	queueWorker, err := worker.NewPollingWorker(
+	queueWorker, err := bot.NewPollingWorker(
 		resources.queueURL,
 		queueClient,
 		queueClient,
@@ -454,7 +451,7 @@ func runSQSBatchIntegration(
 	svc := newIntegrationService(dynamoClient, sqsClient, resources, messenger)
 	queueClient := queue.NewClient(sqsClient)
 
-	queueWorker, err := worker.NewPollingWorker(
+	queueWorker, err := bot.NewPollingWorker(
 		resources.queueURL,
 		queueClient,
 		queueClient,
@@ -505,12 +502,12 @@ func newIntegrationService(
 	sqsClient *awssqs.Client,
 	resources testResources,
 	messenger integrationMessenger,
-) service.Service {
+) bot.Service {
 	chatRepo := appdynamodb.NewChatClient(dynamoClient)
 	messageRepo := appdynamodb.NewMessageClient(dynamoClient)
 	sender := queue.NewClient(sqsClient)
 
-	return service.New(
+	return bot.NewService(
 		chatRepo,
 		resources.chatTable,
 		messageRepo,

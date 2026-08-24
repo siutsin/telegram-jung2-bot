@@ -8,18 +8,15 @@ import (
 	"testing"
 	"time"
 
+	bot "github.com/siutsin/telegram-jung2-bot/internal"
+
 	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	awssqs "github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/siutsin/telegram-jung2-bot/internal/chat"
-	"github.com/siutsin/telegram-jung2-bot/internal/command"
 	appdynamodb "github.com/siutsin/telegram-jung2-bot/internal/dynamodb"
-	"github.com/siutsin/telegram-jung2-bot/internal/message"
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
-	"github.com/siutsin/telegram-jung2-bot/internal/schedule"
-	"github.com/siutsin/telegram-jung2-bot/internal/workday"
 )
 
 const (
@@ -45,11 +42,11 @@ func runDynamoDBIntegration(t *testing.T, ctx context.Context, client *awsdynamo
 	messageRepo := appdynamodb.NewMessageClient(client)
 
 	created := time.Date(2026, 6, 11, 18, 30, 0, 0, time.UTC)
-	settings := chat.ChatSetting{
+	settings := bot.ChatSetting{
 		ChatID:      integrationChatID,
 		ChatTitle:   integrationChatTitle,
 		DateCreated: created,
-		TTL:         message.TTL(created, message.DefaultTTL),
+		TTL:         bot.TTL(created, bot.DefaultTTL),
 	}
 	err := chatRepo.Save(ctx, resources.chatTable, settings)
 	require.NoError(t, err, "save chat metadata")
@@ -60,13 +57,13 @@ func runDynamoDBIntegration(t *testing.T, ctx context.Context, client *awsdynamo
 	assert.Equal(t, settings.ChatTitle, gotChat.ChatTitle)
 	assert.True(t, gotChat.EnableAllJung)
 
-	err = chatRepo.Update(ctx, chat.BuildOffWorkUpdate(resources.chatTable, settings.ChatID, "1830", workday.Thu))
+	err = chatRepo.Update(ctx, bot.BuildOffWorkUpdate(resources.chatTable, settings.ChatID, "1830", bot.Thu))
 	require.NoError(t, err, "save chat off-work settings")
 	due, err := chatRepo.DueChatIDs(ctx, resources.chatTable, created)
 	require.NoError(t, err, "scan due chats")
 	assert.Equal(t, []int64{settings.ChatID}, due)
 
-	row := message.Message{
+	row := bot.StoredMessage{
 		ChatID:      settings.ChatID,
 		DateCreated: created,
 		ChatTitle:   settings.ChatTitle,
@@ -74,7 +71,7 @@ func runDynamoDBIntegration(t *testing.T, ctx context.Context, client *awsdynamo
 		Username:    "floci-user",
 		FirstName:   "Floci",
 		LastName:    "Tester",
-		TTL:         message.TTL(created, message.DefaultTTL),
+		TTL:         bot.TTL(created, bot.DefaultTTL),
 	}
 	err = messageRepo.Save(ctx, resources.messageTable, row)
 	require.NoError(t, err, "save message row")
@@ -107,13 +104,13 @@ func runDynamoDBMultiMessageQuery(
 		{username: "third-user", offset: 3 * time.Minute},
 	}
 	for _, user := range extraUsers {
-		row := message.Message{
+		row := bot.StoredMessage{
 			ChatID:      chatID,
 			DateCreated: baseTime.Add(user.offset),
 			ChatTitle:   integrationChatTitle,
 			UserID:      integrationUserID,
 			Username:    user.username,
-			TTL:         message.TTL(baseTime, message.DefaultTTL),
+			TTL:         bot.TTL(baseTime, bot.DefaultTTL),
 		}
 		err := messageRepo.Save(ctx, messageTable, row)
 		require.NoError(t, err, "save extra message row for %s", user.username)
@@ -165,7 +162,7 @@ func runSQSIntegration(t *testing.T, ctx context.Context, client *awssqs.Client,
 func queueActionCases(t *testing.T) []queueActionCase {
 	t.Helper()
 
-	chatContext := command.ChatContext{
+	chatContext := bot.ChatContext{
 		ChatID:    integrationChatID,
 		ChatTitle: integrationChatTitle,
 		UserID:    integrationUserID,
@@ -190,24 +187,24 @@ func queueActionCases(t *testing.T) []queueActionCase {
 	actionCases = append(actionCases,
 		queueActionCase{
 			name:   "Scheduler onOffFromWork",
-			action: schedule.BuildOnOffFromWorkAction("2026-06-11T18:30:00Z"),
+			action: bot.BuildOnOffFromWorkAction("2026-06-11T18:30:00Z"),
 		},
 		queueActionCase{
 			name:   "Scheduler offFromWork",
-			action: schedule.BuildOffFromWorkAction(chatContext.ChatID),
+			action: bot.BuildOffFromWorkAction(chatContext.ChatID),
 		},
 	)
 
 	return actionCases
 }
 
-func buildCommandActionCase(t *testing.T, spec commandActionSpec, chatContext command.ChatContext) queueActionCase {
+func buildCommandActionCase(t *testing.T, spec commandActionSpec, chatContext bot.ChatContext) queueActionCase {
 	t.Helper()
 
-	commands := command.ParseAll(spec.text)
+	commands := bot.ParseAll(spec.text)
 	require.Len(t, commands, 1, spec.name)
 
-	action, err := command.ActionFor(commands[0], chatContext)
+	action, err := bot.ActionFor(commands[0], chatContext)
 	require.NoError(t, err, "%s: build action", spec.name)
 
 	return queueActionCase{name: spec.name, action: action}
@@ -254,7 +251,7 @@ func runSQSFlociReceiveCasingIntegration(
 	queueClient := queue.NewClient(client)
 	producer := queue.NewProducer(resources.queueURL, queueClient)
 
-	want := schedule.BuildOnOffFromWorkAction("2026-06-11T18:30:00Z")
+	want := bot.BuildOnOffFromWorkAction("2026-06-11T18:30:00Z")
 
 	err := producer.Enqueue(ctx, want)
 	require.NoError(t, err, "enqueue Floci receive casing action")

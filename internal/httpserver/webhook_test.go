@@ -5,13 +5,12 @@ import (
 	"errors"
 	"testing"
 
+	bot "github.com/siutsin/telegram-jung2-bot/internal"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/siutsin/telegram-jung2-bot/internal/command"
-	"github.com/siutsin/telegram-jung2-bot/internal/message"
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
-	"github.com/siutsin/telegram-jung2-bot/internal/telegram"
 )
 
 func TestHandleWebhookSavesAndEnqueuesCommand(t *testing.T) {
@@ -25,7 +24,7 @@ func TestHandleWebhookSavesAndEnqueuesCommand(t *testing.T) {
 	assert.Equal(t, response{statusCode: 200}, got)
 	require.Len(t, mocks.savedMessages, 1)
 	assert.Equal(t, int64(123), mocks.savedMessages[0].ChatID)
-	assert.Equal(t, "2026-05-02T20:00:00+08:00", message.FormatDateCreated(mocks.savedMessages[0].DateCreated))
+	assert.Equal(t, "2026-05-02T20:00:00+08:00", bot.FormatDateCreated(mocks.savedMessages[0].DateCreated))
 	require.Len(t, mocks.savedChats, 1)
 	assert.Equal(t, int64(123), mocks.savedChats[0].ChatID)
 	require.Len(t, mocks.actions, 1)
@@ -247,8 +246,8 @@ func TestEnqueueWebhookCommandIgnoresUnsupportedCommand(t *testing.T) {
 	_, dependencies := newMockDependencies(t)
 	result, ok := enqueueWebhookCommand(
 		context.Background(),
-		telegram.Message{Chat: telegram.Chat{ID: 123, Type: "group"}},
-		command.Command{Name: "unsupported"},
+		bot.TelegramMessage{Chat: bot.Chat{ID: 123, Type: "group"}},
+		bot.Command{Name: "unsupported"},
 		dependencies,
 	)
 

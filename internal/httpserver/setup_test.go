@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
+	bot "github.com/siutsin/telegram-jung2-bot/internal"
+
 	gomock "go.uber.org/mock/gomock"
 
-	"github.com/siutsin/telegram-jung2-bot/internal/chat"
-	"github.com/siutsin/telegram-jung2-bot/internal/message"
 	httpservermock "github.com/siutsin/telegram-jung2-bot/internal/mock/httpserver"
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
 )
@@ -29,8 +29,8 @@ type httpserverMocks struct {
 	messenger  *httpservermock.MockMessenger
 	scaleUpper *httpservermock.MockScaleUpper
 
-	savedMessages []message.Message
-	savedChats    []chat.ChatSetting
+	savedMessages []bot.StoredMessage
+	savedChats    []bot.ChatSetting
 	actions       []queue.Action
 	sentMessages  []string
 }
@@ -65,7 +65,7 @@ func newMockDependencies(t *testing.T) (*httpserverMocks, Dependencies) {
 func (mocks *httpserverMocks) expectSaveMessage(err error) {
 	mocks.messages.EXPECT().
 		Save(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, tableName string, row message.Message) error {
+		DoAndReturn(func(ctx context.Context, tableName string, row bot.StoredMessage) error {
 			mocks.savedMessages = append(mocks.savedMessages, row)
 			return err
 		})
@@ -74,7 +74,7 @@ func (mocks *httpserverMocks) expectSaveMessage(err error) {
 func (mocks *httpserverMocks) expectSaveChat(err error) {
 	mocks.chats.EXPECT().
 		Save(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, tableName string, settings chat.ChatSetting) error {
+		DoAndReturn(func(ctx context.Context, tableName string, settings bot.ChatSetting) error {
 			mocks.savedChats = append(mocks.savedChats, settings)
 			return err
 		})

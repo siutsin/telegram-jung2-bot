@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	bot "github.com/siutsin/telegram-jung2-bot/internal"
+
 	awscore "github.com/aws/aws-sdk-go-v2/aws"
 	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	ddbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -15,7 +17,6 @@ import (
 
 	appdynamodb "github.com/siutsin/telegram-jung2-bot/internal/dynamodb"
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
-	"github.com/siutsin/telegram-jung2-bot/internal/schedule"
 )
 
 func runStageHTTPIntegration(
@@ -96,7 +97,7 @@ func runStageHTTPIntegration(
 		require.NoError(t, err, "receive onOffFromWork queue message")
 
 		gotAction := queue.DecodeMessage(queueResponse.Messages[0])
-		wantAction := schedule.BuildOnOffFromWorkAction("2026-06-11T18:30:00Z")
+		wantAction := bot.BuildOnOffFromWorkAction("2026-06-11T18:30:00Z")
 		assertAction(t, wantAction, gotAction)
 
 		err = httpServer.queueClient.Delete(ctx, queue.DeleteMessageRequest{
@@ -193,7 +194,7 @@ func mustReceiveOnOffFromWorkReceipt(
 	require.NoError(t, err, "receive authorised onOffFromWork queue message")
 
 	gotAction := queue.DecodeMessage(queueResponse.Messages[0])
-	wantAction := schedule.BuildOnOffFromWorkAction("2026-06-11T18:30:00Z")
+	wantAction := bot.BuildOnOffFromWorkAction("2026-06-11T18:30:00Z")
 	assertAction(t, wantAction, gotAction)
 
 	return queueResponse.Messages[0].ReceiptHandle

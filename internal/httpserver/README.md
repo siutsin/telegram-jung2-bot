@@ -19,12 +19,8 @@ It does not own chat, message, schedule, or queue rules.
 
 This package depends on:
 
-- `internal/chat`
-- `internal/command`
-- `internal/message`
+- `internal` (`bot`)
 - `internal/queue`
-- `internal/schedule`
-- `internal/telegram`
 
 ## Flow
 

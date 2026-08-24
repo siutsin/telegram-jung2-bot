@@ -17,10 +17,7 @@ It does not own chat, message, or schedule rules.
 
 This package depends on:
 
-- `internal/chat`
-- `internal/message`
-- `internal/schedule`
-- `internal/workday`
+- `internal` (`bot`)
 - AWS DynamoDB SDK
 
 ## Flow

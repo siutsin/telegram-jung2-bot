@@ -36,7 +36,7 @@ lint-fix:
 
 mock:
 	rm -f internal/mock/*_mock.go internal/mock/httpserver/*_mock.go
-	go generate ./internal/app ./internal/dynamodb ./internal/httpserver ./internal/queue
+	go generate ./internal ./internal/dynamodb ./internal/httpserver ./internal/queue
 
 install-buck2:
 	./hack/install-buck2.sh

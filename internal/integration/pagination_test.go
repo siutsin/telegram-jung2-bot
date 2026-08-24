@@ -6,14 +6,13 @@ import (
 	"testing"
 	"time"
 
+	bot "github.com/siutsin/telegram-jung2-bot/internal"
+
 	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/siutsin/telegram-jung2-bot/internal/chat"
 	appdynamodb "github.com/siutsin/telegram-jung2-bot/internal/dynamodb"
-	"github.com/siutsin/telegram-jung2-bot/internal/message"
-	"github.com/siutsin/telegram-jung2-bot/internal/workday"
 )
 
 const (
@@ -36,16 +35,16 @@ func runDynamoDBDueChatPaginationIntegration(
 
 	for index := range dueChatPaginationCount {
 		chatID := dueChatPaginationBaseID + int64(index)
-		settings := chat.ChatSetting{
+		settings := bot.ChatSetting{
 			ChatID:        chatID,
 			ChatTitle:     fmt.Sprintf("Due Pagination Chat %d", index),
 			DateCreated:   created,
-			TTL:           message.TTL(created, message.DefaultTTL),
+			TTL:           bot.TTL(created, bot.DefaultTTL),
 			EnableAllJung: true,
 		}
 		err := chatRepo.Save(ctx, resources.chatTable, settings)
 		require.NoError(t, err, "seed due pagination chat %d", index)
-		err = chatRepo.Update(ctx, chat.BuildOffWorkUpdate(resources.chatTable, chatID, "1830", workday.Thu))
+		err = chatRepo.Update(ctx, bot.BuildOffWorkUpdate(resources.chatTable, chatID, "1830", bot.Thu))
 		require.NoError(t, err, "seed due pagination off-work settings %d", index)
 	}
 
@@ -75,13 +74,13 @@ func runDynamoDBMessageQueryPaginationIntegration(
 	baseTime := integrationNow.Add(-time.Hour)
 
 	for index := range messagePaginationCount {
-		row := message.Message{
+		row := bot.StoredMessage{
 			ChatID:      messagePaginationChatID,
 			DateCreated: baseTime.Add(time.Duration(index) * time.Minute),
 			ChatTitle:   "Message Pagination",
 			UserID:      integrationUserID,
 			Username:    fmt.Sprintf("user-%d", index),
-			TTL:         message.TTL(baseTime, message.DefaultTTL),
+			TTL:         bot.TTL(baseTime, bot.DefaultTTL),
 		}
 		err := messageRepo.Save(ctx, resources.messageTable, row)
 		require.NoError(t, err, "seed pagination message %d", index)
