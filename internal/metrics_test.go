@@ -9,14 +9,23 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// TestMetricsHandlerExposesServiceSignals proves a scrape includes readiness
-// and low-cardinality HTTP traffic signals.
+// TestMetricsHandlerExposesServiceSignals proves a scrape includes intended
+// runtime and service signals without leaking the global registry.
 func TestMetricsHandlerExposesServiceSignals(t *testing.T) {
 	t.Parallel()
+
+	globalMetric := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "test_global_prometheus_metric",
+		Help: "Metric registered only on the global Prometheus registry.",
+	})
+	require.NoError(t, prometheus.Register(globalMetric))
+	t.Cleanup(func() { prometheus.Unregister(globalMetric) })
+	globalMetric.Set(1)
 
 	readiness := &atomic.Bool{}
 	metrics := NewMetrics(readiness)
@@ -28,6 +37,9 @@ func TestMetricsHandlerExposesServiceSignals(t *testing.T) {
 	assert.Contains(t, body, "telegram_jung2_bot_ready 0")
 	assert.Contains(t, body, "telegram_jung2_bot_http_requests_total{code=\"202\",method=\"post\",route=\"webhook\"} 1")
 	assert.Contains(t, body, "telegram_jung2_bot_http_request_duration_seconds_count{code=\"202\",method=\"post\",route=\"webhook\"} 1")
+	assert.Contains(t, body, "go_gc_duration_seconds", "scrapes include Go runtime metrics")
+	assert.Contains(t, body, "process_start_time_seconds", "scrapes include process metrics")
+	assert.NotContains(t, body, "test_global_prometheus_metric", "scrapes must not include global Prometheus metrics")
 
 	readiness.Store(true)
 	assert.Contains(t, scrapeMetrics(t, metrics), "telegram_jung2_bot_ready 1")
