@@ -66,14 +66,14 @@ func TestParseAll(t *testing.T) {
 			commands: []Command{{Name: topTen}},
 		},
 		{
-			name:     "deployed prefix match",
+			name:     "prefix match rejected",
 			text:     "/topTen123",
-			commands: []Command{{Name: topTen, Args: "123"}},
+			commands: []Command{},
 		},
 		{
-			name:     "deployed set off prefix match",
+			name:     "set off prefix match rejected",
 			text:     "/setOffFromWorkTimeUTC123 1830 MON",
-			commands: []Command{{Name: setOffWorkTime, Args: "1830 MON"}},
+			commands: []Command{},
 		},
 		{
 			name:     "mention stripped",
