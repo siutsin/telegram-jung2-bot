@@ -1,0 +1,373 @@
+package bot
+
+import (
+	"errors"
+	"fmt"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+)
+
+// ErrEmptyRows reports that a chat has no messages in the requested window.
+var ErrEmptyRows = errors.New("statistics rows are empty")
+
+const defaultWindowDays = 7
+
+// DefaultWindowDays returns the report query window used when ReportOptions.WindowDays is zero.
+func DefaultWindowDays() int {
+	return defaultWindowDays
+}
+
+const updateTimestampLayout = "2006-01-02T15:04:05-07:00"
+
+type ReportOptions struct {
+	Limit       int
+	Reverse     bool
+	OffFromWork bool
+	Now         time.Time
+	WindowDays  int
+}
+
+type Summary struct {
+	Report       string
+	UserCount    int
+	MessageCount int
+}
+
+type rowSummary struct {
+	totalMessage int
+	rankings     []userRanking
+}
+
+type userRanking struct {
+	userID      int64
+	chatTitle   string
+	firstName   string
+	lastName    string
+	username    string
+	fullName    string
+	dateCreated time.Time
+	count       int
+}
+
+// normaliseRows groups rows by user and counts messages.
+// For example, two rows from the same user become one ranking with count 2.
+func normaliseRows(rows []StoredMessage, reverse bool) rowSummary {
+	tally := make(map[int64]int)
+	firstSeen := make([]userRanking, 0, len(rows))
+	seen := make(map[int64]bool)
+
+	for _, row := range rows {
+		tally[row.UserID]++
+		if seen[row.UserID] {
+			continue
+		}
+		seen[row.UserID] = true
+		firstSeen = append(firstSeen, userRanking{
+			userID:      row.UserID,
+			chatTitle:   row.ChatTitle,
+			firstName:   row.FirstName,
+			lastName:    row.LastName,
+			username:    row.Username,
+			fullName:    displayName(row),
+			dateCreated: row.DateCreated,
+		})
+	}
+
+	for index := range firstSeen {
+		firstSeen[index].count = tally[firstSeen[index].userID]
+	}
+	sort.SliceStable(firstSeen, func(left int, right int) bool {
+		if reverse {
+			return firstSeen[left].count < firstSeen[right].count
+		}
+		return firstSeen[left].count > firstSeen[right].count
+	})
+
+	return rowSummary{
+		totalMessage: len(rows),
+		rankings:     firstSeen,
+	}
+}
+
+// GenerateReport builds a statistics report summary.
+// For example, a top-ten option set becomes Summary{Report, UserCount,
+// MessageCount}.
+func GenerateReport(rows []StoredMessage, options ReportOptions) (Summary, error) {
+	if len(rows) == 0 {
+		return Summary{}, ErrEmptyRows
+	}
+	if options.Now.IsZero() {
+		options.Now = time.Now()
+	}
+	if options.WindowDays == 0 {
+		options.WindowDays = defaultWindowDays
+	}
+
+	normalisedRows := normaliseRows(rows, options.Reverse)
+	header := buildHeader(normalisedRows, options)
+	footer := buildFooter(normalisedRows, options)
+	prefix := ""
+	if options.OffFromWork {
+		prefix = "夠鐘收工~~\n\n"
+	}
+	bodyLimit := max(0, ReportLimit-jsStringLength(header)-jsStringLength(footer)-jsStringLength(prefix))
+	report := header + buildBodyWithLimit(normalisedRows, options, bodyLimit) + footer
+	if prefix != "" {
+		report = prefix + report
+	}
+	report = truncateReportByJSLength(report)
+
+	return Summary{
+		Report:       report,
+		UserCount:    len(normalisedRows.rankings),
+		MessageCount: normalisedRows.totalMessage,
+	}, nil
+}
+
+// buildHeader builds the report header text.
+// For example, limit 10 becomes a header starting with "Top 10".
+func buildHeader(summary rowSummary, options ReportOptions) string {
+	chatTitle := summary.rankings[0].chatTitle
+	limitText := "All"
+	if options.Limit > 0 {
+		limitText = fmt.Sprintf("Top %d", options.Limit)
+	}
+
+	personType := "冗員s"
+	suffix := " (last 上水 time):"
+	if options.Reverse {
+		personType = "潛水員s"
+		suffix = ":"
+	}
+
+	return fmt.Sprintf("圍爐區: %s\n\n%s %s in the last %d days%s\n\n", chatTitle, limitText, personType, options.WindowDays, suffix)
+}
+
+// buildBodyWithLimit builds the report body within limit.
+// For example, a small limit truncates the body to "...\n...\n" once it would
+// exceed the rune budget.
+func buildBodyWithLimit(summary rowSummary, options ReportOptions, limit int) string {
+	if limit < 0 {
+		limit = 0
+	}
+
+	body := ""
+	if options.Reverse {
+		body += "By 冗power:\n"
+	}
+	truncated := false
+
+	loopLimit := len(summary.rankings)
+	if options.Limit > 0 && options.Limit < loopLimit {
+		loopLimit = options.Limit
+	}
+	for index := range loopLimit {
+		item := summary.rankings[index]
+		percentage := float64(item.count) / float64(summary.totalMessage) * 100
+		line := fmt.Sprintf("%d. %s %.2f%% (%s)\n", index+1, item.fullName, percentage, timeAgo(item.dateCreated, options.Now))
+		if jsStringLength(body) >= limit {
+			truncated = true
+			break
+		}
+		body += line
+	}
+	if truncated {
+		return body + "...\n...\n"
+	}
+
+	if options.Reverse {
+		body += "\nBy last 上水:\n"
+		body += buildDiverBody(summary, options)
+	}
+
+	return body
+}
+
+// buildDiverBody builds the reverse-ranking detail section.
+// For example, reverse rankings become lines ordered by oldest dateCreated
+// first.
+func buildDiverBody(summary rowSummary, options ReportOptions) string {
+	rankings := append([]userRanking(nil), summary.rankings...)
+	sort.SliceStable(rankings, func(left int, right int) bool {
+		return rankings[left].dateCreated.Before(rankings[right].dateCreated)
+	})
+
+	loopLimit := len(rankings)
+	if options.Limit > 0 && options.Limit < loopLimit {
+		loopLimit = options.Limit
+	}
+
+	var body strings.Builder
+	for index := range loopLimit {
+		item := rankings[index]
+		body.WriteString(strconv.Itoa(index + 1))
+		body.WriteString(". ")
+		body.WriteString(item.fullName)
+		body.WriteString(" - ")
+		body.WriteString(timeAgo(item.dateCreated, options.Now))
+		body.WriteByte('\n')
+	}
+
+	return body.String()
+}
+
+// buildFooter builds the report footer text.
+// For example, totalMessage 20 becomes a footer starting with
+// "Total messages: 20".
+func buildFooter(summary rowSummary, options ReportOptions) string {
+	footer := fmt.Sprintf("\nTotal messages: %d\n\n", summary.totalMessage)
+	if options.Reverse {
+		footer += "between, 深潛會搵唔到 ho chi is\n"
+	}
+	footer += fmt.Sprintf("Last Update: %s", options.Now.Format(updateTimestampLayout))
+	return footer
+}
+
+// truncateReportByJSLength trims text to the report limit using JavaScript
+// String.length semantics while keeping UTF-8 valid.
+// For example, a report one astral character over the limit drops that rune.
+func truncateReportByJSLength(text string) string {
+	if jsStringLength(text) <= ReportLimit {
+		return text
+	}
+
+	runes := []rune(text)
+	for len(runes) > 0 && jsStringLength(string(runes)) > ReportLimit {
+		runes = runes[:len(runes)-1]
+	}
+
+	return string(runes)
+}
+
+// jsStringLength counts UTF-16 code units, same as JavaScript String.length.
+// For example, "冗" becomes 1 and an astral character becomes 2.
+func jsStringLength(value string) int {
+	length := 0
+	for _, r := range value {
+		if r > 0xFFFF {
+			length += 2
+			continue
+		}
+		length++
+	}
+
+	return length
+}
+
+// escapeMarkdownTitle escapes Telegram Markdown metacharacters in user titles.
+// For example, "Ops_team" becomes "Ops\\_team".
+// Only for parse_mode markdown messages, which is just HelpMessage. Reports go
+// out as plain text, where escaping would show users the backslashes.
+func escapeMarkdownTitle(title string) string {
+	replacer := strings.NewReplacer(
+		"_", "\\_",
+		"*", "\\*",
+		"`", "\\`",
+		"[", "\\[",
+	)
+	return replacer.Replace(title)
+}
+
+// HelpMessage returns the bot help message.
+// For example, chat title "Ops" is inserted into the contract help template.
+func HelpMessage(chatTitle string) string {
+	return fmt.Sprintf(`
+圍爐區: %s
+
+冗員[jung2jyun4] Excess personnel in Cantonese
+
+This bot is created for counting the number of message per participant in the group.
+
+Commands:
+/topTen  show top ten 冗員s
+/topDiver  show top ten 潛水員s (潛得太深會搵唔到)
+/allJung  show all 冗員s
+/jungHelp  show help message
+
+Admin Only:
+/enableAllJung  enable `+"`/alljung`"+` command
+/disableAllJung  disable `+"`/alljung`"+` command
+/setOffFromWorkTimeUTC  set offFromWork time (UTC time)
+
+[Bug Report/Suggestion](https://github.com/siutsin/telegram-jung2-bot/issues)
+[Service Status](https://stats.uptimerobot.com/kglZJSkYZg)
+
+May your 冗 power powerful
+`, escapeMarkdownTitle(chatTitle))
+}
+
+// displayName returns the preferred ranking display name.
+// For example, firstName "Ada" and lastName "Lovelace" become "Ada Lovelace".
+func displayName(row StoredMessage) string {
+	return strings.Join([]string{row.FirstName, row.LastName}, " ")
+}
+
+// timeAgo formats a relative timestamp.
+// For example, a timestamp two hours ago becomes "2 hours ago".
+func timeAgo(dateCreated time.Time, baseTime time.Time) string {
+	duration := baseTime.Sub(dateCreated)
+	future := duration < 0
+	if future {
+		duration = -duration
+	}
+
+	text := relativeTimeText(duration)
+	if future {
+		return "in " + strings.TrimSuffix(text, " ago")
+	}
+
+	return text
+}
+
+func relativeTimeText(duration time.Duration) string {
+	seconds := rounded(duration.Seconds())
+	minutes := rounded(duration.Minutes())
+	hours := rounded(duration.Hours())
+	days := rounded(duration.Hours() / 24)
+
+	switch {
+	case seconds < 45:
+		return "a few seconds ago"
+	case minutes < 2:
+		return "a minute ago"
+	case minutes < 45:
+		return plural(minutes, "minute")
+	case hours < 2:
+		return "an hour ago"
+	case hours < 22:
+		return plural(hours, "hour")
+	case days < 2:
+		return "a day ago"
+	case days < 26:
+		return plural(days, "day")
+	case days <= 46:
+		return "a month ago"
+	case days < 60:
+		return "2 months ago"
+	case days < 320:
+		return plural(days/30, "month")
+	case days < 546:
+		return "a year ago"
+	default:
+		return plural(max(rounded(duration.Hours()/(24*365)), 2), "year")
+	}
+}
+
+func rounded(value float64) int {
+	return int(value + 0.5)
+}
+
+// plural formats a pluralised relative time string.
+// For example, plural(2, "day") becomes "2 days ago".
+func plural(value int, unit string) string {
+	if value == 1 {
+		if unit == "hour" {
+			return "an hour ago"
+		}
+		return "a " + unit + " ago"
+	}
+
+	return fmt.Sprintf("%d %ss ago", value, unit)
+}

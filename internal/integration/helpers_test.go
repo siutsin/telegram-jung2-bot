@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	bot "github.com/siutsin/telegram-jung2-bot/internal"
+
 	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	awssqs "github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/stretchr/testify/require"
@@ -18,7 +20,6 @@ import (
 	appdynamodb "github.com/siutsin/telegram-jung2-bot/internal/dynamodb"
 	"github.com/siutsin/telegram-jung2-bot/internal/httpserver"
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
-	"github.com/siutsin/telegram-jung2-bot/internal/telegram"
 )
 
 const integrationStage = "dev"
@@ -28,7 +29,7 @@ var integrationNow = time.Date(2026, 6, 11, 18, 30, 0, 0, time.UTC)
 type integrationMessenger interface {
 	IsAdmin(ctx context.Context, chatID int64, userID int64) (bool, error)
 	SendMessage(ctx context.Context, chatID int64, text string) error
-	SendMessageWithOptions(ctx context.Context, chatID int64, text string, options telegram.SendMessageOptions) error
+	SendMessageWithOptions(ctx context.Context, chatID int64, text string, options bot.SendMessageOptions) error
 }
 
 type recordingMessenger struct {
@@ -40,7 +41,7 @@ type recordingMessenger struct {
 type recordedMessage struct {
 	chatID  int64
 	text    string
-	options telegram.SendMessageOptions
+	options bot.SendMessageOptions
 }
 
 func (messenger *recordingMessenger) SendMessage(_ context.Context, chatID int64, text string) error {
@@ -54,7 +55,7 @@ func (messenger *recordingMessenger) SendMessageWithOptions(
 	_ context.Context,
 	chatID int64,
 	text string,
-	options telegram.SendMessageOptions,
+	options bot.SendMessageOptions,
 ) error {
 	messenger.mutex.Lock()
 	defer messenger.mutex.Unlock()

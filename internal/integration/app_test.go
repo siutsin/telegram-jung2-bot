@@ -9,16 +9,16 @@ import (
 	"testing"
 	"time"
 
+	bot "github.com/siutsin/telegram-jung2-bot/internal"
+
 	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	awssqs "github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/siutsin/telegram-jung2-bot/internal/app"
 	appdynamodb "github.com/siutsin/telegram-jung2-bot/internal/dynamodb"
 	"github.com/siutsin/telegram-jung2-bot/internal/httpserver"
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
-	"github.com/siutsin/telegram-jung2-bot/internal/worker"
 )
 
 func runAppRunIntegration(
@@ -34,7 +34,7 @@ func runAppRunIntegration(
 	svc := newIntegrationService(dynamoClient, sqsClient, resources, messenger)
 	queueClient := queue.NewClient(sqsClient)
 
-	queueWorker, err := worker.NewPollingWorker(
+	queueWorker, err := bot.NewPollingWorker(
 		resources.queueURL,
 		queueClient,
 		queueClient,
@@ -68,11 +68,11 @@ func runAppRunIntegration(
 		WriteTimeout:      5 * time.Second,
 		IdleTimeout:       5 * time.Second,
 	}
-	application := app.New(
-		app.NewHTTPServer("HTTP", httpAddress, httpServer),
-		app.NewHTTPServer("metrics", metricsAddress, metricsServer),
+	application := bot.NewApp(
+		bot.NewHTTPServer("HTTP", httpAddress, httpServer),
+		bot.NewHTTPServer("metrics", metricsAddress, metricsServer),
 		queueWorker,
-		app.Options{Readiness: readiness, ReadinessDrain: time.Nanosecond, ShutdownTimeout: 5 * time.Second},
+		bot.AppOptions{Readiness: readiness, ReadinessDrain: time.Nanosecond, ShutdownTimeout: 5 * time.Second},
 	)
 
 	runCtx, cancel := context.WithCancel(ctx)

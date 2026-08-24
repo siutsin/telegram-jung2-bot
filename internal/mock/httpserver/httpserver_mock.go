@@ -13,8 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	chat "github.com/siutsin/telegram-jung2-bot/internal/chat"
-	message "github.com/siutsin/telegram-jung2-bot/internal/message"
+	bot "github.com/siutsin/telegram-jung2-bot/internal"
 	queue "github.com/siutsin/telegram-jung2-bot/internal/queue"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -44,7 +43,7 @@ func (m *MockMessageSaver) EXPECT() *MockMessageSaverMockRecorder {
 }
 
 // Save mocks base method.
-func (m *MockMessageSaver) Save(ctx context.Context, tableName string, row message.Message) error {
+func (m *MockMessageSaver) Save(ctx context.Context, tableName string, row bot.StoredMessage) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Save", ctx, tableName, row)
 	ret0, _ := ret[0].(error)
@@ -82,7 +81,7 @@ func (m *MockChatSaver) EXPECT() *MockChatSaverMockRecorder {
 }
 
 // Save mocks base method.
-func (m *MockChatSaver) Save(ctx context.Context, tableName string, settings chat.ChatSetting) error {
+func (m *MockChatSaver) Save(ctx context.Context, tableName string, settings bot.ChatSetting) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Save", ctx, tableName, settings)
 	ret0, _ := ret[0].(error)

@@ -45,9 +45,11 @@ if ((${#go_files[@]} > 0)); then
   fi
 fi
 
-go_packages=(./cmd/...)
+go_packages=(./cmd/... ./internal)
 while IFS= read -r go_package; do
-  go_packages+=("${go_package}/...")
+	if find "${go_package}" -maxdepth 1 -type f -name '*.go' -print -quit | rg -q .; then
+		go_packages+=("${go_package}/...")
+	fi
 done < <(find ./internal \
   -mindepth 1 \
   -maxdepth 1 \

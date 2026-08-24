@@ -10,12 +10,12 @@ import (
 	"sync"
 	"testing"
 
+	bot "github.com/siutsin/telegram-jung2-bot/internal"
+
 	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	awssqs "github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/siutsin/telegram-jung2-bot/internal/telegram"
 )
 
 type telegramTestHarness struct {
@@ -29,7 +29,7 @@ type telegramCapturedMessage struct {
 	text   string
 }
 
-func newTelegramTestHarness(t *testing.T, adminUserID int64) (*telegramTestHarness, telegram.Client) {
+func newTelegramTestHarness(t *testing.T, adminUserID int64) (*telegramTestHarness, bot.Client) {
 	t.Helper()
 
 	harness := &telegramTestHarness{}
@@ -78,10 +78,10 @@ func newTelegramTestHarness(t *testing.T, adminUserID int64) (*telegramTestHarne
 	}))
 	t.Cleanup(harness.server.Close)
 
-	client := telegram.NewClient(
+	client := bot.NewClient(
 		"integration-token",
-		telegram.WithBaseURL(harness.server.URL),
-		telegram.WithHTTPClient(harness.server.Client()),
+		bot.WithBaseURL(harness.server.URL),
+		bot.WithHTTPClient(harness.server.Client()),
 	)
 
 	return harness, client

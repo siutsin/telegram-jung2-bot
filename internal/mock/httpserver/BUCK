@@ -2,8 +2,7 @@ go_library(
     name = "httpserver",
     srcs = glob(["*.go"], exclude = ["*_test.go"]),
     deps = [
-        "//internal/chat:chat",
-        "//internal/message:message",
+        "//internal:internal",
         "//internal/queue:queue",
         "//vendor/go.uber.org/mock/gomock:gomock",
     ],

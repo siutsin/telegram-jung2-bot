@@ -7,16 +7,15 @@ import (
 	"testing"
 	"time"
 
+	bot "github.com/siutsin/telegram-jung2-bot/internal"
+
 	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	awssqs "github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/siutsin/telegram-jung2-bot/internal/command"
 	appdynamodb "github.com/siutsin/telegram-jung2-bot/internal/dynamodb"
-	"github.com/siutsin/telegram-jung2-bot/internal/message"
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
-	"github.com/siutsin/telegram-jung2-bot/internal/telegram"
 )
 
 const (
@@ -31,7 +30,7 @@ func (noopMessenger) SendMessage(context.Context, int64, string) error {
 	return nil
 }
 
-func (noopMessenger) SendMessageWithOptions(context.Context, int64, string, telegram.SendMessageOptions) error {
+func (noopMessenger) SendMessageWithOptions(context.Context, int64, string, bot.SendMessageOptions) error {
 	return nil
 }
 
@@ -93,9 +92,9 @@ func runWebhookTopTenCase(
 	assertWebhookChatRow(t, ctx, dynamoClient, resources.chatTable, webhookChatID, webhookChatTitle)
 	assertWebhookMessageRow(t, ctx, dynamoClient, resources.messageTable, webhookChatID)
 
-	wantAction, err := command.ActionFor(
-		command.Command{Name: "topTen"},
-		command.ChatContext{
+	wantAction, err := bot.ActionFor(
+		bot.Command{Name: "topTen"},
+		bot.ChatContext{
 			ChatID:    webhookChatID,
 			ChatTitle: webhookChatTitle,
 			UserID:    webhookUserID,
@@ -229,7 +228,7 @@ func assertWebhookMessageRow(
 	assert.Equal(t, "floci-user", messages[0].Username)
 	assert.Equal(t, "Floci", messages[0].FirstName)
 	assert.Equal(t, "Tester", messages[0].LastName)
-	assert.Equal(t, message.FormatDateCreated(integrationNow), message.FormatDateCreated(messages[0].DateCreated))
+	assert.Equal(t, bot.FormatDateCreated(integrationNow), bot.FormatDateCreated(messages[0].DateCreated))
 }
 
 func assertQueuedAction(t *testing.T, ctx context.Context, httpServer integrationHTTPServer, wantAction queue.Action) {
@@ -269,10 +268,10 @@ func mustCommandAction(
 ) queue.Action {
 	t.Helper()
 
-	commands := command.ParseAll(text)
+	commands := bot.ParseAll(text)
 	require.Len(t, commands, 1, text)
 
-	action, err := command.ActionFor(commands[0], command.ChatContext{
+	action, err := bot.ActionFor(commands[0], bot.ChatContext{
 		ChatID:    chatID,
 		ChatTitle: chatTitle,
 		UserID:    userID,

@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/siutsin/telegram-jung2-bot/internal/schedule"
+	bot "github.com/siutsin/telegram-jung2-bot/internal"
 )
 
 // newHandler builds the HTTP handler for service routes.
@@ -50,13 +50,13 @@ func registerStageRoutes(mux *http.ServeMux, dependencies serverDeps) {
 			return
 		}
 
-		_, err := schedule.ParseScheduledTime(request.URL.Query().Get("timeString"))
+		_, err := bot.ParseScheduledTime(request.URL.Query().Get("timeString"))
 		if err != nil {
 			writeNamedJSONResponse(writer, http.StatusBadRequest, "onOffFromWork", "invalid timeString")
 			return
 		}
 
-		err = dependencies.Enqueuer.Enqueue(request.Context(), schedule.BuildOnOffFromWorkAction(request.URL.Query().Get("timeString")))
+		err = dependencies.Enqueuer.Enqueue(request.Context(), bot.BuildOnOffFromWorkAction(request.URL.Query().Get("timeString")))
 		if err != nil {
 			slog.Error("enqueue off-work trigger", "err", err)
 			writeNamedJSONResponse(writer, http.StatusInternalServerError, "onOffFromWork", "failed")

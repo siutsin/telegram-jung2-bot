@@ -4,16 +4,14 @@ import (
 	"context"
 	"testing"
 
+	bot "github.com/siutsin/telegram-jung2-bot/internal"
+
 	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	awssqs "github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/siutsin/telegram-jung2-bot/internal/chat"
 	appdynamodb "github.com/siutsin/telegram-jung2-bot/internal/dynamodb"
-	"github.com/siutsin/telegram-jung2-bot/internal/message"
-	"github.com/siutsin/telegram-jung2-bot/internal/schedule"
-	"github.com/siutsin/telegram-jung2-bot/internal/workday"
 )
 
 const (
@@ -107,7 +105,7 @@ func runSetOffWorkTimeCase(
 	messenger := &recordingMessenger{admin: true}
 	svc := newIntegrationService(dynamoClient, sqsClient, resources, messenger)
 
-	err := svc.SetOffWorkTime(ctx, schedule.SetOffInput{
+	err := svc.SetOffWorkTime(ctx, bot.SetOffInput{
 		ChatID:    settingsChatID,
 		ChatTitle: settingsChatTitle,
 		UserID:    settingsUserID,
@@ -121,8 +119,8 @@ func runSetOffWorkTimeCase(
 	require.True(t, ok)
 	assert.Equal(t, "1830", gotChat.OffTime)
 	assert.True(t, gotChat.HasOffTime)
-	assert.True(t, workday.MatchesDay("MON", gotChat.Workday))
-	assert.True(t, workday.MatchesDay("TUE", gotChat.Workday))
+	assert.True(t, bot.MatchesDay("MON", gotChat.Workday))
+	assert.True(t, bot.MatchesDay("TUE", gotChat.Workday))
 
 	messages := messenger.recordedMessages()
 	require.Len(t, messages, 1)
@@ -138,11 +136,11 @@ func seedSettingsChat(
 ) {
 	t.Helper()
 
-	settings := chat.ChatSetting{
+	settings := bot.ChatSetting{
 		ChatID:        settingsChatID,
 		ChatTitle:     settingsChatTitle,
 		DateCreated:   integrationNow,
-		TTL:           message.TTL(integrationNow, message.DefaultTTL),
+		TTL:           bot.TTL(integrationNow, bot.DefaultTTL),
 		EnableAllJung: true,
 	}
 	err := appdynamodb.NewChatClient(dynamoClient).Save(ctx, resources.chatTable, settings)

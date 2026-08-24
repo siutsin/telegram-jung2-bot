@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	bot "github.com/siutsin/telegram-jung2-bot/internal"
+
 	awscore "github.com/aws/aws-sdk-go-v2/aws"
 	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	ddbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -14,7 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/siutsin/telegram-jung2-bot/internal/message"
 	mock "github.com/siutsin/telegram-jung2-bot/internal/mock"
 )
 
@@ -33,7 +34,7 @@ func TestMessageClientSave(t *testing.T) {
 			return &awsdynamodb.UpdateItemOutput{}, nil
 		})
 
-	err := NewMessageClient(dynamoClient).Save(context.Background(), "messages", message.Message{ChatID: 123})
+	err := NewMessageClient(dynamoClient).Save(context.Background(), "messages", bot.StoredMessage{ChatID: 123})
 
 	require.NoError(t, err)
 }
@@ -45,7 +46,7 @@ func TestMessageClientQueryByChat(t *testing.T) {
 		name        string
 		queryErr    error
 		item        map[string]ddbtypes.AttributeValue
-		want        []message.Message
+		want        []bot.StoredMessage
 		wantErrText string
 	}{
 		{
@@ -54,7 +55,7 @@ func TestMessageClientQueryByChat(t *testing.T) {
 				"chatId":      &ddbtypes.AttributeValueMemberN{Value: "123"},
 				"dateCreated": &ddbtypes.AttributeValueMemberS{Value: "2026-05-02T20:30:00+08:00"},
 			},
-			want: []message.Message{
+			want: []bot.StoredMessage{
 				{ChatID: 123, DateCreated: time.Date(2026, 5, 2, 20, 30, 0, 0, time.FixedZone("", 8*60*60))},
 			},
 		},
@@ -120,12 +121,12 @@ func TestMessageClientSaveMatchesContractUpdateExpression(t *testing.T) {
 	// Preserves the deployed DynamoDB update shape for saved messages.
 	tests := []struct {
 		name string
-		row  message.Message
+		row  bot.StoredMessage
 		want itemUpdateRequest
 	}{
 		{
 			name: "all attributes",
-			row: message.Message{
+			row: bot.StoredMessage{
 				ChatID:      123,
 				DateCreated: mustParseDynamoDBTime(t),
 				ChatTitle:   "title",
@@ -162,7 +163,7 @@ func TestMessageClientSaveMatchesContractUpdateExpression(t *testing.T) {
 		},
 		{
 			name: "omits missing optional attributes",
-			row: message.Message{
+			row: bot.StoredMessage{
 				ChatID:      123,
 				DateCreated: mustParseDynamoDBTime(t),
 				TTL:         1554691104,

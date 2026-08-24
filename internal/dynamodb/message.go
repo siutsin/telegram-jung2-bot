@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
+	bot "github.com/siutsin/telegram-jung2-bot/internal"
+
 	awscore "github.com/aws/aws-sdk-go-v2/aws"
 	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
-
-	"github.com/siutsin/telegram-jung2-bot/internal/message"
 )
 
 type messageQueryRequest struct {
@@ -21,20 +21,20 @@ type messageQueryRequest struct {
 }
 
 // Save stores a message row in DynamoDB.
-func (client MessageClient) Save(ctx context.Context, tableName string, row message.Message) error {
+func (client MessageClient) Save(ctx context.Context, tableName string, row bot.StoredMessage) error {
 	if row.DateCreated.IsZero() {
 		row.DateCreated = time.Now()
 	}
 	if row.TTL == 0 {
-		row.TTL = message.TTL(row.DateCreated, message.DefaultTTL)
+		row.TTL = bot.TTL(row.DateCreated, bot.DefaultTTL)
 	}
 
 	return updateItem(ctx, client.dynamo, buildMessageSaveUpdate(tableName, row))
 }
 
-// QueryByChat loads message rows for one chat.
-func (client MessageClient) QueryByChat(ctx context.Context, tableName string, chatID int64, since time.Time) ([]message.Message, error) {
-	return collectPages(ctx, func(pageCtx context.Context, startKey map[string]any) (page[message.Message], error) {
+// QueryByChat loads message rows for one bot.
+func (client MessageClient) QueryByChat(ctx context.Context, tableName string, chatID int64, since time.Time) ([]bot.StoredMessage, error) {
+	return collectPages(ctx, func(pageCtx context.Context, startKey map[string]any) (page[bot.StoredMessage], error) {
 		queryRequest := queryMessagesRequest(tableName, chatID, since, startKey)
 		output, err := client.dynamo.Query(pageCtx, &awsdynamodb.QueryInput{
 			TableName:                 awscore.String(queryRequest.tableName),
@@ -44,18 +44,18 @@ func (client MessageClient) QueryByChat(ctx context.Context, tableName string, c
 			ExpressionAttributeValues: encodeDynamoValues(queryRequest.expressionAttributeValues),
 		})
 		if err != nil {
-			return page[message.Message]{}, fmt.Errorf("query DynamoDB messages: %w", err)
+			return page[bot.StoredMessage]{}, fmt.Errorf("query DynamoDB messages: %w", err)
 		}
 
-		rows := make([]message.Message, 0, len(output.Items))
+		rows := make([]bot.StoredMessage, 0, len(output.Items))
 		for _, item := range output.Items {
 			row, decodeErr := decodeMessage(item)
 			if decodeErr != nil {
-				return page[message.Message]{}, decodeErr
+				return page[bot.StoredMessage]{}, decodeErr
 			}
 			rows = append(rows, row)
 		}
-		return page[message.Message]{
+		return page[bot.StoredMessage]{
 			Items:            rows,
 			LastEvaluatedKey: decodeLastEvaluatedKey(output.LastEvaluatedKey),
 		}, nil
@@ -73,7 +73,7 @@ func queryMessagesRequest(tableName string, chatID int64, since time.Time, start
 		exclusiveStartKey:      startKey,
 		expressionAttributeValues: map[string]any{
 			":chat_id":      chatID,
-			":date_created": message.FormatDateCreated(since),
+			":date_created": bot.FormatDateCreated(since),
 		},
 	}
 }
@@ -81,7 +81,7 @@ func queryMessagesRequest(tableName string, chatID int64, since time.Time, start
 // buildMessageSaveUpdate builds the contract message update request.
 // For example, a message with username and firstName adds only those non-empty
 // fields to the SET clause.
-func buildMessageSaveUpdate(tableName string, row message.Message) itemUpdateRequest {
+func buildMessageSaveUpdate(tableName string, row bot.StoredMessage) itemUpdateRequest {
 	attributeNames := make(map[string]string)
 	attributeValues := make(map[string]any)
 	assignments := make([]string, 0, 6)
@@ -105,7 +105,7 @@ func buildMessageSaveUpdate(tableName string, row message.Message) itemUpdateReq
 		tableName: tableName,
 		key: map[string]any{
 			"chatId":      row.ChatID,
-			"dateCreated": message.FormatDateCreated(row.DateCreated),
+			"dateCreated": bot.FormatDateCreated(row.DateCreated),
 		},
 		updateExpression:          "SET " + strings.Join(assignments, ", "),
 		expressionAttributeNames:  attributeNames,
