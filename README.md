@@ -85,10 +85,11 @@ whilst keeping it running until no one is using it.
 
 ## Prerequisites
 
-- [Buck2](https://buck2.build/docs/getting_started/)
+- Buck2
 - Go 1.27+
-- [Docker](https://docs.docker.com/), for the optional
-  [Floci](https://floci.io/) AWS integration check
+- [Apple Container](https://github.com/apple/container) for local images, or
+  [Docker](https://docs.docker.com/) if it is unavailable. Either covers the
+  optional [Floci](https://floci.io/) check
 
 ## Commands
 
