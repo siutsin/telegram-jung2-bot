@@ -28,17 +28,23 @@ chat group.
 
 The bot counts group messages, ranks speakers, and sends off-work reports.
 
+Ingest:
+
 ```mermaid
 flowchart LR
     telegram[Telegram] --> http[HTTP :3000]
+    scheduler[Scheduler] --> http
     http --> dynamodb[DynamoDB]
     http --> sqs[SQS]
-    scheduler[Scheduler] --> http
-    sqs --> worker[Worker]
-    worker --> dynamodb
-    worker --> telegram
-    worker --> sqs
-    prometheus[Prometheus] --> metrics[Metrics :9090]
+```
+
+Work:
+
+```mermaid
+flowchart LR
+    sqs[SQS] --> worker[Worker]
+    worker --> dynamodb[DynamoDB]
+    worker --> telegram[Telegram]
 ```
 
 | Process | Address | Role                                     |
