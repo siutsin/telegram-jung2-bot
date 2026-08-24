@@ -10,7 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.46.6
 	github.com/caarlos0/env/v11 v11.4.1
 	github.com/prometheus/client_golang v1.24.1
-	github.com/stretchr/testify v1.11.1
+	github.com/stretchr/testify v1.12.0
 	github.com/testcontainers/testcontainers-go v0.44.0
 	go.uber.org/mock v0.6.0
 	golang.org/x/sync v0.22.0
