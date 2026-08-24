@@ -26,28 +26,48 @@ chat group.
 
 ## Architecture
 
-Telegram group chat statistics bot. Tracks message counts, produces rankings,
-and schedules off-work reports.
+The bot counts group messages, ranks speakers, and sends off-work reports.
 
-Go HTTP webhook, Prometheus metrics, SQS worker, Telegram, and DynamoDB.
-The webhook server binds to port 3000 by default. The metrics server exposes
-`/metrics` on port 9090. Kubernetes uses `/health` for readiness. Code is in
-`cmd/` and `internal/`. Buck2 builds and tests.
+```mermaid
+flowchart LR
+    telegram[Telegram] --> http[HTTP :3000]
+    http --> dynamodb[DynamoDB]
+    http --> sqs[SQS]
+    scheduler[Scheduler] --> http
+    sqs --> worker[Worker]
+    worker --> dynamodb
+    worker --> telegram
+    worker --> sqs
+    prometheus[Prometheus] --> metrics[Metrics :9090]
+```
 
-`/metrics` includes Go and process data plus these service metrics:
+| Process | Address | Role                                     |
+|---------|---------|------------------------------------------|
+| HTTP    | `:3000` | Webhook, `/health`, and scheduler routes |
+| Metrics | `:9090` | `/metrics`                               |
+| Worker  |         | SQS actions                              |
 
-- Lifecycle: `telegram_jung2_bot_ready`.
-- HTTP: `telegram_jung2_bot_http_requests_total`,
-  `telegram_jung2_bot_http_request_duration_seconds`, and
-  `telegram_jung2_bot_http_requests_in_flight`. HTTP metrics use fixed method,
-  status, and route labels.
-- Webhooks: `telegram_jung2_bot_webhook_updates_total` and
-  `telegram_jung2_bot_webhook_commands_enqueued_total`.
-- Worker: `telegram_jung2_bot_worker_actions_total` and
-  `telegram_jung2_bot_worker_action_duration_seconds`.
-- Dependencies and schedules: `telegram_jung2_bot_dependency_requests_total`,
-  `telegram_jung2_bot_dependency_request_duration_seconds`, and
-  `telegram_jung2_bot_off_work_reports_enqueued_total`.
+Code lives in `cmd/` and `internal/`. Buck2 builds and tests.
+
+### Metrics
+
+`/metrics` includes Go and process collectors plus:
+
+| Metric                                                   | Meaning                           |
+|----------------------------------------------------------|-----------------------------------|
+| `telegram_jung2_bot_ready`                               | Readiness                         |
+| `telegram_jung2_bot_http_requests_total`                 | HTTP requests                     |
+| `telegram_jung2_bot_http_request_duration_seconds`       | HTTP duration                     |
+| `telegram_jung2_bot_http_requests_in_flight`             | In-flight HTTP requests           |
+| `telegram_jung2_bot_webhook_updates_total`               | Webhook outcomes                  |
+| `telegram_jung2_bot_webhook_commands_enqueued_total`     | Commands queued                   |
+| `telegram_jung2_bot_worker_actions_total`                | Queue actions                     |
+| `telegram_jung2_bot_worker_action_duration_seconds`      | Queue action duration             |
+| `telegram_jung2_bot_dependency_requests_total`           | DynamoDB, SQS, and Telegram calls |
+| `telegram_jung2_bot_dependency_request_duration_seconds` | Outbound call duration            |
+| `telegram_jung2_bot_off_work_reports_enqueued_total`     | Scheduled report enqueue results  |
+
+HTTP metrics use fixed method, status, and route labels.
 
 ## Where is the JavaScript version?
 
