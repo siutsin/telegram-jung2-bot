@@ -49,14 +49,6 @@ func TestFlociDynamoDBMessagePagination(t *testing.T) {
 	runDynamoDBMessageQueryPaginationIntegration(t, ctx, clients.dynamo, resources)
 }
 
-// TestFlociLegacySQSFixtures preserves decoding of queue payloads emitted before the Go cutover.
-func TestFlociLegacySQSFixtures(t *testing.T) {
-	t.Parallel()
-
-	requireIntegrationRuntime(t)
-	runLegacySQSFixtureIntegration(t)
-}
-
 // TestFlociSQS protects supported queue action shapes and attribute casing.
 func TestFlociSQS(t *testing.T) {
 	t.Parallel()

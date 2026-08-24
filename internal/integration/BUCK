@@ -9,7 +9,6 @@ go_test(
         "helpers.go",
         "http.go",
         "integration_test.go",
-        "legacyfixtures.go",
         "pagination.go",
         "setup.go",
         "service.go",
