@@ -300,8 +300,18 @@ May your 冗 power powerful
 
 // displayName returns the preferred ranking display name.
 // For example, firstName "Ada" and lastName "Lovelace" become "Ada Lovelace".
+// firstName "Grace" or lastName "Hopper" alone become "Grace" or "Hopper".
+// Empty names with username "grace" or "@grace" become "grace".
 func displayName(row StoredMessage) string {
-	return strings.Join([]string{row.FirstName, row.LastName}, " ")
+	name := strings.TrimSpace(row.FirstName + " " + row.LastName)
+	if name != "" {
+		return name
+	}
+	username := strings.TrimPrefix(strings.TrimSpace(row.Username), "@")
+	if username != "" {
+		return username
+	}
+	return " "
 }
 
 // timeAgo formats a relative timestamp.
