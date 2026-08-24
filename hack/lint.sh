@@ -17,7 +17,6 @@ done < <(find . \
   -name '*.go' \
   -not -path './buck-out/*' \
   -not -path './internal/mock/*' \
-  -not -path './node_modules/*' \
   -not -path './vendor/*' \
   | sort)
 
@@ -28,7 +27,6 @@ done < <(find . \
   -type f \
   -name '*.sh' \
   -not -path './buck-out/*' \
-  -not -path './node_modules/*' \
   -not -path './vendor/*' \
   | sort)
 

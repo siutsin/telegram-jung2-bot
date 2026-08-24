@@ -156,13 +156,37 @@ func TestSendMessageReturnsRequestCreationError(t *testing.T) {
 	assert.Contains(t, err.Error(), "create Telegram sendMessage request")
 }
 
-func TestSendMessageReturnsHTTPClientError(t *testing.T) {
-	client := NewClient("token", WithHTTPClient(&http.Client{Transport: failingRoundTripper{}}))
+// TestSendMessageRedactsTokenFromTransportError proves transport failures cannot disclose the bot token through logs.
+func TestSendMessageRedactsTokenFromTransportError(t *testing.T) {
+	const botToken = "secret-token"
+	client := NewClient(botToken, WithHTTPClient(&http.Client{Transport: failingRoundTripper{}}))
 
 	err := client.SendMessage(context.Background(), 123, "hi")
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "call Telegram sendMessage")
+	assert.Contains(t, err.Error(), "transport request failed")
+	assert.NotContains(t, err.Error(), botToken)
+}
+
+// TestTelegramTransportErrorClassifiesContextErrors keeps cancellation details safe and actionable.
+func TestTelegramTransportErrorClassifiesContextErrors(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		err  error
+		want string
+	}{
+		{name: "cancelled", err: context.Canceled, want: "call Telegram sendMessage: request cancelled"},
+		{name: "timed out", err: context.DeadlineExceeded, want: "call Telegram sendMessage: request timed out"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert.EqualError(t, telegramTransportError("sendMessage", test.err), test.want)
+		})
+	}
 }
 
 func TestGetChatAdministratorsDecodesResponse(t *testing.T) {

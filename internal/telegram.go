@@ -258,10 +258,23 @@ func (client Client) do(
 
 	response, err := client.httpClient.Do(request)
 	if err != nil {
-		return nil, fmt.Errorf("call Telegram %s: %w", endpoint, err)
+		return nil, telegramTransportError(endpoint, err)
 	}
 
 	return response, nil
+}
+
+// telegramTransportError retains useful request state without exposing the bot token in a request URL.
+// For example, a cancelled request becomes "call Telegram sendMessage: request cancelled".
+func telegramTransportError(endpoint string, err error) error {
+	switch {
+	case errors.Is(err, context.Canceled):
+		return fmt.Errorf("call Telegram %s: request cancelled", endpoint)
+	case errors.Is(err, context.DeadlineExceeded):
+		return fmt.Errorf("call Telegram %s: request timed out", endpoint)
+	default:
+		return fmt.Errorf("call Telegram %s: transport request failed", endpoint)
+	}
 }
 
 // telegramAPIError converts non-2xx responses into errors.

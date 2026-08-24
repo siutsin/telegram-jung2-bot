@@ -1,8 +1,13 @@
-.git
-buck-out
-.scratchpad
-node_modules
-vendor
-.env.development
-.env.production
-.env.ecs
+# Send only the files required for the production Go build.
+**
+!go.mod
+!go.sum
+!cmd/
+!cmd/**
+!internal/
+!internal/**
+
+# Tests and generated mocks do not contribute to the production binary.
+**/*_test.go
+internal/integration/
+internal/mock/
