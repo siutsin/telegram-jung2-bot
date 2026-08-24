@@ -14,6 +14,9 @@ import (
 
 // ScaleUp raises DynamoDB read capacity to the configured target.
 func (service ScaleUpper) ScaleUp(ctx context.Context) error {
+	result := "failed"
+	defer func() { recordScaleUp(service.metrics, result) }()
+
 	started := time.Now()
 	output, err := service.dynamo.DescribeTable(ctx, &awsdynamodb.DescribeTableInput{
 		TableName: awscore.String(service.tableName),
@@ -47,12 +50,21 @@ func (service ScaleUpper) ScaleUp(ctx context.Context) error {
 	if err != nil {
 		if isIgnoredScaleUpError(err) {
 			slog.Warn("ignore DynamoDB scale-up error", "table", service.tableName, "err", err)
+			result = "ignored"
 			return nil
 		}
 		return fmt.Errorf("update DynamoDB table: %w", err)
 	}
 
+	result = "applied"
 	return nil
+}
+
+// recordScaleUp records one scale-up result when metrics are enabled.
+func recordScaleUp(metrics scaleUpObserver, result string) {
+	if metrics != nil {
+		metrics.RecordScaleUp(result)
+	}
 }
 
 // isIgnoredScaleUpError reports whether a scale-up error is ignorable.

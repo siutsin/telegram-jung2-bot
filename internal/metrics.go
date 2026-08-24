@@ -28,6 +28,7 @@ type Metrics struct {
 	dependencyRequests      *prometheus.CounterVec
 	dependencyRequestTiming *prometheus.HistogramVec
 	offWorkReportsEnqueued  *prometheus.CounterVec
+	scaleUpResults          *prometheus.CounterVec
 }
 
 // NewMetrics creates an isolated registry for this process.
@@ -45,6 +46,7 @@ func NewMetrics(readiness *atomic.Bool) *Metrics {
 	metrics.registerWorker(factory)
 	metrics.registerDependencies(factory)
 	metrics.registerScheduler(factory)
+	metrics.registerScaleUp(factory)
 	metrics.registerReadiness(factory, readiness)
 
 	return metrics
@@ -120,6 +122,15 @@ func (metrics *Metrics) registerScheduler(factory promauto.Factory) {
 	}, []string{"result"})
 }
 
+// registerScaleUp creates the metric for DynamoDB scale-up attempts.
+func (metrics *Metrics) registerScaleUp(factory promauto.Factory) {
+	metrics.scaleUpResults = factory.NewCounterVec(prometheus.CounterOpts{
+		Namespace: metricsNamespace,
+		Name:      "scale_up_total",
+		Help:      "Total DynamoDB scale-up attempts by result.",
+	}, []string{"result"})
+}
+
 // registerReadiness creates the gauge that Kubernetes uses to decide when to send traffic.
 func (metrics *Metrics) registerReadiness(factory promauto.Factory, readiness *atomic.Bool) {
 	factory.NewGaugeFunc(prometheus.GaugeOpts{
@@ -189,6 +200,12 @@ func (metrics *Metrics) RecordOffWorkReportEnqueue(err error) {
 		result = "error"
 	}
 	metrics.offWorkReportsEnqueued.WithLabelValues(result).Inc()
+}
+
+// RecordScaleUp records one DynamoDB scale-up attempt.
+// For example, an ignored subscriber-limit error records result "ignored".
+func (metrics *Metrics) RecordScaleUp(result string) {
+	metrics.scaleUpResults.WithLabelValues(result).Inc()
 }
 
 // metricsResponseWriter records the first HTTP status sent by an instrumented route.

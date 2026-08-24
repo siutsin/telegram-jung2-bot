@@ -8,7 +8,7 @@ import (
 	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 )
 
-//go:generate sh -c "GOFLAGS=-mod=mod go run go.uber.org/mock/mockgen -source=client.go -destination=../mock/dynamodb_mock.go -package=mock -mock_names dynamoRequester=MockDynamoRequester,dependencyObserver=MockDynamoDependencyObserver"
+//go:generate sh -c "GOFLAGS=-mod=mod go run go.uber.org/mock/mockgen -source=client.go -destination=../mock/dynamodb_mock.go -package=mock -mock_names dynamoRequester=MockDynamoRequester,dependencyObserver=MockDynamoDependencyObserver,scaleUpObserver=MockDynamoScaleUpObserver"
 
 // dynamoRequester is the DynamoDB SDK surface used by the adapters.
 type dynamoRequester interface {
@@ -23,6 +23,12 @@ type dynamoRequester interface {
 // dependencyObserver records a completed DynamoDB request.
 type dependencyObserver interface {
 	ObserveDependency(dependency string, operation string, duration time.Duration, err error)
+}
+
+// scaleUpObserver records DynamoDB requests and scale-up results.
+type scaleUpObserver interface {
+	dependencyObserver
+	RecordScaleUp(result string)
 }
 
 // MessageClient is the DynamoDB-backed message adapter.
@@ -42,7 +48,7 @@ type ScaleUpper struct {
 	dynamo      dynamoRequester
 	desiredRead int
 	tableName   string
-	metrics     dependencyObserver
+	metrics     scaleUpObserver
 }
 
 // NewMessageClient builds the DynamoDB-backed message adapter.
@@ -56,17 +62,26 @@ func NewChatClient(dynamoClient dynamoRequester, metrics ...dependencyObserver) 
 }
 
 // NewScaleUpper builds the DynamoDB-backed scale-up adapter.
-func NewScaleUpper(dynamoClient dynamoRequester, tableName string, desiredRead int, metrics ...dependencyObserver) ScaleUpper {
+func NewScaleUpper(dynamoClient dynamoRequester, tableName string, desiredRead int, metrics ...scaleUpObserver) ScaleUpper {
 	return ScaleUpper{
 		dynamo:      dynamoClient,
 		desiredRead: desiredRead,
 		tableName:   tableName,
-		metrics:     firstMetrics(metrics),
+		metrics:     firstScaleUpObserver(metrics),
 	}
 }
 
 // firstMetrics returns the optional dependency observer from application wiring.
 func firstMetrics(metrics []dependencyObserver) dependencyObserver {
+	if len(metrics) == 0 {
+		return nil
+	}
+
+	return metrics[0]
+}
+
+// firstScaleUpObserver returns the optional scale-up observer from application wiring.
+func firstScaleUpObserver(metrics []scaleUpObserver) scaleUpObserver {
 	if len(metrics) == 0 {
 		return nil
 	}
