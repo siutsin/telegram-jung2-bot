@@ -49,13 +49,12 @@ the shared isolated runtime because they do not access AWS resources.
 Resource-backed tests run at most three at a time so Floci stays responsive while
 independent test cases still execute concurrently.
 
-Buck runs one `go_test` target; Go runs seventeen top-level tests. Failures name
+Buck runs one `go_test` target; Go runs sixteen top-level tests. Failures name
 the failing `TestFloci*` (and subtests where used) in Buck stderr/stdout.
 
 - `TestFlociDynamoDB` — chat/message CRUD, due-chat scan
 - `TestFlociDynamoDBDueChatPagination` — multi-page `DueChatIDs`
 - `TestFlociDynamoDBMessagePagination` — multi-page `QueryByChat`
-- `TestFlociLegacySQSFixtures` — legacy JS Lambda/ECS queue payload decode
 - `TestFlociSQS` — all command and schedule actions, casing, Floci round-trip
 - `TestFlociSQSBatch` — multi-message worker batch through one poll window
 - `TestFlociHTTPHealth` — `/health`
@@ -79,9 +78,9 @@ Adapter and lifecycle smoke tests against local Floci.
 
 **In scope:** real SDK clients, temporary tables/queue, production builders and
 handlers, queue encode/receive/decode/delete, `httptest` HTTP routing,
-`telegram.Client` against a fake Bot API, legacy JS queue fixtures,
-`worker.Run`, `worker.Handlers`, multi-page DynamoDB scans/queries, Floci SQS
-receive, `app.Run` shutdown with a live HTTP listener.
+`telegram.Client` against a fake Bot API, `worker.Run`, `worker.Handlers`,
+multi-page DynamoDB scans/queries, Floci SQS receive, `app.Run` shutdown with
+a live HTTP listener.
 
 **Out of scope (not suitable for this harness):**
 
@@ -91,13 +90,5 @@ receive, `app.Run` shutdown with a live HTTP listener.
   contract is already exercised by `TestFlociHTTPStage`.
 - **AWS IAM and throttling faults** — need injected SDK errors or a fault
   injection proxy, not local happy-path emulation.
-- **Captured production traffic replay** — would need curated prod fixtures and
-  ongoing maintenance beyond the legacy JS contract shapes already checked in
-  `TestFlociLegacySQSFixtures`.
-
-## Cutover cleanup
-
-`TestFlociLegacySQSFixtures` and `legacyfixtures.go` are temporary JS-to-Go
-parity checks. Remove them after production cutover when the old Node bot is
-retired, the queue no longer carries legacy-shaped messages, and only Go
-producers enqueue work.
+- **Captured production traffic replay** — would need curated prod fixtures
+  and ongoing maintenance beyond what this harness already covers.
