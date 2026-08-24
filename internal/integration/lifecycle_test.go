@@ -4,13 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/stretchr/testify/require"
 	gomock "go.uber.org/mock/gomock"
 
@@ -56,7 +59,7 @@ func TestFlociAppRunGracefulShutdownAfterComponentCrash(t *testing.T) {
 			client := &http.Client{Transport: &http.Transport{DisableKeepAlives: true}}
 			require.Eventually(t, func() bool {
 				return lifecycleResponseStatus(client, lifecycle.webhookURL+"/health") == http.StatusOK &&
-					lifecycleResponseStatus(client, lifecycle.metricsURL) == http.StatusOK
+					lifecycleMetricsExpose(client, lifecycle.metricsURL)
 			}, time.Second, time.Millisecond)
 			<-lifecycle.workerStarted
 
@@ -182,11 +185,11 @@ func lifecycleWebhookServer(readiness *atomic.Bool, drainStarted chan<- struct{}
 	}
 }
 
-// lifecycleMetricsServer provides a real independent server that can fail separately from HTTP.
+// lifecycleMetricsServer uses the production handler to cover real metrics output.
 func lifecycleMetricsServer() *http.Server {
 	return &http.Server{
 		ReadHeaderTimeout: time.Second,
-		Handler:           http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}),
+		Handler:           promhttp.Handler(),
 	}
 }
 
@@ -234,12 +237,39 @@ func lifecycleResponseStatus(client *http.Client, url string) int {
 	return status
 }
 
-// lifecycleCannotConnect confirms shutdown closes listeners instead of merely marking them unready.
+// lifecycleMetricsExpose proves the metrics listener returns Prometheus runtime data.
+func lifecycleMetricsExpose(client *http.Client, url string) bool {
+	response, err := client.Get(url)
+	if err != nil {
+		return false
+	}
+	if response.StatusCode != http.StatusOK {
+		closeErr := response.Body.Close()
+		if closeErr != nil {
+			return false
+		}
+
+		return false
+	}
+	body, err := io.ReadAll(response.Body)
+	closeErr := response.Body.Close()
+	if err != nil || closeErr != nil {
+		return false
+	}
+
+	return strings.Contains(string(body), "go_goroutines")
+}
+
+// lifecycleCannotConnect confirms shutdown rejects new TCP connections.
 func lifecycleCannotConnect(address string) bool {
 	connection, err := net.DialTimeout("tcp", address, time.Millisecond)
 	if err != nil {
 		return true
 	}
+	err = connection.Close()
+	if err != nil {
+		return false
+	}
 
-	return connection.Close() == nil
+	return false
 }

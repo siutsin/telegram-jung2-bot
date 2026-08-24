@@ -64,8 +64,8 @@ the failing `TestFloci*` (and subtests where used) in Buck stderr/stdout.
 - `TestFlociAppRun` — `app.Run` with HTTP server, worker, health, and queue action
 - `TestFlociAppRunGracefulShutdownAfterComponentCrash` — each queue worker,
   HTTP server, and metrics server failure makes readiness fail and shuts down
-  both servers. The worker and metrics failures also drain an in-flight HTTP
-  request.
+  both servers. It also confirms `/metrics` returns Prometheus runtime data.
+  The worker and metrics failures also drain an in-flight HTTP request.
 - `TestFlociWorkerRun` — production `worker.Run` poll loop with cancel
 - `TestFlociWorkerHandlers` — `worker.Handlers` dispatch to `service.Service`
 - `TestFlociWorkerService` — single-poll service dispatch for report actions
