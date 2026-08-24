@@ -60,6 +60,7 @@ func TestGenerateTopTenReport(t *testing.T) {
 	assert.Contains(t, summary.Report, "4. linus_t 16.67% (3 hours ago)")
 	assert.Contains(t, summary.Report, "Total messages: 6")
 	assert.Contains(t, summary.Report, "Last Update: 2026-05-02T12:00:00+00:00")
+	assert.NotContains(t, summary.Report, "/setOffFromWorkTimeUTC")
 	assert.NotContains(t, summary.Report, "5.")
 }
 
@@ -130,6 +131,7 @@ func TestGenerateOffFromWorkReport(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.True(t, strings.HasPrefix(summary.Report, "夠鐘收工~~\n\n"))
+	assert.True(t, strings.HasSuffix(summary.Report, "\n\n---\nUse /setOffFromWorkTimeUTC to set the off-work time.\nSee /jungHelp for more info."))
 }
 
 func TestGenerateReportRejectsEmptyRows(t *testing.T) {

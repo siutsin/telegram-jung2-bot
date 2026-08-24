@@ -215,13 +215,16 @@ func buildDiverBody(summary rowSummary, options ReportOptions) string {
 
 // buildFooter builds the report footer text.
 // For example, totalMessage 20 becomes a footer starting with
-// "Total messages: 20".
+// "Total messages: 20". OffFromWork true appends the setOff footnote.
 func buildFooter(summary rowSummary, options ReportOptions) string {
 	footer := fmt.Sprintf("\nTotal messages: %d\n\n", summary.totalMessage)
 	if options.Reverse {
 		footer += "between, 深潛會搵唔到 ho chi is\n"
 	}
 	footer += fmt.Sprintf("Last Update: %s", options.Now.Format(updateTimestampLayout))
+	if options.OffFromWork {
+		footer += "\n\n---\nUse /setOffFromWorkTimeUTC to set the off-work time.\nSee /jungHelp for more info."
+	}
 	return footer
 }
 
