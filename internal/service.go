@@ -44,6 +44,7 @@ type Service struct {
 	nowFunc        func() time.Time
 	queueURL       string
 	sender         queueSender
+	metrics        *Metrics
 }
 
 // NewService builds the action service from simple runtime parameters.
@@ -56,6 +57,7 @@ func NewService(
 	now func() time.Time,
 	queueURL string,
 	sender queueSender,
+	metrics ...*Metrics,
 ) Service {
 	return Service{
 		chatMaintainer: chatMaintainer,
@@ -66,6 +68,7 @@ func NewService(
 		nowFunc:        now,
 		queueURL:       queueURL,
 		sender:         sender,
+		metrics:        firstMetrics(metrics),
 	}
 }
 
@@ -132,6 +135,9 @@ func (service Service) OnOffFromWork(ctx context.Context, timeString string) err
 	producer := queue.NewProducer(service.queueURL, service.sender)
 	for _, chatID := range chatIDs {
 		err = producer.Enqueue(ctx, BuildOffFromWorkAction(chatID))
+		if service.metrics != nil {
+			service.metrics.RecordOffWorkReportEnqueue(err)
+		}
 		if err != nil {
 			return fmt.Errorf("enqueue due off-work report: %w", err)
 		}

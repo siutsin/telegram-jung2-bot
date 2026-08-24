@@ -5,6 +5,9 @@ go_library(
     deps = [
         "//internal/queue:queue",
         "//vendor/github.com/caarlos0/env/v11:v11",
+        "//vendor/github.com/prometheus/client_golang/prometheus:prometheus",
+        "//vendor/github.com/prometheus/client_golang/prometheus/promauto:promauto",
+        "//vendor/github.com/prometheus/client_golang/prometheus/promhttp:promhttp",
         "//vendor/golang.org/x/sync/errgroup:errgroup",
     ],
     visibility = [
@@ -20,6 +23,9 @@ go_test(
         "//internal/mock:mock",
         "//internal/queue:queue",
         "//vendor/github.com/caarlos0/env/v11:v11",
+        "//vendor/github.com/prometheus/client_golang/prometheus:prometheus",
+        "//vendor/github.com/prometheus/client_golang/prometheus/promauto:promauto",
+        "//vendor/github.com/prometheus/client_golang/prometheus/promhttp:promhttp",
         "//vendor/github.com/stretchr/testify/assert:assert",
         "//vendor/github.com/stretchr/testify/require:require",
         "//vendor/go.uber.org/mock/gomock:gomock",

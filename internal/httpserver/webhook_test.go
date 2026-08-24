@@ -17,6 +17,7 @@ func TestHandleWebhookSavesAndEnqueuesCommand(t *testing.T) {
 	t.Parallel()
 
 	mocks, dependencies := newMockDependencies(t)
+	dependencies.Metrics = bot.NewMetrics(nil)
 	mocks.expectSaveWebhookState()
 	mocks.expectEnqueue(nil)
 	got := handleWebhook(context.Background(), []byte(`{"message":{"chat":{"id":123,"title":"Group","type":"supergroup"},"from":{"id":456},"text":"/topTen","entities":[{"type":"bot_command"}]}}`), dependencies)

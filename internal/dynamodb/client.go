@@ -3,11 +3,12 @@ package dynamodb
 
 import (
 	"context"
+	"time"
 
 	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 )
 
-//go:generate sh -c "GOFLAGS=-mod=mod go run go.uber.org/mock/mockgen -source=client.go -destination=../mock/dynamodb_mock.go -package=mock -mock_names dynamoRequester=MockDynamoRequester"
+//go:generate sh -c "GOFLAGS=-mod=mod go run go.uber.org/mock/mockgen -source=client.go -destination=../mock/dynamodb_mock.go -package=mock -mock_names dynamoRequester=MockDynamoRequester,dependencyObserver=MockDynamoDependencyObserver"
 
 // dynamoRequester is the DynamoDB SDK surface used by the adapters.
 type dynamoRequester interface {
@@ -19,14 +20,21 @@ type dynamoRequester interface {
 	UpdateTable(ctx context.Context, params *awsdynamodb.UpdateTableInput, optFns ...func(*awsdynamodb.Options)) (*awsdynamodb.UpdateTableOutput, error)
 }
 
+// dependencyObserver records a completed DynamoDB request.
+type dependencyObserver interface {
+	ObserveDependency(dependency string, operation string, duration time.Duration, err error)
+}
+
 // MessageClient is the DynamoDB-backed message adapter.
 type MessageClient struct {
-	dynamo dynamoRequester
+	dynamo  dynamoRequester
+	metrics dependencyObserver
 }
 
 // ChatClient is the DynamoDB-backed chat adapter.
 type ChatClient struct {
-	dynamo dynamoRequester
+	dynamo  dynamoRequester
+	metrics dependencyObserver
 }
 
 // ScaleUpper is the DynamoDB-backed scale-up adapter.
@@ -34,23 +42,41 @@ type ScaleUpper struct {
 	dynamo      dynamoRequester
 	desiredRead int
 	tableName   string
+	metrics     dependencyObserver
 }
 
 // NewMessageClient builds the DynamoDB-backed message adapter.
-func NewMessageClient(dynamoClient dynamoRequester) MessageClient {
-	return MessageClient{dynamo: dynamoClient}
+func NewMessageClient(dynamoClient dynamoRequester, metrics ...dependencyObserver) MessageClient {
+	return MessageClient{dynamo: dynamoClient, metrics: firstMetrics(metrics)}
 }
 
 // NewChatClient builds the DynamoDB-backed chat adapter.
-func NewChatClient(dynamoClient dynamoRequester) ChatClient {
-	return ChatClient{dynamo: dynamoClient}
+func NewChatClient(dynamoClient dynamoRequester, metrics ...dependencyObserver) ChatClient {
+	return ChatClient{dynamo: dynamoClient, metrics: firstMetrics(metrics)}
 }
 
 // NewScaleUpper builds the DynamoDB-backed scale-up adapter.
-func NewScaleUpper(dynamoClient dynamoRequester, tableName string, desiredRead int) ScaleUpper {
+func NewScaleUpper(dynamoClient dynamoRequester, tableName string, desiredRead int, metrics ...dependencyObserver) ScaleUpper {
 	return ScaleUpper{
 		dynamo:      dynamoClient,
 		desiredRead: desiredRead,
 		tableName:   tableName,
+		metrics:     firstMetrics(metrics),
+	}
+}
+
+// firstMetrics returns the optional dependency observer from application wiring.
+func firstMetrics(metrics []dependencyObserver) dependencyObserver {
+	if len(metrics) == 0 {
+		return nil
+	}
+
+	return metrics[0]
+}
+
+// observeDependency records a completed DynamoDB request when metrics are enabled.
+func observeDependency(metrics dependencyObserver, operation string, started time.Time, err error) {
+	if metrics != nil {
+		metrics.ObserveDependency("dynamodb", operation, time.Since(started), err)
 	}
 }

@@ -49,13 +49,16 @@ func TestNewPollingWorkerBuildsWorker(t *testing.T) {
 	deleter := &fakeDeleter{}
 	receiver := &workerReceiver{}
 	handlers := Handlers{}
+	metrics := NewMetrics(nil)
 
-	queueWorker, err := NewPollingWorker("queue-url", receiver, deleter, handlers)
+	queueWorker, err := NewPollingWorker("queue-url", receiver, deleter, handlers, metrics)
 
 	require.NoError(t, err)
 	assert.Equal(t, "queue-url", queueWorker.queueURL)
 	assert.Equal(t, deleter, queueWorker.deleter)
 	assert.Equal(t, handlers, queueWorker.handlers)
+	assert.Same(t, metrics, queueWorker.metrics)
+	assert.Nil(t, firstMetrics(nil))
 }
 
 func TestNewPollingWorkerRequiresQueueContracts(t *testing.T) {
@@ -93,6 +96,7 @@ func TestPollingWorkerProcessesAndDeletesMessages(t *testing.T) {
 		}
 	}`)
 	deleter := &fakeDeleter{}
+	metrics := NewMetrics(nil)
 	receiver := &workerReceiver{response: queue.ReceiveMessageResponse{Messages: []queue.RawMessage{raw}}}
 	handlerSet := testHandlers(nil, nil)
 	handlerSet.TopTen = func(handlerCtx context.Context, chatID int64) error {
@@ -105,6 +109,7 @@ func TestPollingWorkerProcessesAndDeletesMessages(t *testing.T) {
 		queueURL: "queue-url",
 		handlers: handlerSet,
 		deleter:  deleter,
+		metrics:  metrics,
 	}).Run(ctx)
 
 	require.NoError(t, err)
@@ -324,7 +329,7 @@ func TestProcessMessageDeletesAfterSuccessfulDispatch(t *testing.T) {
 		}
 	}`)
 
-	err := processMessage(context.Background(), "queue-url", raw, testHandlers(nil, nil), deleter)
+	_, _, err := processMessageResult(context.Background(), "queue-url", raw, testHandlers(nil, nil), deleter)
 
 	require.NoError(t, err)
 	assert.Equal(t, []queue.DeleteMessageRequest{{QueueURL: "queue-url", ReceiptHandle: "receipt"}}, deleter.requests)
@@ -341,7 +346,7 @@ func TestProcessMessageKeepsMessageAndReturnsDispatchFailure(t *testing.T) {
 		}
 	}`)
 
-	err := processMessage(context.Background(), "queue-url", raw, testHandlers(nil, errors.New("boom")), deleter)
+	_, _, err := processMessageResult(context.Background(), "queue-url", raw, testHandlers(nil, errors.New("boom")), deleter)
 
 	require.Error(t, err)
 	require.EqualError(t, err, "boom")
@@ -351,7 +356,7 @@ func TestProcessMessageKeepsMessageAndReturnsDispatchFailure(t *testing.T) {
 func TestProcessMessageDropsMessageWithoutAction(t *testing.T) {
 	t.Parallel()
 
-	err := processMessage(context.Background(), "queue-url", queue.RawMessage{}, testHandlers(nil, nil), &fakeDeleter{})
+	_, _, err := processMessageResult(context.Background(), "queue-url", queue.RawMessage{}, testHandlers(nil, nil), &fakeDeleter{})
 
 	require.NoError(t, err)
 }
@@ -367,7 +372,7 @@ func TestProcessMessageDeletesPermanentDispatchErrors(t *testing.T) {
 		}
 	}`)
 
-	err := processMessage(context.Background(), "queue-url", raw, testHandlers(nil, nil), deleter)
+	_, _, err := processMessageResult(context.Background(), "queue-url", raw, testHandlers(nil, nil), deleter)
 
 	require.NoError(t, err)
 	assert.Equal(t, []queue.DeleteMessageRequest{{QueueURL: "queue-url", ReceiptHandle: "receipt"}}, deleter.requests)
@@ -470,7 +475,7 @@ func TestProcessMessageReturnsDeleteErrorAfterPermanentDispatchFailure(t *testin
 		}
 	}`)
 
-	err := processMessage(context.Background(), "queue-url", raw, testHandlers(nil, nil), &fakeDeleter{err: errors.New("boom")})
+	_, _, err := processMessageResult(context.Background(), "queue-url", raw, testHandlers(nil, nil), &fakeDeleter{err: errors.New("boom")})
 
 	require.Error(t, err)
 	assert.EqualError(t, err, "boom")
@@ -487,7 +492,7 @@ func TestProcessMessageReturnsDeleteError(t *testing.T) {
 		}
 	}`)
 
-	err := processMessage(context.Background(), "queue-url", raw, testHandlers(nil, nil), &fakeDeleter{err: errors.New("boom")})
+	_, _, err := processMessageResult(context.Background(), "queue-url", raw, testHandlers(nil, nil), &fakeDeleter{err: errors.New("boom")})
 
 	require.Error(t, err)
 	assert.EqualError(t, err, "boom")

@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	awscore "github.com/aws/aws-sdk-go-v2/aws"
 	awssqs "github.com/aws/aws-sdk-go-v2/service/sqs"
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
 
-//go:generate sh -c "GOFLAGS=-mod=mod go run go.uber.org/mock/mockgen -source=sqs.go -destination=../mock/queue_mock.go -package=mock -mock_names queueRequester=MockQueueRequester"
+//go:generate sh -c "GOFLAGS=-mod=mod go run go.uber.org/mock/mockgen -source=sqs.go -destination=../mock/queue_mock.go -package=mock -mock_names queueRequester=MockQueueRequester,dependencyObserver=MockQueueDependencyObserver"
 
 // queueRequester is the SQS SDK surface used by the queue adapter.
 type queueRequester interface {
@@ -19,14 +20,20 @@ type queueRequester interface {
 	SendMessage(ctx context.Context, params *awssqs.SendMessageInput, optFns ...func(*awssqs.Options)) (*awssqs.SendMessageOutput, error)
 }
 
+// dependencyObserver records a completed SQS request.
+type dependencyObserver interface {
+	ObserveDependency(dependency string, operation string, duration time.Duration, err error)
+}
+
 // sqsClient adapts the AWS SQS SDK to the queue package contracts.
 type sqsClient struct {
-	queue queueRequester
+	queue   queueRequester
+	metrics dependencyObserver
 }
 
 // NewClient builds an SQS-backed queue client.
-func NewClient(queue queueRequester) sqsClient {
-	return sqsClient{queue: queue}
+func NewClient(queue queueRequester, metrics ...dependencyObserver) sqsClient {
+	return sqsClient{queue: queue, metrics: firstMetrics(metrics)}
 }
 
 // Delete removes a consumed SQS message.
@@ -35,10 +42,12 @@ func (client sqsClient) Delete(ctx context.Context, request DeleteMessageRequest
 		return fmt.Errorf("queue client is required")
 	}
 
+	started := time.Now()
 	_, err := client.queue.DeleteMessage(ctx, &awssqs.DeleteMessageInput{
 		QueueUrl:      awscore.String(request.QueueURL),
 		ReceiptHandle: awscore.String(request.ReceiptHandle),
 	})
+	client.observe("delete", started, err)
 	if err != nil {
 		return fmt.Errorf("delete SQS message: %w", err)
 	}
@@ -63,12 +72,14 @@ func (client sqsClient) ReceiveMessage(ctx context.Context, request ReceiveMessa
 		return ReceiveMessageResponse{}, err
 	}
 
+	started := time.Now()
 	output, err := client.queue.ReceiveMessage(ctx, &awssqs.ReceiveMessageInput{
 		QueueUrl:              awscore.String(request.QueueURL),
 		MaxNumberOfMessages:   maxMessages,
 		MessageAttributeNames: []string{"All"},
 		WaitTimeSeconds:       waitSeconds,
 	})
+	client.observe("receive", started, err)
 	if err != nil {
 		return ReceiveMessageResponse{}, fmt.Errorf("receive SQS messages: %w", err)
 	}
@@ -92,16 +103,34 @@ func (client sqsClient) SendMessage(ctx context.Context, request SendMessageRequ
 		return fmt.Errorf("queue client is required")
 	}
 
+	started := time.Now()
 	_, err := client.queue.SendMessage(ctx, &awssqs.SendMessageInput{
 		QueueUrl:          awscore.String(request.QueueURL),
 		MessageBody:       awscore.String(request.MessageBody),
 		MessageAttributes: encodeQueueAttributes(request.MessageAttributes),
 	})
+	client.observe("send", started, err)
 	if err != nil {
 		return fmt.Errorf("send SQS message: %w", err)
 	}
 
 	return nil
+}
+
+// firstMetrics returns the optional dependency observer from application wiring.
+func firstMetrics(metrics []dependencyObserver) dependencyObserver {
+	if len(metrics) == 0 {
+		return nil
+	}
+
+	return metrics[0]
+}
+
+// observe records a completed SQS request when metrics are enabled.
+func (client sqsClient) observe(operation string, started time.Time, err error) {
+	if client.metrics != nil {
+		client.metrics.ObserveDependency("sqs", operation, time.Since(started), err)
+	}
 }
 
 // encodeQueueAttributes converts queue attributes for SQS.

@@ -120,6 +120,9 @@ func enqueueWebhookCommand(ctx context.Context, telegramMessage bot.TelegramMess
 			slog.Error("enqueue webhook command", "action", action.Name, "err", err)
 			return response{statusCode: 500, message: "enqueue command"}, false
 		}
+		if dependencies.Metrics != nil {
+			dependencies.Metrics.RecordWebhookCommand(action.Name)
+		}
 		return response{}, true
 	}
 	if shouldIgnoreCommandError(parsedCommand) {

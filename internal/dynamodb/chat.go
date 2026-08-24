@@ -19,7 +19,9 @@ type dueChatScanRequest struct {
 }
 
 // Get loads one stored chat row.
-func (client ChatClient) Get(ctx context.Context, tableName string, chatID int64) (bot.ChatSetting, bool, error) {
+func (client ChatClient) Get(ctx context.Context, tableName string, chatID int64) (settings bot.ChatSetting, found bool, err error) {
+	started := time.Now()
+	defer func() { observeDependency(client.metrics, "get", started, err) }()
 	output, err := client.dynamo.GetItem(ctx, &awsdynamodb.GetItemInput{
 		TableName: awscore.String(tableName),
 		Key:       encodeDynamoValues(map[string]any{"chatId": chatID}),
@@ -31,7 +33,7 @@ func (client ChatClient) Get(ctx context.Context, tableName string, chatID int64
 		return bot.ChatSetting{}, false, nil
 	}
 
-	settings, err := bot.ParseRow(decodeChat(output.Item))
+	settings, err = bot.ParseRow(decodeChat(output.Item))
 	if err != nil {
 		return bot.ChatSetting{}, false, fmt.Errorf("parse DynamoDB chat row: %w", err)
 	}
@@ -41,18 +43,18 @@ func (client ChatClient) Get(ctx context.Context, tableName string, chatID int64
 
 // Update stores a chat setting update expression.
 func (client ChatClient) Update(ctx context.Context, update bot.UpdateExpression) error {
-	return updateContractUpdate(ctx, client.dynamo, update.TableName, update.Key, update.UpdateExpression, update.ExpressionAttributeNames, update.ExpressionAttributeValues)
+	return updateContractUpdate(ctx, client.dynamo, client.metrics, update.TableName, update.Key, update.UpdateExpression, update.ExpressionAttributeNames, update.ExpressionAttributeValues)
 }
 
 // Save stores a chat record row.
 func (client ChatClient) Save(ctx context.Context, tableName string, settings bot.ChatSetting) error {
 	metadataUpdate := bot.BuildMetadataUpdate(tableName, settings)
-	return updateContractUpdate(ctx, client.dynamo, metadataUpdate.TableName, metadataUpdate.Key, metadataUpdate.UpdateExpression, metadataUpdate.ExpressionAttributeNames, metadataUpdate.ExpressionAttributeValues)
+	return updateContractUpdate(ctx, client.dynamo, client.metrics, metadataUpdate.TableName, metadataUpdate.Key, metadataUpdate.UpdateExpression, metadataUpdate.ExpressionAttributeNames, metadataUpdate.ExpressionAttributeValues)
 }
 
 // SaveStatistics stores the computed group counts in the chat row.
 func (client ChatClient) SaveStatistics(ctx context.Context, tableName string, chatID int64, userCount int, messageCount int, now time.Time) error {
-	return updateItem(ctx, client.dynamo, buildChatCountUpdate(tableName, chatID, userCount, messageCount, now))
+	return updateItem(ctx, client.dynamo, client.metrics, buildChatCountUpdate(tableName, chatID, userCount, messageCount, now))
 }
 
 // DueChatIDs scans and filters due chats for one scheduled window.
@@ -60,6 +62,7 @@ func (client ChatClient) DueChatIDs(ctx context.Context, tableName string, times
 	window := bot.WindowFromTime(timestamp)
 	scanRequest := scanDueChatsRequest(tableName, window.OffTime, window.Weekday)
 	return collectPages(ctx, func(pageCtx context.Context, startKey map[string]any) (page[int64], error) {
+		started := time.Now()
 		output, err := client.dynamo.Scan(pageCtx, &awsdynamodb.ScanInput{
 			TableName:                 awscore.String(scanRequest.tableName),
 			ExclusiveStartKey:         encodeDynamoValues(startKey),
@@ -67,6 +70,7 @@ func (client ChatClient) DueChatIDs(ctx context.Context, tableName string, times
 			ExpressionAttributeNames:  scanRequest.expressionAttributeNames,
 			ExpressionAttributeValues: encodeDynamoValues(scanRequest.expressionAttributeValues),
 		})
+		observeDependency(client.metrics, "scan", started, err)
 		if err != nil {
 			return page[int64]{}, fmt.Errorf("scan due chats: %w", err)
 		}

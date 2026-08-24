@@ -10,6 +10,7 @@ Its Go package name is `bot`.
 | `command.go`     | Parses Telegram commands into queue actions.        |
 | `config.go`      | Loads and validates startup settings.               |
 | `message.go`     | Defines stored messages and date formats.           |
+| `metrics.go`     | Exports Prometheus service metrics.                 |
 | `schedule.go`    | Calculates schedules and admin setting changes.     |
 | `service.go`     | Runs the bot actions used by the worker.            |
 | `statistics.go`  | Renders Telegram reports.                           |

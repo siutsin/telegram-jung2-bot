@@ -19,7 +19,6 @@ import (
 	awscfg "github.com/aws/aws-sdk-go-v2/config"
 	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	awssqs "github.com/aws/aws-sdk-go-v2/service/sqs"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/siutsin/telegram-jung2-bot/internal/dynamodb"
 	"github.com/siutsin/telegram-jung2-bot/internal/httpserver"
@@ -54,12 +53,14 @@ func run(ctx context.Context) error {
 		return err
 	}
 
+	readiness := &atomic.Bool{}
+	metrics := bot.NewMetrics(readiness)
 	dynamoClient := newDynamoClient(awsConfig, loadedConfig.AWSEndpointURL)
-	queueClient := queue.NewClient(newSQSClient(awsConfig, loadedConfig.AWSEndpointURL))
-	telegramClient := newTelegramClient(loadedConfig)
-	messageClient := dynamodb.NewMessageClient(dynamoClient)
-	chatClient := dynamodb.NewChatClient(dynamoClient)
-	scaleUpper := dynamodb.NewScaleUpper(dynamoClient, loadedConfig.MessageTable, loadedConfig.ScaleUpReadCapacity)
+	queueClient := queue.NewClient(newSQSClient(awsConfig, loadedConfig.AWSEndpointURL), metrics)
+	telegramClient := newTelegramClient(loadedConfig, metrics)
+	messageClient := dynamodb.NewMessageClient(dynamoClient, metrics)
+	chatClient := dynamodb.NewChatClient(dynamoClient, metrics)
+	scaleUpper := dynamodb.NewScaleUpper(dynamoClient, loadedConfig.MessageTable, loadedConfig.ScaleUpReadCapacity, metrics)
 	actions := bot.NewService(
 		chatClient,
 		loadedConfig.ChatIDTable,
@@ -69,17 +70,17 @@ func run(ctx context.Context) error {
 		time.Now,
 		loadedConfig.EventQueueURL,
 		queueClient,
+		metrics,
 	)
-	queueWorker, err := newQueueWorker(loadedConfig.EventQueueURL, queueClient, actions)
+	queueWorker, err := newQueueWorker(loadedConfig.EventQueueURL, queueClient, actions, metrics)
 	if err != nil {
 		return err
 	}
-	readiness := &atomic.Bool{}
-	httpServer, err := newHTTPServer(loadedConfig, readiness, chatClient, messageClient, queueClient, telegramClient, scaleUpper)
+	httpServer, err := newHTTPServer(loadedConfig, readiness, chatClient, messageClient, queueClient, telegramClient, scaleUpper, metrics)
 	if err != nil {
 		return err
 	}
-	metricsServer := newMetricsServer(loadedConfig)
+	metricsServer := newMetricsServer(loadedConfig, metrics)
 	application := bot.NewApp(
 		bot.NewHTTPServer("HTTP", loadedConfig.ServerAddress, httpServer),
 		bot.NewHTTPServer("metrics", loadedConfig.MetricsServerAddress, metricsServer),
@@ -129,11 +130,12 @@ func newSQSClient(awsConfig awscore.Config, endpointURL string) *awssqs.Client {
 }
 
 // newTelegramClient builds the Telegram API client.
-func newTelegramClient(loadedConfig bot.Config) bot.Client {
+func newTelegramClient(loadedConfig bot.Config, metrics *bot.Metrics) bot.Client {
 	return bot.NewClient(
 		loadedConfig.TelegramBotToken,
 		bot.WithBaseURL(loadedConfig.TelegramAPIBaseURL),
 		bot.WithHTTPClient(&http.Client{Timeout: loadedConfig.HTTPTimeout}),
+		bot.WithDependencyObserver(metrics),
 	)
 }
 
@@ -148,6 +150,7 @@ func newHTTPServer(
 	},
 	messenger bot.Client,
 	scaleUpper dynamodb.ScaleUpper,
+	metrics *bot.Metrics,
 ) (*http.Server, error) {
 	dependencies := httpserver.Dependencies{
 		ChatTable:            loadedConfig.ChatIDTable,
@@ -161,6 +164,7 @@ func newHTTPServer(
 		WebhookSecretToken:   loadedConfig.WebhookSecretToken,
 		SchedulerSecretToken: loadedConfig.SchedulerSecretToken,
 		Readiness:            readiness,
+		Metrics:              metrics,
 	}
 
 	return httpserver.NewServer(
@@ -172,10 +176,10 @@ func newHTTPServer(
 }
 
 // newMetricsServer builds the dedicated Prometheus metrics server.
-func newMetricsServer(loadedConfig bot.Config) *http.Server {
+func newMetricsServer(loadedConfig bot.Config, metrics *bot.Metrics) *http.Server {
 	return &http.Server{
 		Addr:              loadedConfig.MetricsServerAddress,
-		Handler:           promhttp.Handler(),
+		Handler:           metrics.Handler(),
 		ReadHeaderTimeout: loadedConfig.HTTPTimeout,
 		ReadTimeout:       loadedConfig.HTTPTimeout,
 		WriteTimeout:      loadedConfig.HTTPTimeout,
@@ -187,7 +191,7 @@ func newMetricsServer(loadedConfig bot.Config) *http.Server {
 func newQueueWorker(queueURL string, queueClient interface {
 	ReceiveMessage(ctx context.Context, request queue.ReceiveMessageRequest) (queue.ReceiveMessageResponse, error)
 	Delete(ctx context.Context, request queue.DeleteMessageRequest) error
-}, actions bot.Service) (interface {
+}, actions bot.Service, metrics *bot.Metrics) (interface {
 	Run(ctx context.Context) error
 }, error) {
 	return bot.NewPollingWorker(
@@ -204,7 +208,7 @@ func newQueueWorker(queueURL string, queueClient interface {
 			DisableAllJung: actions.DisableAllJung,
 			SetOffWorkTime: actions.SetOffWorkTime,
 			OnOffFromWork:  actions.OnOffFromWork,
-		},
+		}, metrics,
 	)
 }
 

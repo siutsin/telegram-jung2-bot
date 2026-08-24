@@ -13,15 +13,16 @@ import (
 // newHandler builds the HTTP handler for service routes.
 func newHandler(dependencies serverDeps) http.Handler {
 	mux := http.NewServeMux()
-	registerRoute(mux, http.MethodGet, "/health", func(writer http.ResponseWriter, request *http.Request) {
+	registerRoute(mux, http.MethodGet, "/health", "health", dependencies.Metrics, func(writer http.ResponseWriter, request *http.Request) {
 		writeResponse(writer, health(dependencies.Readiness))
 	})
-	registerRoute(mux, http.MethodPost, "/webhook", func(writer http.ResponseWriter, request *http.Request) {
+	registerRoute(mux, http.MethodPost, "/webhook", "webhook", dependencies.Metrics, func(writer http.ResponseWriter, request *http.Request) {
 		writeResponse(writer, webhookResponse(writer, request, dependencies))
 	})
 	if dependencies.stage != "" {
 		registerStageRoutes(mux, dependencies)
 	}
+	mux.Handle("/", instrumentRoute(dependencies.Metrics, "not_found", http.NotFoundHandler()))
 
 	return mux
 }
@@ -29,15 +30,15 @@ func newHandler(dependencies serverDeps) http.Handler {
 // registerStageRoutes wires the contract-compatible stage-prefixed routes.
 func registerStageRoutes(mux *http.ServeMux, dependencies serverDeps) {
 	stagePrefix := "/jung2bot/" + strings.Trim(dependencies.stage, "/")
-	registerRoute(mux, http.MethodGet, stagePrefix+"/ping", func(writer http.ResponseWriter, request *http.Request) {
+	registerRoute(mux, http.MethodGet, stagePrefix+"/ping", "stage_ping", dependencies.Metrics, func(writer http.ResponseWriter, request *http.Request) {
 		writeNamedJSONResponse(writer, http.StatusOK, "health", "ok")
 	})
 
-	mux.HandleFunc(stagePrefix, func(writer http.ResponseWriter, request *http.Request) {
+	mux.Handle(stagePrefix, instrumentRoute(dependencies.Metrics, "not_found", http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		http.NotFound(writer, request)
-	})
+	})))
 
-	registerRoute(mux, http.MethodPost, stagePrefix+"/", func(writer http.ResponseWriter, request *http.Request) {
+	registerRoute(mux, http.MethodPost, stagePrefix+"/", "stage_webhook", dependencies.Metrics, func(writer http.ResponseWriter, request *http.Request) {
 		if request.URL.Path != stagePrefix+"/" {
 			http.NotFound(writer, request)
 			return
@@ -45,7 +46,7 @@ func registerStageRoutes(mux *http.ServeMux, dependencies serverDeps) {
 		writeStageWebhookResponse(writer, webhookResponse(writer, request, dependencies))
 	})
 
-	registerRoute(mux, http.MethodGet, stagePrefix+"/onOffFromWork", func(writer http.ResponseWriter, request *http.Request) {
+	registerRoute(mux, http.MethodGet, stagePrefix+"/onOffFromWork", "off_work_scheduler", dependencies.Metrics, func(writer http.ResponseWriter, request *http.Request) {
 		if rejectUnauthorisedStageRoute(writer, request, dependencies.SchedulerSecretToken, "onOffFromWork") {
 			return
 		}
@@ -65,7 +66,7 @@ func registerStageRoutes(mux *http.ServeMux, dependencies serverDeps) {
 		writeNamedJSONResponse(writer, http.StatusAccepted, "onOffFromWork", "ok")
 	})
 
-	registerRoute(mux, http.MethodGet, stagePrefix+"/onScaleUp", func(writer http.ResponseWriter, request *http.Request) {
+	registerRoute(mux, http.MethodGet, stagePrefix+"/onScaleUp", "scale_up", dependencies.Metrics, func(writer http.ResponseWriter, request *http.Request) {
 		if rejectUnauthorisedStageRoute(writer, request, dependencies.SchedulerSecretToken, "onScaleUp") {
 			return
 		}
@@ -85,9 +86,18 @@ func registerStageRoutes(mux *http.ServeMux, dependencies serverDeps) {
 	})
 }
 
-// registerRoute wires one route with its required HTTP method.
-func registerRoute(mux *http.ServeMux, method string, path string, handler http.HandlerFunc) {
-	mux.HandleFunc(path, methodHandler(method, handler))
+// registerRoute wires one named route with its required HTTP method.
+func registerRoute(mux *http.ServeMux, method string, path string, route string, metrics metricsRecorder, handler http.HandlerFunc) {
+	mux.Handle(path, instrumentRoute(metrics, route, methodHandler(method, handler)))
+}
+
+// instrumentRoute adds route metrics when the application supplies a recorder.
+func instrumentRoute(metrics metricsRecorder, route string, handler http.Handler) http.Handler {
+	if metrics == nil {
+		return handler
+	}
+
+	return metrics.HTTPHandler(route, handler)
 }
 
 // methodHandler rejects requests that do not match the configured route method.
@@ -104,16 +114,40 @@ func methodHandler(method string, handler http.HandlerFunc) http.HandlerFunc {
 // webhookResponse reads the HTTP request body and processes one webhook update.
 func webhookResponse(writer http.ResponseWriter, request *http.Request, dependencies serverDeps) response {
 	if !validateWebhookSecret(request, dependencies.WebhookSecretToken) {
-		return response{statusCode: http.StatusUnauthorized, message: "unauthorised"}
+		result := response{statusCode: http.StatusUnauthorized, message: "unauthorised"}
+		recordWebhookOutcome(dependencies.Metrics, result.statusCode)
+		return result
 	}
 
 	body, err := readRequestBody(writer, request, maxBodyBytes(dependencies))
 	if err != nil {
 		slog.Warn("read webhook request body", "err", err)
-		return response{statusCode: http.StatusBadRequest, message: "read request body"}
+		result := response{statusCode: http.StatusBadRequest, message: "read request body"}
+		recordWebhookOutcome(dependencies.Metrics, result.statusCode)
+		return result
 	}
 
-	return handleWebhook(request.Context(), body, dependencies.Dependencies)
+	result := handleWebhook(request.Context(), body, dependencies.Dependencies)
+	recordWebhookOutcome(dependencies.Metrics, result.statusCode)
+	return result
+}
+
+// recordWebhookOutcome maps HTTP responses to the fixed webhook outcome labels.
+func recordWebhookOutcome(metrics metricsRecorder, statusCode int) {
+	if metrics == nil {
+		return
+	}
+
+	switch statusCode {
+	case http.StatusOK:
+		metrics.RecordWebhookUpdate("processed")
+	case http.StatusNoContent:
+		metrics.RecordWebhookUpdate("ignored")
+	case http.StatusUnauthorized, http.StatusBadRequest:
+		metrics.RecordWebhookUpdate("rejected")
+	default:
+		metrics.RecordWebhookUpdate("failed")
+	}
 }
 
 // readRequestBody reads a bounded request body.
