@@ -90,6 +90,10 @@ focused Go tests.
 - Use Buck2's official `prelude//go/tools/gobuckify:gobuckify` target for Go
   vendor BUCK generation through `make vendor`; do not reintroduce a custom
   generator.
+- Create agent worktrees outside this repo's directory tree (e.g. `/tmp/...`),
+  not nested inside it (e.g. `.scratchpad/worktrees/...`). A worktree nested
+  inside the repo makes Buck2 resolve the wrong root and fail with
+  `set_cfg_constructor() can only be called from the repository root`.
 
 ## Test Guidance
 
