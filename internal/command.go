@@ -23,37 +23,37 @@ var commandDefinitions = []commandDefinition{
 	{
 		Name:   jungHelp,
 		Action: queue.Action{Name: queue.ActionJungHelp, Body: queue.BodyJungHelp},
-		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(jungHelp)),
+		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(jungHelp) + `\b`),
 	},
 	{
 		Name:   topTen,
 		Action: queue.Action{Name: queue.ActionTopTen, Body: queue.BodyTopTen},
-		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(topTen)),
+		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(topTen) + `\b`),
 	},
 	{
 		Name:   topDiver,
 		Action: queue.Action{Name: queue.ActionTopDiver, Body: queue.BodyTopDiver},
-		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(topDiver)),
+		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(topDiver) + `\b`),
 	},
 	{
 		Name:   allJung,
 		Action: queue.Action{Name: queue.ActionAllJung, Body: queue.BodyAllJung},
-		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(allJung)),
+		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(allJung) + `\b`),
 	},
 	{
 		Name:   enableAllJung,
 		Action: queue.Action{Name: queue.ActionEnableAllJung, Body: queue.BodyEnableAllJung},
-		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(enableAllJung)),
+		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(enableAllJung) + `\b`),
 	},
 	{
 		Name:   disableAllJung,
 		Action: queue.Action{Name: queue.ActionDisableAllJung, Body: queue.BodyDisableAllJung},
-		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(disableAllJung)),
+		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(disableAllJung) + `\b`),
 	},
 	{
 		Name:   setOffWorkTime,
 		Action: queue.Action{Name: queue.ActionSetOffWorkTime, Body: queue.BodySetOffWorkTime},
-		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(setOffWorkTime)),
+		Regex:  regexp.MustCompile(`(?i)/` + regexp.QuoteMeta(setOffWorkTime) + `\b`),
 	},
 }
 
