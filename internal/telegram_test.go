@@ -156,13 +156,17 @@ func TestSendMessageReturnsRequestCreationError(t *testing.T) {
 	assert.Contains(t, err.Error(), "create Telegram sendMessage request")
 }
 
-func TestSendMessageReturnsHTTPClientError(t *testing.T) {
-	client := NewClient("token", WithHTTPClient(&http.Client{Transport: failingRoundTripper{}}))
+// TestSendMessageRedactsTokenFromTransportError proves transport failures cannot disclose the bot token through logs.
+func TestSendMessageRedactsTokenFromTransportError(t *testing.T) {
+	const botToken = "secret-token"
+	client := NewClient(botToken, WithHTTPClient(&http.Client{Transport: failingRoundTripper{}}))
 
 	err := client.SendMessage(context.Background(), 123, "hi")
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "call Telegram sendMessage")
+	assert.Contains(t, err.Error(), "transport request failed")
+	assert.NotContains(t, err.Error(), botToken)
 }
 
 func TestGetChatAdministratorsDecodesResponse(t *testing.T) {
