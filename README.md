@@ -11,17 +11,17 @@ chat group.
 
 | command     | info                                                                                                                      |
 |-------------|---------------------------------------------------------------------------------------------------------------------------|
-| `/topTen`   | Show the percentage of top ten participants for the past seven days                                                       |
-| `/topDiver` | Show the percentage of top ten divers for the past seven days (Requires at least one message from the user to be counted) |
 | `/allJung`  | Show the percentage of all participants for the past seven days                                                           |
 | `/jungHelp` | Show help message                                                                                                         |
+| `/topDiver` | Show the percentage of top ten divers for the past seven days (Requires at least one message from the user to be counted) |
+| `/topTen`   | Show the percentage of top ten participants for the past seven days                                                       |
 
 ### Admin Only
 
 | command                  | info                                                                                                                                                                                         |
 |--------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `/enableAllJung`         | Enable `/allJung` command                                                                                                                                                                    |
 | `/disableAllJung`        | Disable `/allJung` command                                                                                                                                                                   |
+| `/enableAllJung`         | Enable `/allJung` command                                                                                                                                                                    |
 | `/setOffFromWorkTimeUTC` | Set offFromWork time in UTC. Format: `/setOffFromWorkTimeUTC {{ 0000-2345, 15 minutes interval }} {{ MON,TUE,WED,THU,FRI,SAT,SUN }}`. E.g. `/setOffFromWorkTimeUTC 1800 MON,TUE,WED,THU,FRI` |
 
 ## Architecture
@@ -48,17 +48,18 @@ collectors plus:
 
 | Metric                                                   | Meaning                           |
 |----------------------------------------------------------|-----------------------------------|
-| `telegram_jung2_bot_ready`                               | Readiness                         |
-| `telegram_jung2_bot_http_requests_total`                 | HTTP requests                     |
+| `telegram_jung2_bot_dependency_request_duration_seconds` | Outbound call duration            |
+| `telegram_jung2_bot_dependency_requests_total`           | DynamoDB, SQS, and Telegram calls |
 | `telegram_jung2_bot_http_request_duration_seconds`       | HTTP duration                     |
 | `telegram_jung2_bot_http_requests_in_flight`             | In-flight HTTP requests           |
-| `telegram_jung2_bot_webhook_updates_total`               | Webhook outcomes                  |
-| `telegram_jung2_bot_webhook_commands_enqueued_total`     | Commands queued                   |
-| `telegram_jung2_bot_worker_actions_total`                | Queue actions                     |
-| `telegram_jung2_bot_worker_action_duration_seconds`      | Queue action duration             |
-| `telegram_jung2_bot_dependency_requests_total`           | DynamoDB, SQS, and Telegram calls |
-| `telegram_jung2_bot_dependency_request_duration_seconds` | Outbound call duration            |
+| `telegram_jung2_bot_http_requests_total`                 | HTTP requests                     |
 | `telegram_jung2_bot_off_work_reports_enqueued_total`     | Scheduled report enqueue results  |
+| `telegram_jung2_bot_ready`                               | Readiness                         |
+| `telegram_jung2_bot_scale_up_total`                      | DynamoDB scale-up results         |
+| `telegram_jung2_bot_webhook_commands_enqueued_total`     | Commands queued                   |
+| `telegram_jung2_bot_webhook_updates_total`               | Webhook outcomes                  |
+| `telegram_jung2_bot_worker_action_duration_seconds`      | Queue action duration             |
+| `telegram_jung2_bot_worker_actions_total`                | Queue actions                     |
 
 HTTP metrics use fixed method, status, and route labels.
 
@@ -95,15 +96,15 @@ whilst keeping it running until no one is using it.
 
 | Target               | What it does                                               |
 |----------------------|------------------------------------------------------------|
-| `make install-buck2` | Install or upgrade Buck2                                   |
 | `make build`         | Build the service. Does not vendor.                        |
 | `make ci`            | `vendor`, then `coverage` (runs `test`, which runs `lint`) |
-| `make test`          | Lint, then fast race tests. Skips `slow`.                  |
-| `make test-only`     | Tests without lint. CI runs this on arm64.                 |
+| `make clean`         | Remove Buck2 outputs                                       |
 | `make coverage`      | Fail unless `internal/` coverage is 100%                   |
+| `make install-buck2` | Install or upgrade Buck2                                   |
 | `make integration`   | Floci AWS tests. See `internal/integration/README.md`.     |
 | `make lint`          | Go, shell, and Markdown checks                             |
 | `make lint-fix`      | Apply supported lint fixes                                 |
 | `make mock`          | Regenerate `internal/mock/`                                |
+| `make test`          | Lint, then fast race tests. Skips `slow`.                  |
+| `make test-only`     | Tests without lint. CI runs this on arm64.                 |
 | `make vendor`        | Refresh vendor and third-party `BUCK` files                |
-| `make clean`         | Remove Buck2 outputs                                       |

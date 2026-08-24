@@ -66,6 +66,9 @@ func TestMetricsRecordsApplicationSignals(t *testing.T) {
 	metrics.ObserveDependency("telegram", "send_message", time.Millisecond, errors.New("unavailable"))
 	metrics.RecordOffWorkReportEnqueue(nil)
 	metrics.RecordOffWorkReportEnqueue(errors.New("unavailable"))
+	metrics.RecordScaleUp("applied")
+	metrics.RecordScaleUp("ignored")
+	metrics.RecordScaleUp("failed")
 
 	body := scrapeMetrics(t, metrics)
 	assert.Contains(t, body, "telegram_jung2_bot_http_requests_total{code=\"200\",method=\"get\",route=\"health\"} 1")
@@ -76,6 +79,9 @@ func TestMetricsRecordsApplicationSignals(t *testing.T) {
 	assert.Contains(t, body, "telegram_jung2_bot_dependency_requests_total{dependency=\"telegram\",operation=\"send_message\",result=\"error\"} 1")
 	assert.Contains(t, body, "telegram_jung2_bot_off_work_reports_enqueued_total{result=\"success\"} 1")
 	assert.Contains(t, body, "telegram_jung2_bot_off_work_reports_enqueued_total{result=\"error\"} 1")
+	assert.Contains(t, body, "telegram_jung2_bot_scale_up_total{result=\"applied\"} 1")
+	assert.Contains(t, body, "telegram_jung2_bot_scale_up_total{result=\"ignored\"} 1")
+	assert.Contains(t, body, "telegram_jung2_bot_scale_up_total{result=\"failed\"} 1")
 }
 
 // TestMetricsResponseWriterRetainsTheFirstStatus proves route metrics use the sent response status.

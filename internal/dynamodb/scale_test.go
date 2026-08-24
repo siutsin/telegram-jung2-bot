@@ -13,8 +13,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	bot "github.com/siutsin/telegram-jung2-bot/internal"
+
 	mock "github.com/siutsin/telegram-jung2-bot/internal/mock"
 )
+
+var _ scaleUpObserver = (*bot.Metrics)(nil)
 
 func TestScaleUpperScaleUp(t *testing.T) {
 	t.Parallel()
@@ -27,12 +31,14 @@ func TestScaleUpperScaleUp(t *testing.T) {
 		updateTableErr       error
 		wantErrText          string
 		wantUpdateTableInput *awsdynamodb.UpdateTableInput
+		wantScaleUpResult    string
 	}{
 		{
 			name:                 "success updates target throughput",
 			describeOutput:       describedTable(),
 			desiredRead:          10,
 			wantUpdateTableInput: updateTableInput(10),
+			wantScaleUpResult:    "applied",
 		},
 		{
 			name:                 "ignored scale up error",
@@ -40,6 +46,7 @@ func TestScaleUpperScaleUp(t *testing.T) {
 			desiredRead:          10,
 			updateTableErr:       errors.New("Subscriber limit exceeded"),
 			wantUpdateTableInput: updateTableInput(10),
+			wantScaleUpResult:    "ignored",
 		},
 		{
 			name:                 "update error",
@@ -48,30 +55,35 @@ func TestScaleUpperScaleUp(t *testing.T) {
 			updateTableErr:       errors.New("boom"),
 			wantErrText:          "update DynamoDB table: boom",
 			wantUpdateTableInput: updateTableInput(10),
+			wantScaleUpResult:    "failed",
 		},
 		{
 			name:                 "zero desired read keeps current throughput",
 			describeOutput:       describedTable(),
 			wantUpdateTableInput: updateTableInput(1),
+			wantScaleUpResult:    "applied",
 		},
 		{
-			name:        "describe error",
-			describeErr: errors.New("boom"),
-			wantErrText: "describe DynamoDB table: boom",
+			name:              "describe error",
+			describeErr:       errors.New("boom"),
+			wantErrText:       "describe DynamoDB table: boom",
+			wantScaleUpResult: "failed",
 		},
 		{
 			name: "missing table description",
 			describeOutput: &awsdynamodb.DescribeTableOutput{
 				Table: nil,
 			},
-			wantErrText: "missing provisioned throughput",
+			wantErrText:       "missing provisioned throughput",
+			wantScaleUpResult: "failed",
 		},
 		{
 			name: "missing provisioned throughput",
 			describeOutput: &awsdynamodb.DescribeTableOutput{
 				Table: &ddbtypes.TableDescription{},
 			},
-			wantErrText: "missing provisioned throughput",
+			wantErrText:       "missing provisioned throughput",
+			wantScaleUpResult: "failed",
 		},
 		{
 			name: "missing read capacity units",
@@ -82,7 +94,8 @@ func TestScaleUpperScaleUp(t *testing.T) {
 					},
 				},
 			},
-			wantErrText: "missing capacity units",
+			wantErrText:       "missing capacity units",
+			wantScaleUpResult: "failed",
 		},
 		{
 			name: "missing write capacity units",
@@ -93,7 +106,8 @@ func TestScaleUpperScaleUp(t *testing.T) {
 					},
 				},
 			},
-			wantErrText: "missing capacity units",
+			wantErrText:       "missing capacity units",
+			wantScaleUpResult: "failed",
 		},
 	}
 
@@ -101,10 +115,12 @@ func TestScaleUpperScaleUp(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			controller := gomock.NewController(t)
 			dynamoClient := mock.NewMockDynamoRequester(controller)
+			metrics := mock.NewMockDynamoScaleUpObserver(controller)
 
 			dynamoClient.EXPECT().
 				DescribeTable(gomock.Any(), gomock.Any()).
 				Return(test.describeOutput, test.describeErr)
+			metrics.EXPECT().ObserveDependency("dynamodb", "describe", gomock.Any(), test.describeErr)
 
 			if test.wantUpdateTableInput != nil {
 				dynamoClient.EXPECT().
@@ -116,9 +132,12 @@ func TestScaleUpperScaleUp(t *testing.T) {
 						}
 						return &awsdynamodb.UpdateTableOutput{}, nil
 					})
+				metrics.EXPECT().ObserveDependency("dynamodb", "update_table", gomock.Any(), test.updateTableErr)
 			}
 
-			err := NewScaleUpper(dynamoClient, "messages", test.desiredRead).ScaleUp(context.Background())
+			metrics.EXPECT().RecordScaleUp(test.wantScaleUpResult)
+
+			err := NewScaleUpper(dynamoClient, "messages", test.desiredRead, metrics).ScaleUp(context.Background())
 
 			if test.wantErrText != "" {
 				require.Error(t, err)
@@ -129,6 +148,23 @@ func TestScaleUpperScaleUp(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+func TestScaleUpperScaleUpWithoutMetrics(t *testing.T) {
+	t.Parallel()
+
+	controller := gomock.NewController(t)
+	dynamoClient := mock.NewMockDynamoRequester(controller)
+	dynamoClient.EXPECT().
+		DescribeTable(gomock.Any(), gomock.Any()).
+		Return(describedTable(), nil)
+	dynamoClient.EXPECT().
+		UpdateTable(gomock.Any(), gomock.Any()).
+		Return(&awsdynamodb.UpdateTableOutput{}, nil)
+
+	err := NewScaleUpper(dynamoClient, "messages", 10).ScaleUp(context.Background())
+
+	require.NoError(t, err)
 }
 
 func describedTable() *awsdynamodb.DescribeTableOutput {
