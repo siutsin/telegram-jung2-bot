@@ -27,25 +27,8 @@ chat group.
 ## Architecture
 
 The bot counts group messages, ranks speakers, and sends off-work reports.
-
-Ingest:
-
-```mermaid
-flowchart LR
-    telegram[Telegram] --> http[HTTP :3000]
-    scheduler[Scheduler] --> http
-    http --> dynamodb[DynamoDB]
-    http --> sqs[SQS]
-```
-
-Work:
-
-```mermaid
-flowchart LR
-    sqs[SQS] --> worker[Worker]
-    worker --> dynamodb[DynamoDB]
-    worker --> telegram[Telegram]
-```
+Telegram and the scheduler hit HTTP. HTTP writes DynamoDB and enqueues SQS.
+The worker consumes SQS and calls DynamoDB and Telegram.
 
 | Process | Address | Role                                     |
 |---------|---------|------------------------------------------|
