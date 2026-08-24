@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -33,6 +34,10 @@ type Metrics struct {
 // For example, a false readiness value exposes telegram_jung2_bot_ready 0.
 func NewMetrics(readiness *atomic.Bool) *Metrics {
 	metrics := &Metrics{registry: prometheus.NewRegistry()}
+	metrics.registry.MustRegister(
+		collectors.NewGoCollector(),
+		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
+	)
 	factory := promauto.With(metrics.registry)
 
 	metrics.registerHTTP(factory)
@@ -219,5 +224,5 @@ func (writer *metricsResponseWriter) Unwrap() http.ResponseWriter {
 
 // Handler returns the Prometheus scrape handler for this service registry.
 func (metrics *Metrics) Handler() http.Handler {
-	return promhttp.HandlerFor(prometheus.Gatherers{metrics.registry, prometheus.DefaultGatherer}, promhttp.HandlerOpts{})
+	return promhttp.HandlerFor(metrics.registry, promhttp.HandlerOpts{})
 }
