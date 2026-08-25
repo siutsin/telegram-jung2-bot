@@ -1,6 +1,6 @@
 package bot
 
-//go:generate sh -c "GOFLAGS=-mod=mod go run go.uber.org/mock/mockgen -source=worker.go -destination=worker_mock_test.go -package=bot -mock_names queueDeleter=MockQueueDeleter,queueReceiver=MockQueueReceiver"
+//go:generate sh -c "GOFLAGS=-mod=mod go run go.uber.org/mock/mockgen -destination=worker_mock_test.go -package=bot -mock_names queueReceiver=MockQueueReceiver . queueReceiver"
 
 import (
 	"context"

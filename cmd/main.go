@@ -27,7 +27,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-//go:generate sh -c "GOFLAGS=-mod=mod go run go.uber.org/mock/mockgen -source=main.go -destination=main_mock_test.go -package=main -mock_names messageEnqueuer=MockMessageEnqueuer"
+//go:generate sh -c "GOFLAGS=-mod=mod go run go.uber.org/mock/mockgen -destination=main_mock_test.go -package=main -mock_names messageEnqueuer=MockMessageEnqueuer . messageEnqueuer"
 
 // main starts the bot process.
 func main() {

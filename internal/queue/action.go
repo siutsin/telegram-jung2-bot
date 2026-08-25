@@ -1,7 +1,7 @@
 // Package queue contains SQS action models and decoding helpers.
 package queue
 
-//go:generate sh -c "GOFLAGS=-mod=mod go run go.uber.org/mock/mockgen -source=action.go -destination=action_mock_test.go -package=queue -mock_names batchMessageSender=MockBatchMessageSender"
+//go:generate sh -c "GOFLAGS=-mod=mod go run go.uber.org/mock/mockgen -destination=action_mock_test.go -package=queue -mock_names batchMessageSender=MockBatchMessageSender . batchMessageSender"
 
 import (
 	"context"
