@@ -294,6 +294,9 @@ func TestBuildSendMessageBatchRequestPreservesFIFOFields(t *testing.T) {
 		Body:                   BodySaveMessage,
 		MessageGroupID:         "42",
 		MessageDeduplicationID: "42:7",
+		Attributes: map[string]string{
+			"lastName": "",
+		},
 	}})
 
 	require.Len(t, request.Entries, 1)

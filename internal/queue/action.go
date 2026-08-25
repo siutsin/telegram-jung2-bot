@@ -268,11 +268,15 @@ func messageBodyText(body json.RawMessage) string {
 }
 
 // buildSendMessageRequest converts an action into the contract SQS request shape.
-// For example, chatId "42" becomes a Number attribute, while action stays a
-// String attribute.
+// Empty optional attributes are omitted because SQS rejects them. For example,
+// chatId "42" becomes a Number attribute and lastName "" is omitted.
 func buildSendMessageRequest(queueURL string, action Action) SendMessageRequest {
 	attributes := make(map[string]SendMessageAttribute, len(action.Attributes))
 	for name, value := range action.Attributes {
+		if value == "" {
+			continue
+		}
+
 		dataType := "String"
 		if name == "chatId" || name == "userId" {
 			dataType = "Number"
