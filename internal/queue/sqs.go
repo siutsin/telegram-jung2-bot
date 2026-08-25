@@ -16,8 +16,10 @@ import (
 // queueRequester is the SQS SDK surface used by the queue adapter.
 type queueRequester interface {
 	DeleteMessage(ctx context.Context, params *awssqs.DeleteMessageInput, optFns ...func(*awssqs.Options)) (*awssqs.DeleteMessageOutput, error)
+	DeleteMessageBatch(ctx context.Context, params *awssqs.DeleteMessageBatchInput, optFns ...func(*awssqs.Options)) (*awssqs.DeleteMessageBatchOutput, error)
 	ReceiveMessage(ctx context.Context, params *awssqs.ReceiveMessageInput, optFns ...func(*awssqs.Options)) (*awssqs.ReceiveMessageOutput, error)
 	SendMessage(ctx context.Context, params *awssqs.SendMessageInput, optFns ...func(*awssqs.Options)) (*awssqs.SendMessageOutput, error)
+	SendMessageBatch(ctx context.Context, params *awssqs.SendMessageBatchInput, optFns ...func(*awssqs.Options)) (*awssqs.SendMessageBatchOutput, error)
 }
 
 // dependencyObserver records a completed SQS request.
@@ -50,6 +52,35 @@ func (client sqsClient) Delete(ctx context.Context, request DeleteMessageRequest
 	client.observe("delete", started, err)
 	if err != nil {
 		return fmt.Errorf("delete SQS message: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteBatch removes up to ten consumed SQS messages.
+func (client sqsClient) DeleteBatch(ctx context.Context, request DeleteMessageBatchRequest) error {
+	if client.queue == nil {
+		return fmt.Errorf("queue client is required")
+	}
+
+	entries := make([]sqstypes.DeleteMessageBatchRequestEntry, 0, len(request.ReceiptHandles))
+	for index, receiptHandle := range request.ReceiptHandles {
+		entries = append(entries, sqstypes.DeleteMessageBatchRequestEntry{
+			Id:            awscore.String(strconv.Itoa(index)),
+			ReceiptHandle: awscore.String(receiptHandle),
+		})
+	}
+	started := time.Now()
+	output, err := client.queue.DeleteMessageBatch(ctx, &awssqs.DeleteMessageBatchInput{
+		QueueUrl: awscore.String(request.QueueURL),
+		Entries:  entries,
+	})
+	client.observe("delete_batch", started, err)
+	if err != nil {
+		return fmt.Errorf("delete SQS message batch: %w", err)
+	}
+	if len(output.Failed) > 0 {
+		return fmt.Errorf("delete SQS message batch: %d entries failed", len(output.Failed))
 	}
 
 	return nil
@@ -103,15 +134,59 @@ func (client sqsClient) SendMessage(ctx context.Context, request SendMessageRequ
 		return fmt.Errorf("queue client is required")
 	}
 
-	started := time.Now()
-	_, err := client.queue.SendMessage(ctx, &awssqs.SendMessageInput{
+	input := &awssqs.SendMessageInput{
 		QueueUrl:          awscore.String(request.QueueURL),
 		MessageBody:       awscore.String(request.MessageBody),
 		MessageAttributes: encodeQueueAttributes(request.MessageAttributes),
-	})
+	}
+	if request.MessageGroupID != "" {
+		input.MessageGroupId = awscore.String(request.MessageGroupID)
+	}
+	if request.MessageDeduplicationID != "" {
+		input.MessageDeduplicationId = awscore.String(request.MessageDeduplicationID)
+	}
+	started := time.Now()
+	_, err := client.queue.SendMessage(ctx, input)
 	client.observe("send", started, err)
 	if err != nil {
 		return fmt.Errorf("send SQS message: %w", err)
+	}
+
+	return nil
+}
+
+// SendMessageBatch sends up to ten queue actions to SQS.
+func (client sqsClient) SendMessageBatch(ctx context.Context, request SendMessageBatchRequest) error {
+	if client.queue == nil {
+		return fmt.Errorf("queue client is required")
+	}
+
+	entries := make([]sqstypes.SendMessageBatchRequestEntry, 0, len(request.Entries))
+	for _, entry := range request.Entries {
+		requestEntry := sqstypes.SendMessageBatchRequestEntry{
+			Id:                awscore.String(entry.ID),
+			MessageBody:       awscore.String(entry.MessageBody),
+			MessageAttributes: encodeQueueAttributes(entry.MessageAttributes),
+		}
+		if entry.MessageGroupID != "" {
+			requestEntry.MessageGroupId = awscore.String(entry.MessageGroupID)
+		}
+		if entry.MessageDeduplicationID != "" {
+			requestEntry.MessageDeduplicationId = awscore.String(entry.MessageDeduplicationID)
+		}
+		entries = append(entries, requestEntry)
+	}
+	started := time.Now()
+	output, err := client.queue.SendMessageBatch(ctx, &awssqs.SendMessageBatchInput{
+		QueueUrl: awscore.String(request.QueueURL),
+		Entries:  entries,
+	})
+	client.observe("send_batch", started, err)
+	if err != nil {
+		return fmt.Errorf("send SQS message batch: %w", err)
+	}
+	if len(output.Failed) > 0 {
+		return fmt.Errorf("send SQS message batch: %d entries failed", len(output.Failed))
 	}
 
 	return nil

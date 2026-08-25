@@ -62,6 +62,26 @@ func (mr *MockQueueRequesterMockRecorder) DeleteMessage(ctx, params any, optFns 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMessage", reflect.TypeOf((*MockQueueRequester)(nil).DeleteMessage), varargs...)
 }
 
+// DeleteMessageBatch mocks base method.
+func (m *MockQueueRequester) DeleteMessageBatch(ctx context.Context, params *sqs.DeleteMessageBatchInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageBatchOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, params}
+	for _, a := range optFns {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteMessageBatch", varargs...)
+	ret0, _ := ret[0].(*sqs.DeleteMessageBatchOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteMessageBatch indicates an expected call of DeleteMessageBatch.
+func (mr *MockQueueRequesterMockRecorder) DeleteMessageBatch(ctx, params any, optFns ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, params}, optFns...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMessageBatch", reflect.TypeOf((*MockQueueRequester)(nil).DeleteMessageBatch), varargs...)
+}
+
 // ReceiveMessage mocks base method.
 func (m *MockQueueRequester) ReceiveMessage(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
 	m.ctrl.T.Helper()
@@ -100,6 +120,26 @@ func (mr *MockQueueRequesterMockRecorder) SendMessage(ctx, params any, optFns ..
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx, params}, optFns...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendMessage", reflect.TypeOf((*MockQueueRequester)(nil).SendMessage), varargs...)
+}
+
+// SendMessageBatch mocks base method.
+func (m *MockQueueRequester) SendMessageBatch(ctx context.Context, params *sqs.SendMessageBatchInput, optFns ...func(*sqs.Options)) (*sqs.SendMessageBatchOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, params}
+	for _, a := range optFns {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "SendMessageBatch", varargs...)
+	ret0, _ := ret[0].(*sqs.SendMessageBatchOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SendMessageBatch indicates an expected call of SendMessageBatch.
+func (mr *MockQueueRequesterMockRecorder) SendMessageBatch(ctx, params any, optFns ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, params}, optFns...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendMessageBatch", reflect.TypeOf((*MockQueueRequester)(nil).SendMessageBatch), varargs...)
 }
 
 // MockQueueDependencyObserver is a mock of dependencyObserver interface.
