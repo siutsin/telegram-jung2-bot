@@ -149,7 +149,7 @@ func TestClientBatchOperationsReturnSQSFailures(t *testing.T) {
 		queueAPI.EXPECT().DeleteMessageBatch(gomock.Any(), gomock.Any()).Return(&awssqs.DeleteMessageBatchOutput{Failed: []sqstypes.BatchResultErrorEntry{{}}}, nil),
 		queueAPI.EXPECT().DeleteMessageBatch(gomock.Any(), gomock.Any()).Return(nil, errors.New("delete down")),
 		queueAPI.EXPECT().SendMessageBatch(gomock.Any(), gomock.Any()).Return(nil, errors.New("send down")),
-		queueAPI.EXPECT().SendMessageBatch(gomock.Any(), gomock.Any()).Return(&awssqs.SendMessageBatchOutput{Failed: []sqstypes.BatchResultErrorEntry{{}}}, nil),
+		queueAPI.EXPECT().SendMessageBatch(gomock.Any(), gomock.Any()).Return(&awssqs.SendMessageBatchOutput{Failed: []sqstypes.BatchResultErrorEntry{{Id: awscore.String("0")}}}, nil),
 	)
 	client := NewClient(queueAPI)
 

@@ -173,6 +173,28 @@ func TestLoadRejectsInvalidQueueURL(t *testing.T) {
 	}
 }
 
+// TestLoadRejectsStandardMessageSaveQueue keeps FIFO-only request fields from
+// reaching an incompatible queue after webhooks return success.
+func TestLoadRejectsStandardMessageSaveQueue(t *testing.T) {
+	t.Parallel()
+
+	env := validEnv()
+	env["MESSAGE_SAVE_QUEUE_URL"] = "https://sqs.eu-west-1.amazonaws.com/123/message-save"
+
+	_, err := Load(env)
+	require.EqualError(t, err, "MESSAGE_SAVE_QUEUE_URL must name a FIFO queue")
+}
+
+// TestValidateFIFOQueueURLRejectsMalformedInput keeps direct validator users
+// from accepting a URL that cannot be parsed.
+func TestValidateFIFOQueueURLRejectsMalformedInput(t *testing.T) {
+	t.Parallel()
+
+	err := validateFIFOQueueURL("MESSAGE_SAVE_QUEUE_URL", "%")
+
+	require.EqualError(t, err, "MESSAGE_SAVE_QUEUE_URL must be an absolute URL")
+}
+
 func TestLoadFallsBackForInvalidScaleUpReadCapacity(t *testing.T) {
 	tests := []string{"0", "-1", "many"}
 

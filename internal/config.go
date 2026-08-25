@@ -191,6 +191,10 @@ func validateConfig(config Config) error {
 	if err != nil {
 		return err
 	}
+	err = validateFIFOQueueURL("MESSAGE_SAVE_QUEUE_URL", config.MessageSaveQueueURL)
+	if err != nil {
+		return err
+	}
 	if config.AWSEndpointURL != "" {
 		err = validateURL("AWS_ENDPOINT_URL", config.AWSEndpointURL)
 		if err != nil {
@@ -294,6 +298,20 @@ func validateURL(key string, value string) error {
 	parsed, err := url.Parse(value)
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
 		return fmt.Errorf("%s must be an absolute URL", key)
+	}
+
+	return nil
+}
+
+// validateFIFOQueueURL rejects a Standard queue before FIFO message fields fail.
+// For example, a queue URL ending in "messages.fifo" is valid.
+func validateFIFOQueueURL(key string, value string) error {
+	parsed, err := url.Parse(value)
+	if err != nil {
+		return fmt.Errorf("%s must be an absolute URL", key)
+	}
+	if !strings.HasSuffix(parsed.Path, ".fifo") {
+		return fmt.Errorf("%s must name a FIFO queue", key)
 	}
 
 	return nil

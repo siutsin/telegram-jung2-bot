@@ -2,8 +2,10 @@ package queue
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -20,9 +22,10 @@ type batchProducer struct {
 	sender       batchMessageSender
 	flushTimeout time.Duration
 
-	mutex   sync.Mutex
-	actions []Action
-	wake    chan struct{}
+	mutex    sync.Mutex
+	actions  []Action
+	wake     chan struct{}
+	stopping bool
 }
 
 // NewBatchProducer builds a producer that sends at most ten actions per SQS
@@ -47,6 +50,10 @@ func (producer *batchProducer) Enqueue(_ context.Context, action Action) error {
 	}
 
 	producer.mutex.Lock()
+	if producer.stopping {
+		producer.mutex.Unlock()
+		return fmt.Errorf("queue batch producer is stopping")
+	}
 	producer.actions = append(producer.actions, withEnqueuedAt(action))
 	producer.mutex.Unlock()
 	producer.notify()
@@ -62,12 +69,14 @@ func (producer *batchProducer) Run(ctx context.Context) error {
 
 	for {
 		if !producer.waitForBatch(ctx) {
+			producer.stop()
 			return producer.flushOnShutdown()
 		}
 		err := producer.flush(ctx)
 		if err != nil {
 			slog.Error("flush queued messages", "err", err)
 			if !waitForRetry(ctx) {
+				producer.stop()
 				return producer.flushOnShutdown()
 			}
 		}
@@ -144,11 +153,23 @@ func (producer *batchProducer) flush(ctx context.Context) error {
 
 	err := producer.sender.SendMessageBatch(ctx, buildSendMessageBatchRequest(producer.queueURL, actions))
 	if err != nil {
+		if partialErr, ok := errors.AsType[*partialBatchError](err); ok {
+			producer.restore(failedActions(actions, partialErr.failedIDs))
+			return err
+		}
 		producer.restore(actions)
 		return err
 	}
 
 	return nil
+}
+
+// stop rejects new actions before the final flush so accepted webhook work is sent.
+func (producer *batchProducer) stop() {
+	producer.mutex.Lock()
+	defer producer.mutex.Unlock()
+
+	producer.stopping = true
 }
 
 // pending reads the buffer size under its lock to avoid a data race.
@@ -159,14 +180,25 @@ func (producer *batchProducer) pending() int {
 	return len(producer.actions)
 }
 
-// takeBatch keeps batches within the SQS maximum of ten entries.
+// takeBatch keeps batches within the SQS maximum and sends one action per FIFO
+// group, so a partial SQS result cannot put a later action ahead of a retry.
 func (producer *batchProducer) takeBatch() []Action {
 	producer.mutex.Lock()
 	defer producer.mutex.Unlock()
 
-	count := min(len(producer.actions), maxBatchSize)
-	actions := append([]Action(nil), producer.actions[:count]...)
-	producer.actions = producer.actions[count:]
+	actions := make([]Action, 0, maxBatchSize)
+	remaining := make([]Action, 0, len(producer.actions))
+	groups := make(map[string]struct{}, maxBatchSize)
+	for _, action := range producer.actions {
+		_, seen := groups[action.MessageGroupID]
+		if len(actions) < maxBatchSize && (action.MessageGroupID == "" || !seen) {
+			actions = append(actions, action)
+			groups[action.MessageGroupID] = struct{}{}
+			continue
+		}
+		remaining = append(remaining, action)
+	}
+	producer.actions = remaining
 	return actions
 }
 
@@ -176,6 +208,19 @@ func (producer *batchProducer) restore(actions []Action) {
 	defer producer.mutex.Unlock()
 
 	producer.actions = append(actions, producer.actions...)
+}
+
+// failedActions keeps only entries SQS rejected. For example, failed ID "1"
+// keeps the second action from a two-action batch.
+func failedActions(actions []Action, failedIDs map[string]struct{}) []Action {
+	failed := make([]Action, 0, len(failedIDs))
+	for index, action := range actions {
+		if _, ok := failedIDs[strconv.Itoa(index)]; ok {
+			failed = append(failed, action)
+		}
+	}
+
+	return failed
 }
 
 // notify wakes the run loop without making webhook requests wait.
