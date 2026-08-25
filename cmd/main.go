@@ -23,7 +23,11 @@ import (
 	"github.com/siutsin/telegram-jung2-bot/internal/dynamodb"
 	"github.com/siutsin/telegram-jung2-bot/internal/httpserver"
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
+
+	"golang.org/x/sync/errgroup"
 )
+
+//go:generate sh -c "GOFLAGS=-mod=mod go run go.uber.org/mock/mockgen -source=main.go -destination=main_mock_test.go -package=main -mock_names messageEnqueuer=MockMessageEnqueuer"
 
 // main starts the bot process.
 func main() {
@@ -58,20 +62,23 @@ func run(ctx context.Context) error {
 
 // app keeps runtime dependencies together so a test can replace one at a time.
 type app struct {
-	config     bot.Config
-	readiness  *atomic.Bool
-	metrics    *bot.Metrics
-	queue      queueTransporter
-	messages   messageKeeper
-	chats      chatMaintainer
-	messenger  telegramMessenger
-	scaleUpper scaleUpper
+	config          bot.Config
+	readiness       *atomic.Bool
+	metrics         *bot.Metrics
+	queue           queueTransporter
+	messages        messageKeeper
+	chats           chatMaintainer
+	messenger       telegramMessenger
+	scaleUpper      scaleUpper
+	messageEnqueuer messageEnqueuer
 }
 
 type queueTransporter interface {
 	SendMessage(ctx context.Context, request queue.SendMessageRequest) error
+	SendMessageBatch(ctx context.Context, request queue.SendMessageBatchRequest) error
 	ReceiveMessage(ctx context.Context, request queue.ReceiveMessageRequest) (queue.ReceiveMessageResponse, error)
 	Delete(ctx context.Context, request queue.DeleteMessageRequest) error
+	DeleteBatch(ctx context.Context, request queue.DeleteMessageBatchRequest) error
 }
 
 type messageKeeper interface {
@@ -97,6 +104,11 @@ type scaleUpper interface {
 	ScaleUp(ctx context.Context) error
 }
 
+type messageEnqueuer interface {
+	Enqueue(ctx context.Context, action queue.Action) error
+	Run(ctx context.Context) error
+}
+
 // newApp builds production dependencies once at the process boundary.
 func newApp(ctx context.Context, loadedConfig bot.Config) (app, error) {
 	awsConfig, err := loadAWSConfig(ctx, loadedConfig.AWSRegion)
@@ -110,18 +122,19 @@ func newApp(ctx context.Context, loadedConfig bot.Config) (app, error) {
 	queueClient := queue.NewClient(newSQSClient(awsConfig, loadedConfig.AWSEndpointURL), metrics)
 
 	return app{
-		config:     loadedConfig,
-		readiness:  readiness,
-		metrics:    metrics,
-		queue:      queueClient,
-		messages:   dynamodb.NewMessageClient(dynamoClient, metrics),
-		chats:      dynamodb.NewChatClient(dynamoClient, metrics),
-		messenger:  newTelegramClient(loadedConfig, metrics),
-		scaleUpper: dynamodb.NewScaleUpper(dynamoClient, loadedConfig.MessageTable, loadedConfig.ScaleUpReadCapacity, metrics),
+		config:          loadedConfig,
+		readiness:       readiness,
+		metrics:         metrics,
+		queue:           queueClient,
+		messages:        dynamodb.NewMessageClient(dynamoClient, metrics),
+		chats:           dynamodb.NewChatClient(dynamoClient, metrics),
+		messenger:       newTelegramClient(loadedConfig, metrics),
+		scaleUpper:      dynamodb.NewScaleUpper(dynamoClient, loadedConfig.MessageTable, loadedConfig.ScaleUpReadCapacity, metrics),
+		messageEnqueuer: queue.NewBatchProducer(loadedConfig.MessageSaveQueueURL, queueClient, loadedConfig.MessageSaveFlush),
 	}, nil
 }
 
-// run starts the assembled application after tests have swapped dependencies.
+// run starts assembled dependencies after tests swap them.
 func (app app) run(ctx context.Context) error {
 	actions := bot.NewService(
 		app.chats,
@@ -206,9 +219,8 @@ func newHTTPServer(app app) (*http.Server, error) {
 	dependencies := httpserver.Dependencies{
 		ChatTable:            app.config.ChatIDTable,
 		MessageTable:         app.config.MessageTable,
-		Chats:                app.chats,
-		Messages:             app.messages,
 		Enqueuer:             queue.NewProducer(app.config.EventQueueURL, app.queue),
+		MessageEnqueuer:      app.messageEnqueuer,
 		Messenger:            app.messenger,
 		ScaleUpper:           app.scaleUpper,
 		Now:                  time.Now,
@@ -239,10 +251,8 @@ func newMetricsServer(app app) *http.Server {
 }
 
 // newQueueWorker builds the production queue worker.
-func newQueueWorker(app app, actions bot.Service) (interface {
-	Run(ctx context.Context) error
-}, error) {
-	return bot.NewPollingWorker(
+func newQueueWorker(app app, actions bot.Service) (queueRunner, error) {
+	commandWorker, err := bot.NewPollingWorker(
 		app.config.EventQueueURL,
 		app.queue,
 		app.queue,
@@ -258,6 +268,45 @@ func newQueueWorker(app app, actions bot.Service) (interface {
 			OnOffFromWork:  actions.OnOffFromWork,
 		}, app.metrics,
 	)
+	if err != nil {
+		return nil, err
+	}
+	messageWorker, err := bot.NewMessageSaveWorker(
+		app.config.MessageSaveQueueURL,
+		app.queue,
+		app.queue,
+		app.messages,
+		app.config.MessageTable,
+		app.chats,
+		app.config.ChatIDTable,
+		time.Now,
+		app.metrics,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return queueWorkers{runners: []queueRunner{commandWorker, messageWorker, app.messageEnqueuer}}, nil
+}
+
+type queueRunner interface {
+	Run(ctx context.Context) error
+}
+
+type queueWorkers struct {
+	runners []queueRunner
+}
+
+// Run keeps command, message-save, and batch-flush work alive together.
+func (workers queueWorkers) Run(ctx context.Context) error {
+	group, groupCtx := errgroup.WithContext(ctx)
+	for _, runner := range workers.runners {
+		group.Go(func() error {
+			return runner.Run(groupCtx)
+		})
+	}
+
+	return group.Wait()
 }
 
 // configureLogging installs the process-wide slog handler from LOG_LEVEL.

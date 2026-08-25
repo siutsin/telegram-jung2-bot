@@ -25,23 +25,19 @@ func TestValidate(t *testing.T) {
 			dependencies: validDependencies,
 		},
 		{
-			name:    "missing message store",
-			wantErr: "message store is required",
-		},
-		{
-			name:         "missing chat store",
-			dependencies: Dependencies{Messages: httpservermock.NewMockMessageSaver(controller)},
-			wantErr:      "chat store is required",
-		},
-		{
 			name:         "missing enqueuer",
-			dependencies: Dependencies{Messages: httpservermock.NewMockMessageSaver(controller), Chats: httpservermock.NewMockChatSaver(controller)},
+			dependencies: Dependencies{},
 			wantErr:      "enqueuer is required",
 		},
 		{
 			name:         "missing messenger",
-			dependencies: Dependencies{Messages: httpservermock.NewMockMessageSaver(controller), Chats: httpservermock.NewMockChatSaver(controller), Enqueuer: httpservermock.NewMockEnqueuer(controller)},
+			dependencies: Dependencies{Enqueuer: httpservermock.NewMockEnqueuer(controller), MessageEnqueuer: httpservermock.NewMockEnqueuer(controller)},
 			wantErr:      "messenger is required",
+		},
+		{
+			name:         "missing message enqueuer",
+			dependencies: Dependencies{Enqueuer: httpservermock.NewMockEnqueuer(controller)},
+			wantErr:      "message enqueuer is required",
 		},
 	}
 

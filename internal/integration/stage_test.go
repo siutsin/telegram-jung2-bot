@@ -34,7 +34,7 @@ func runStageHTTPIntegration(
 	}
 
 	scaleUpper := appdynamodb.NewScaleUpper(dynamoClient, provisionedTable, 2)
-	httpServer := buildIntegrationHTTPServer(t, dynamoClient, sqsClient, resources, integrationServerOptions{
+	httpServer := buildIntegrationHTTPServer(t, sqsClient, resources, integrationServerOptions{
 		stage:      integrationStage,
 		scaleUpper: scaleUpper,
 	})
@@ -73,7 +73,7 @@ func runStageHTTPIntegration(
 		}()
 		assert.Equal(t, http.StatusOK, response.StatusCode)
 		assert.JSONEq(t, `{"statusCode":200}`, readResponseBody(t, response))
-		assertWebhookChatRow(t, ctx, dynamoClient, resources.chatTable, stageChatID, stageChatTitle)
+		assertMessageSaveQueued(t, ctx, httpServer, stageChatID)
 	})
 
 	t.Run("onOffFromWork", func(t *testing.T) {
@@ -119,13 +119,12 @@ func runStageHTTPIntegration(
 		assert.JSONEq(t, `{"onScaleUp":"ok"}`, readResponseBody(t, response))
 	})
 
-	runStageSchedulerAuthIntegration(t, ctx, dynamoClient, sqsClient, resources, scaleUpper)
+	runStageSchedulerAuthIntegration(t, ctx, sqsClient, resources, scaleUpper)
 }
 
 func runStageSchedulerAuthIntegration(
 	t *testing.T,
 	ctx context.Context,
-	dynamoClient *awsdynamodb.Client,
 	sqsClient *awssqs.Client,
 	resources testResources,
 	scaleUpper appdynamodb.ScaleUpper,
@@ -133,7 +132,7 @@ func runStageSchedulerAuthIntegration(
 	t.Helper()
 
 	const schedulerSecret = "integration-scheduler-secret"
-	httpServer := buildIntegrationHTTPServer(t, dynamoClient, sqsClient, resources, integrationServerOptions{
+	httpServer := buildIntegrationHTTPServer(t, sqsClient, resources, integrationServerOptions{
 		stage:                integrationStage,
 		scaleUpper:           scaleUpper,
 		schedulerSecretToken: schedulerSecret,

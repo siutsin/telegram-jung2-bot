@@ -1,7 +1,7 @@
 // Package httpserver owns transport-independent webhook handling.
 package httpserver
 
-//go:generate sh -c "GOFLAGS=-mod=mod go run go.uber.org/mock/mockgen -source=httpserver.go -destination=../mock/httpserver/httpserver_mock.go -package=httpservermock -mock_names messageSaver=MockMessageSaver,chatSaver=MockChatSaver,enqueuer=MockEnqueuer,messenger=MockMessenger,scaleUpper=MockScaleUpper,metricsRecorder=MockMetricsRecorder"
+//go:generate sh -c "GOFLAGS=-mod=mod go run go.uber.org/mock/mockgen -source=httpserver.go -destination=../mock/httpserver/httpserver_mock.go -package=httpservermock -mock_names enqueuer=MockEnqueuer,messenger=MockMessenger,scaleUpper=MockScaleUpper,metricsRecorder=MockMetricsRecorder"
 
 import (
 	"context"
@@ -10,22 +10,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	bot "github.com/siutsin/telegram-jung2-bot/internal"
-
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
 )
 
 type response struct {
 	statusCode int
 	message    string
-}
-
-type messageSaver interface {
-	Save(ctx context.Context, tableName string, row bot.StoredMessage) error
-}
-
-type chatSaver interface {
-	Save(ctx context.Context, tableName string, settings bot.ChatSetting) error
 }
 
 type enqueuer interface {
@@ -50,9 +40,8 @@ type metricsRecorder interface {
 type Dependencies struct {
 	ChatTable            string
 	MessageTable         string
-	Messages             messageSaver
-	Chats                chatSaver
 	Enqueuer             enqueuer
+	MessageEnqueuer      enqueuer
 	Messenger            messenger
 	ScaleUpper           scaleUpper
 	Now                  func() time.Time

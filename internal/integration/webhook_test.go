@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 	"testing"
-	"time"
 
 	bot "github.com/siutsin/telegram-jung2-bot/internal"
 
@@ -48,16 +47,16 @@ func runWebhookIntegration(
 	t.Helper()
 
 	t.Run("topTen command", func(t *testing.T) {
-		runWebhookTopTenCase(t, ctx, dynamoClient, sqsClient, resources)
+		runWebhookTopTenCase(t, ctx, sqsClient, resources)
 	})
 	t.Run("plain group message", func(t *testing.T) {
-		runWebhookPlainMessageCase(t, ctx, dynamoClient, sqsClient, resources)
+		runWebhookPlainMessageCase(t, ctx, sqsClient, resources)
 	})
 	t.Run("multiple commands", func(t *testing.T) {
-		runWebhookMultipleCommandsCase(t, ctx, dynamoClient, sqsClient, resources)
+		runWebhookMultipleCommandsCase(t, ctx, sqsClient, resources)
 	})
 	t.Run("invalid setOff reply", func(t *testing.T) {
-		runWebhookInvalidSetOffCase(t, ctx, dynamoClient, sqsClient, resources)
+		runWebhookInvalidSetOffCase(t, ctx, sqsClient, resources)
 	})
 	t.Run("non group update", func(t *testing.T) {
 		runWebhookNonGroupCase(t, ctx, dynamoClient, sqsClient, resources)
@@ -67,13 +66,12 @@ func runWebhookIntegration(
 func runWebhookTopTenCase(
 	t *testing.T,
 	ctx context.Context,
-	dynamoClient *awsdynamodb.Client,
 	sqsClient *awssqs.Client,
 	resources testResources,
 ) {
 	t.Helper()
 
-	httpServer := buildIntegrationHTTPServer(t, dynamoClient, sqsClient, resources, integrationServerOptions{})
+	httpServer := buildIntegrationHTTPServer(t, sqsClient, resources, integrationServerOptions{})
 	response := doHTTP(
 		t,
 		ctx,
@@ -89,8 +87,7 @@ func runWebhookTopTenCase(
 	}()
 	assert.Equal(t, http.StatusOK, response.StatusCode)
 
-	assertWebhookChatRow(t, ctx, dynamoClient, resources.chatTable, webhookChatID, webhookChatTitle)
-	assertWebhookMessageRow(t, ctx, dynamoClient, resources.messageTable, webhookChatID)
+	assertMessageSaveQueued(t, ctx, httpServer, webhookChatID)
 
 	wantAction, err := bot.ActionFor(
 		bot.Command{Name: "topTen"},
@@ -107,7 +104,6 @@ func runWebhookTopTenCase(
 func runWebhookPlainMessageCase(
 	t *testing.T,
 	ctx context.Context,
-	dynamoClient *awsdynamodb.Client,
 	sqsClient *awssqs.Client,
 	resources testResources,
 ) {
@@ -118,7 +114,7 @@ func runWebhookPlainMessageCase(
 		plainChatTitle       = "Plain Webhook"
 	)
 
-	httpServer := buildIntegrationHTTPServer(t, dynamoClient, sqsClient, resources, integrationServerOptions{})
+	httpServer := buildIntegrationHTTPServer(t, sqsClient, resources, integrationServerOptions{})
 	response := doHTTP(
 		t,
 		ctx,
@@ -134,24 +130,13 @@ func runWebhookPlainMessageCase(
 	}()
 	assert.Equal(t, http.StatusOK, response.StatusCode)
 
-	assertWebhookChatRow(t, ctx, dynamoClient, resources.chatTable, plainChatID, plainChatTitle)
-	messages, err := appdynamodb.NewMessageClient(dynamoClient).QueryByChat(
-		ctx,
-		resources.messageTable,
-		plainChatID,
-		integrationNow.Add(-time.Minute),
-	)
-	require.NoError(t, err, "query plain webhook message rows")
-	require.Len(t, messages, 1)
-	assert.Equal(t, plainChatID, messages[0].ChatID)
-
+	assertMessageSaveQueued(t, ctx, httpServer, plainChatID)
 	assertQueueEmpty(t, ctx, httpServer.queueClient, httpServer.queueURL)
 }
 
 func runWebhookMultipleCommandsCase(
 	t *testing.T,
 	ctx context.Context,
-	dynamoClient *awsdynamodb.Client,
 	sqsClient *awssqs.Client,
 	resources testResources,
 ) {
@@ -163,7 +148,7 @@ func runWebhookMultipleCommandsCase(
 		multiUserID    int64 = 10013
 	)
 
-	httpServer := buildIntegrationHTTPServer(t, dynamoClient, sqsClient, resources, integrationServerOptions{})
+	httpServer := buildIntegrationHTTPServer(t, sqsClient, resources, integrationServerOptions{})
 	response := doHTTP(
 		t,
 		ctx,
@@ -187,48 +172,26 @@ func runWebhookMultipleCommandsCase(
 	for _, wantAction := range wantActions {
 		assertQueuedAction(t, ctx, httpServer, wantAction)
 	}
+	assertMessageSaveQueued(t, ctx, httpServer, multiChatID)
 	assertQueueEmpty(t, ctx, httpServer.queueClient, httpServer.queueURL)
 }
 
-func assertWebhookChatRow(
-	t *testing.T,
-	ctx context.Context,
-	dynamoClient *awsdynamodb.Client,
-	chatTable string,
-	chatID int64,
-	chatTitle string,
-) {
+// assertMessageSaveQueued proves the webhook leaves persistence for the FIFO worker.
+func assertMessageSaveQueued(t *testing.T, ctx context.Context, httpServer integrationHTTPServer, chatID int64) {
 	t.Helper()
 
-	gotChat, ok, err := appdynamodb.NewChatClient(dynamoClient).Get(ctx, chatTable, chatID)
-	require.NoError(t, err, "get webhook chat row")
-	require.True(t, ok, "expected webhook chat row")
-	assert.Equal(t, chatTitle, gotChat.ChatTitle)
-	assert.True(t, gotChat.EnableAllJung)
-}
+	queueResponse, err := receiveOne(ctx, httpServer.queueClient, httpServer.messageSaveQueueURL)
+	require.NoError(t, err, "receive message-save queue message")
 
-func assertWebhookMessageRow(
-	t *testing.T,
-	ctx context.Context,
-	dynamoClient *awsdynamodb.Client,
-	messageTable string,
-	chatID int64,
-) {
-	t.Helper()
+	gotAction := queue.DecodeMessage(queueResponse.Messages[0])
+	assert.Equal(t, queue.ActionSaveMessage, gotAction.Name)
+	assert.Equal(t, formatInt(chatID), gotAction.Attributes["chatId"])
 
-	messages, err := appdynamodb.NewMessageClient(dynamoClient).QueryByChat(
-		ctx,
-		messageTable,
-		chatID,
-		integrationNow.Add(-time.Minute),
-	)
-	require.NoError(t, err, "query webhook message rows")
-	require.Len(t, messages, 1)
-	assert.Equal(t, webhookUserID, messages[0].UserID)
-	assert.Equal(t, "floci-user", messages[0].Username)
-	assert.Equal(t, "Floci", messages[0].FirstName)
-	assert.Equal(t, "Tester", messages[0].LastName)
-	assert.Equal(t, bot.FormatDateCreated(integrationNow), bot.FormatDateCreated(messages[0].DateCreated))
+	err = httpServer.queueClient.Delete(ctx, queue.DeleteMessageRequest{
+		QueueURL:      httpServer.messageSaveQueueURL,
+		ReceiptHandle: queueResponse.Messages[0].ReceiptHandle,
+	})
+	require.NoError(t, err, "delete message-save queue message")
 }
 
 func assertQueuedAction(t *testing.T, ctx context.Context, httpServer integrationHTTPServer, wantAction queue.Action) {
@@ -247,7 +210,7 @@ func assertQueuedAction(t *testing.T, ctx context.Context, httpServer integratio
 	require.NoError(t, err, "delete webhook queue message")
 }
 
-func assertQueueEmpty(t *testing.T, ctx context.Context, queueClient queueClient, queueURL string) {
+func assertQueueEmpty(t *testing.T, ctx context.Context, queueClient queueRequester, queueURL string) {
 	t.Helper()
 
 	response, err := queueClient.ReceiveMessage(ctx, queue.ReceiveMessageRequest{
@@ -284,7 +247,6 @@ func mustCommandAction(
 func runWebhookInvalidSetOffCase(
 	t *testing.T,
 	ctx context.Context,
-	dynamoClient *awsdynamodb.Client,
 	sqsClient *awssqs.Client,
 	resources testResources,
 ) {
@@ -297,7 +259,7 @@ func runWebhookInvalidSetOffCase(
 	)
 
 	messenger := &recordingMessenger{}
-	httpServer := buildIntegrationHTTPServer(t, dynamoClient, sqsClient, resources, integrationServerOptions{
+	httpServer := buildIntegrationHTTPServer(t, sqsClient, resources, integrationServerOptions{
 		messenger: messenger,
 	})
 	response := doHTTP(
@@ -318,6 +280,7 @@ func runWebhookInvalidSetOffCase(
 	messages := messenger.recordedMessages()
 	require.Len(t, messages, 1)
 	assert.Contains(t, messages[0].text, "Error: Invalid format for setOffFromWorkTimeUTC")
+	assertMessageSaveQueued(t, ctx, httpServer, invalidChatID)
 	assertQueueEmpty(t, ctx, httpServer.queueClient, httpServer.queueURL)
 }
 
@@ -330,7 +293,7 @@ func runWebhookNonGroupCase(
 ) {
 	t.Helper()
 
-	httpServer := buildIntegrationHTTPServer(t, dynamoClient, sqsClient, resources, integrationServerOptions{})
+	httpServer := buildIntegrationHTTPServer(t, sqsClient, resources, integrationServerOptions{})
 	response := doHTTP(
 		t,
 		ctx,

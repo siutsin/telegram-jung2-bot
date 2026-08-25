@@ -4,14 +4,11 @@ import "fmt"
 
 // validate checks required HTTP dependencies.
 func validate(dependencies Dependencies) error {
-	if dependencies.Messages == nil {
-		return fmt.Errorf("message store is required")
-	}
-	if dependencies.Chats == nil {
-		return fmt.Errorf("chat store is required")
-	}
 	if dependencies.Enqueuer == nil {
 		return fmt.Errorf("enqueuer is required")
+	}
+	if dependencies.MessageEnqueuer == nil {
+		return fmt.Errorf("message enqueuer is required")
 	}
 	if dependencies.Messenger == nil {
 		return fmt.Errorf("messenger is required")

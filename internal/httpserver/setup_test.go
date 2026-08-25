@@ -9,8 +9,6 @@ import (
 	"testing"
 	"time"
 
-	bot "github.com/siutsin/telegram-jung2-bot/internal"
-
 	gomock "go.uber.org/mock/gomock"
 
 	httpservermock "github.com/siutsin/telegram-jung2-bot/internal/mock/httpserver"
@@ -23,16 +21,14 @@ func TestMain(m *testing.M) {
 }
 
 type httpserverMocks struct {
-	messages   *httpservermock.MockMessageSaver
-	chats      *httpservermock.MockChatSaver
-	enqueuer   *httpservermock.MockEnqueuer
-	messenger  *httpservermock.MockMessenger
-	scaleUpper *httpservermock.MockScaleUpper
+	enqueuer        *httpservermock.MockEnqueuer
+	messageEnqueuer *httpservermock.MockEnqueuer
+	messenger       *httpservermock.MockMessenger
+	scaleUpper      *httpservermock.MockScaleUpper
 
-	savedMessages []bot.StoredMessage
-	savedChats    []bot.ChatSetting
-	actions       []queue.Action
-	sentMessages  []string
+	actions        []queue.Action
+	messageActions []queue.Action
+	sentMessages   []string
 }
 
 func newMockDependencies(t *testing.T) (*httpserverMocks, Dependencies) {
@@ -40,21 +36,19 @@ func newMockDependencies(t *testing.T) (*httpserverMocks, Dependencies) {
 
 	controller := gomock.NewController(t)
 	mocks := &httpserverMocks{
-		messages:   httpservermock.NewMockMessageSaver(controller),
-		chats:      httpservermock.NewMockChatSaver(controller),
-		enqueuer:   httpservermock.NewMockEnqueuer(controller),
-		messenger:  httpservermock.NewMockMessenger(controller),
-		scaleUpper: httpservermock.NewMockScaleUpper(controller),
+		enqueuer:        httpservermock.NewMockEnqueuer(controller),
+		messageEnqueuer: httpservermock.NewMockEnqueuer(controller),
+		messenger:       httpservermock.NewMockMessenger(controller),
+		scaleUpper:      httpservermock.NewMockScaleUpper(controller),
 	}
 
 	readiness := &atomic.Bool{}
 	readiness.Store(true)
 
 	return mocks, Dependencies{
-		Messages:  mocks.messages,
-		Chats:     mocks.chats,
-		Enqueuer:  mocks.enqueuer,
-		Messenger: mocks.messenger,
+		Enqueuer:        mocks.enqueuer,
+		MessageEnqueuer: mocks.messageEnqueuer,
+		Messenger:       mocks.messenger,
 		Now: func() time.Time {
 			return time.Date(2026, 5, 2, 12, 0, 0, 0, time.UTC)
 		},
@@ -62,27 +56,18 @@ func newMockDependencies(t *testing.T) (*httpserverMocks, Dependencies) {
 	}
 }
 
-func (mocks *httpserverMocks) expectSaveMessage(err error) {
-	mocks.messages.EXPECT().
-		Save(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, tableName string, row bot.StoredMessage) error {
-			mocks.savedMessages = append(mocks.savedMessages, row)
-			return err
-		})
-}
-
-func (mocks *httpserverMocks) expectSaveChat(err error) {
-	mocks.chats.EXPECT().
-		Save(gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(ctx context.Context, tableName string, settings bot.ChatSetting) error {
-			mocks.savedChats = append(mocks.savedChats, settings)
-			return err
-		})
-}
-
 func (mocks *httpserverMocks) expectSaveWebhookState() {
-	mocks.expectSaveMessage(nil)
-	mocks.expectSaveChat(nil)
+	mocks.expectMessageEnqueue(nil)
+}
+
+// expectMessageEnqueue records asynchronous message-save work for webhook tests.
+func (mocks *httpserverMocks) expectMessageEnqueue(err error) {
+	mocks.messageEnqueuer.EXPECT().
+		Enqueue(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, action queue.Action) error {
+			mocks.messageActions = append(mocks.messageActions, action)
+			return err
+		})
 }
 
 func (mocks *httpserverMocks) expectEnqueue(err error) {

@@ -11,15 +11,15 @@ import (
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
 )
 
-// chatRepository is the chat persistence surface the service actions need.
-type chatRepository interface {
+// chatMaintainer is the chat persistence surface the service actions need.
+type chatMaintainer interface {
 	DueChatIDs(ctx context.Context, tableName string, timestamp time.Time) ([]int64, error)
 	Get(ctx context.Context, tableName string, chatID int64) (ChatSetting, bool, error)
 	SaveStatistics(ctx context.Context, tableName string, chatID int64, userCount int, messageCount int, now time.Time) error
 	Update(ctx context.Context, request UpdateExpression) error
 }
 
-type messageRepository interface {
+type messageQuerier interface {
 	QueryByChat(ctx context.Context, tableName string, chatID int64, since time.Time) ([]StoredMessage, error)
 }
 
@@ -36,9 +36,9 @@ type queueSender interface {
 
 // Service owns the application behaviour behind worker actions.
 type Service struct {
-	chatMaintainer chatRepository
+	chatMaintainer chatMaintainer
 	chatTable      string
-	messageQuerier messageRepository
+	messageQuerier messageQuerier
 	messageTable   string
 	messenger      telegramMessenger
 	nowFunc        func() time.Time
@@ -49,9 +49,9 @@ type Service struct {
 
 // NewService builds the action service from simple runtime parameters.
 func NewService(
-	chatMaintainer chatRepository,
+	chatMaintainer chatMaintainer,
 	chatTable string,
-	messageQuerier messageRepository,
+	messageQuerier messageQuerier,
 	messageTable string,
 	messenger telegramMessenger,
 	now func() time.Time,
