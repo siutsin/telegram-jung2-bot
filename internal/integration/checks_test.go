@@ -210,12 +210,34 @@ func buildCommandActionCase(t *testing.T, spec commandActionSpec, chatContext bo
 	return queueActionCase{name: spec.name, action: action}
 }
 
+// assertAction compares a locally built action against one that went through
+// the real queue. enqueuedAt is stamped by the producer on the way out, so a
+// present value is checked separately and excluded from the attribute diff;
+// a decode-only case with no round trip through the producer has none.
 func assertAction(t *testing.T, want queue.Action, got queue.Action) {
 	t.Helper()
 
 	assert.Equal(t, want.Name, got.Name)
 	assert.Equal(t, want.Body, got.Body)
-	assert.Equal(t, want.Attributes, got.Attributes)
+	assert.Equal(t, want.Attributes, withoutEnqueuedAt(t, got.Attributes))
+}
+
+// withoutEnqueuedAt checks a present enqueuedAt attribute is well-formed,
+// then returns the remaining attributes for comparison.
+func withoutEnqueuedAt(t *testing.T, attributes map[string]string) map[string]string {
+	t.Helper()
+
+	remaining := make(map[string]string, len(attributes))
+	for name, value := range attributes {
+		if name == queue.EnqueuedAtAttribute {
+			_, err := time.Parse(time.RFC3339Nano, value)
+			require.NoError(t, err, "enqueuedAt should be RFC3339Nano")
+			continue
+		}
+		remaining[name] = value
+	}
+
+	return remaining
 }
 
 func receiveOne(ctx context.Context, client interface {

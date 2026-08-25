@@ -5,7 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"sync"
+	"time"
 )
 
 // Stable action names used in SQS messages.
@@ -33,6 +35,10 @@ const (
 	BodyOffFromWork    = "sendOffFromWorkMessage"
 	BodyOnOffFromWork  = "sendOnOffFromWork"
 )
+
+// EnqueuedAtAttribute names the message attribute that carries the enqueue
+// time, so the worker can measure queue wait on pickup.
+const EnqueuedAtAttribute = "enqueuedAt"
 
 // Action is the service's typed representation of a queued action.
 type Action struct {
@@ -94,12 +100,25 @@ func (p producer) Enqueue(ctx context.Context, action Action) error {
 	if p.sender == nil {
 		return fmt.Errorf("queue sender is required")
 	}
-	err := p.sender.SendMessage(ctx, buildSendMessageRequest(p.queueURL, action))
+	err := p.sender.SendMessage(ctx, buildSendMessageRequest(p.queueURL, withEnqueuedAt(action)))
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// withEnqueuedAt stamps an action with its enqueue time, the only way the
+// worker can later measure queue wait.
+// For example, an action enqueued at 2025-01-06T18:30:00Z gets
+// Attributes["enqueuedAt"] = "2025-01-06T18:30:00Z".
+func withEnqueuedAt(action Action) Action {
+	attributes := make(map[string]string, len(action.Attributes)+1)
+	maps.Copy(attributes, action.Attributes)
+	attributes[EnqueuedAtAttribute] = time.Now().UTC().Format(time.RFC3339Nano)
+	action.Attributes = attributes
+
+	return action
 }
 
 type consumer struct {
