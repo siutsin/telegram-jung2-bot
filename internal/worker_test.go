@@ -6,6 +6,7 @@ import (
 	"errors"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -188,8 +189,8 @@ func TestPollingWorkerStopsOnCancelledContext(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// TestPollingWorkerRecordsQueueWaitWhenEnqueuedAtPresent proves a message
-// carrying a valid enqueuedAt attribute records queue wait.
+// TestPollingWorkerRecordsQueueWaitWhenEnqueuedAtPresent proves the lag
+// metric is actually populated end to end, not just by an isolated helper.
 func TestPollingWorkerRecordsQueueWaitWhenEnqueuedAtPresent(t *testing.T) {
 	t.Parallel()
 
@@ -215,8 +216,28 @@ func TestPollingWorkerRecordsQueueWaitWhenEnqueuedAtPresent(t *testing.T) {
 	assert.Contains(t, body, `telegram_jung2_bot_worker_queue_wait_duration_seconds_count{action="topten"} 1`)
 }
 
-// TestPollingWorkerSkipsQueueWaitWithoutEnqueuedAt proves a message missing
-// the enqueuedAt attribute records no queue wait sample.
+// TestRecordQueueWaitClampsNegativeSkewToZero guards against clock skew
+// between producer and worker hosts driving the histogram sum negative.
+func TestRecordQueueWaitClampsNegativeSkewToZero(t *testing.T) {
+	t.Parallel()
+
+	metrics := NewMetrics(nil)
+	pickedUp := time.Now()
+	action := queue.Action{
+		Name: queue.ActionTopTen,
+		Attributes: map[string]string{
+			queue.EnqueuedAtAttribute: pickedUp.Add(time.Minute).UTC().Format(time.RFC3339Nano),
+		},
+	}
+
+	(pollingWorker{metrics: metrics}).recordQueueWait(action, pickedUp)
+
+	body := scrapeMetrics(t, metrics)
+	assert.Contains(t, body, `telegram_jung2_bot_worker_queue_wait_duration_seconds_sum{action="topten"} 0`)
+}
+
+// TestPollingWorkerSkipsQueueWaitWithoutEnqueuedAt guards against older or
+// foreign messages recording a bogus lag sample.
 func TestPollingWorkerSkipsQueueWaitWithoutEnqueuedAt(t *testing.T) {
 	t.Parallel()
 
@@ -240,8 +261,8 @@ func TestPollingWorkerSkipsQueueWaitWithoutEnqueuedAt(t *testing.T) {
 	assert.NotContains(t, scrapeMetrics(t, metrics), "telegram_jung2_bot_worker_queue_wait_duration_seconds")
 }
 
-// TestPollingWorkerSkipsQueueWaitWithoutMetrics proves a worker with no
-// metrics collector processes messages without panicking.
+// TestPollingWorkerSkipsQueueWaitWithoutMetrics guards against a nil metrics
+// collector panicking, since metrics are optional at wiring time.
 func TestPollingWorkerSkipsQueueWaitWithoutMetrics(t *testing.T) {
 	t.Parallel()
 
@@ -263,8 +284,8 @@ func TestPollingWorkerSkipsQueueWaitWithoutMetrics(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// TestParseEnqueuedAt proves parseEnqueuedAt accepts a valid RFC3339Nano
-// timestamp and rejects missing, empty, or malformed values.
+// TestParseEnqueuedAt covers every way the attribute can fail, so a false
+// result is trusted to mean "skip the metric," never "crash."
 func TestParseEnqueuedAt(t *testing.T) {
 	t.Parallel()
 
@@ -428,7 +449,7 @@ func TestProcessMessageDeletesAfterSuccessfulDispatch(t *testing.T) {
 		}
 	}`)
 
-	_, _, err := processMessageResult(context.Background(), "queue-url", raw, testHandlers(nil, nil), deleter)
+	_, _, err := processDecodedMessageResult(context.Background(), "queue-url", raw, queue.DecodeMessage(raw), testHandlers(nil, nil), deleter)
 
 	require.NoError(t, err)
 	assert.Equal(t, []queue.DeleteMessageRequest{{QueueURL: "queue-url", ReceiptHandle: "receipt"}}, deleter.requests)
@@ -445,7 +466,7 @@ func TestProcessMessageKeepsMessageAndReturnsDispatchFailure(t *testing.T) {
 		}
 	}`)
 
-	_, _, err := processMessageResult(context.Background(), "queue-url", raw, testHandlers(nil, errors.New("boom")), deleter)
+	_, _, err := processDecodedMessageResult(context.Background(), "queue-url", raw, queue.DecodeMessage(raw), testHandlers(nil, errors.New("boom")), deleter)
 
 	require.Error(t, err)
 	require.EqualError(t, err, "boom")
@@ -455,7 +476,7 @@ func TestProcessMessageKeepsMessageAndReturnsDispatchFailure(t *testing.T) {
 func TestProcessMessageDropsMessageWithoutAction(t *testing.T) {
 	t.Parallel()
 
-	_, _, err := processMessageResult(context.Background(), "queue-url", queue.RawMessage{}, testHandlers(nil, nil), &fakeDeleter{})
+	_, _, err := processDecodedMessageResult(context.Background(), "queue-url", queue.RawMessage{}, queue.DecodeMessage(queue.RawMessage{}), testHandlers(nil, nil), &fakeDeleter{})
 
 	require.NoError(t, err)
 }
@@ -471,7 +492,7 @@ func TestProcessMessageDeletesPermanentDispatchErrors(t *testing.T) {
 		}
 	}`)
 
-	_, _, err := processMessageResult(context.Background(), "queue-url", raw, testHandlers(nil, nil), deleter)
+	_, _, err := processDecodedMessageResult(context.Background(), "queue-url", raw, queue.DecodeMessage(raw), testHandlers(nil, nil), deleter)
 
 	require.NoError(t, err)
 	assert.Equal(t, []queue.DeleteMessageRequest{{QueueURL: "queue-url", ReceiptHandle: "receipt"}}, deleter.requests)
@@ -574,7 +595,7 @@ func TestProcessMessageReturnsDeleteErrorAfterPermanentDispatchFailure(t *testin
 		}
 	}`)
 
-	_, _, err := processMessageResult(context.Background(), "queue-url", raw, testHandlers(nil, nil), &fakeDeleter{err: errors.New("boom")})
+	_, _, err := processDecodedMessageResult(context.Background(), "queue-url", raw, queue.DecodeMessage(raw), testHandlers(nil, nil), &fakeDeleter{err: errors.New("boom")})
 
 	require.Error(t, err)
 	assert.EqualError(t, err, "boom")
@@ -591,7 +612,7 @@ func TestProcessMessageReturnsDeleteError(t *testing.T) {
 		}
 	}`)
 
-	_, _, err := processMessageResult(context.Background(), "queue-url", raw, testHandlers(nil, nil), &fakeDeleter{err: errors.New("boom")})
+	_, _, err := processDecodedMessageResult(context.Background(), "queue-url", raw, queue.DecodeMessage(raw), testHandlers(nil, nil), &fakeDeleter{err: errors.New("boom")})
 
 	require.Error(t, err)
 	assert.EqualError(t, err, "boom")

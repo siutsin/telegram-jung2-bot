@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestProducerEnqueueSendsContractRequest proves Enqueue builds the contract
-// SQS request and stamps a fresh enqueuedAt attribute.
+// TestProducerEnqueueSendsContractRequest guards that every enqueued action
+// leaves with a fresh enqueuedAt timestamp.
 func TestProducerEnqueueSendsContractRequest(t *testing.T) {
 	t.Parallel()
 
@@ -38,8 +38,8 @@ func TestProducerEnqueueSendsContractRequest(t *testing.T) {
 	assert.False(t, enqueuedAt.After(after))
 }
 
-// TestWithEnqueuedAtPreservesExistingAttributesAndAddsTimestamp proves
-// existing attributes survive alongside a fresh enqueuedAt timestamp.
+// TestWithEnqueuedAtPreservesExistingAttributesAndAddsTimestamp guards
+// against the stamp dropping attributes dispatch depends on.
 func TestWithEnqueuedAtPreservesExistingAttributesAndAddsTimestamp(t *testing.T) {
 	t.Parallel()
 
@@ -54,8 +54,8 @@ func TestWithEnqueuedAtPreservesExistingAttributesAndAddsTimestamp(t *testing.T)
 	assert.False(t, enqueuedAt.After(after))
 }
 
-// TestWithEnqueuedAtHandlesNilAttributes proves a nil Attributes map still
-// gets an enqueuedAt timestamp.
+// TestWithEnqueuedAtHandlesNilAttributes guards against a nil map panic for
+// actions built without Attributes.
 func TestWithEnqueuedAtHandlesNilAttributes(t *testing.T) {
 	t.Parallel()
 

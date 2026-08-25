@@ -89,33 +89,43 @@ func (worker pollingWorker) Run(ctx context.Context) error {
 }
 
 // processMessage records the result of one worker action before returning it.
+// It decodes raw once and reuses the result, since decoding twice per message
+// would double SQS message-attribute parsing for no benefit.
 func (worker pollingWorker) processMessage(ctx context.Context, raw queue.RawMessage) error {
 	started := time.Now()
-	worker.recordQueueWait(raw, started)
-	action, outcome, err := processMessageResult(ctx, worker.queueURL, raw, worker.handlers, worker.deleter)
+	action := queue.DecodeMessage(raw)
+	worker.recordQueueWait(action, started)
+	actionName, outcome, err := processDecodedMessageResult(ctx, worker.queueURL, raw, action, worker.handlers, worker.deleter)
 	if worker.metrics != nil {
-		worker.metrics.RecordWorkerAction(action, outcome, time.Since(started))
+		worker.metrics.RecordWorkerAction(actionName, outcome, time.Since(started))
 	}
 
 	return err
 }
 
-// recordQueueWait records the lag between one message being enqueued and
-// picked up here, when the enqueue time is present and well-formed.
-func (worker pollingWorker) recordQueueWait(raw queue.RawMessage, pickedUp time.Time) {
+// recordQueueWait measures pickup lag, clamping to zero when the producer and
+// worker clocks disagree, since a raw negative sample would silently corrupt
+// the histogram sum. A missing or malformed enqueue time is tolerated too, as
+// neither case should ever block message processing.
+func (worker pollingWorker) recordQueueWait(action queue.Action, pickedUp time.Time) {
 	if worker.metrics == nil {
 		return
 	}
 
-	action := queue.DecodeMessage(raw)
 	enqueuedAt, ok := parseEnqueuedAt(action.Attributes)
 	if !ok {
 		return
 	}
-	worker.metrics.RecordQueueWait(workerActionName(action.Name), pickedUp.Sub(enqueuedAt))
+	wait := pickedUp.Sub(enqueuedAt)
+	if wait < 0 {
+		slog.Warn("queue wait was negative, clamping to zero", "action", action.Name)
+		wait = 0
+	}
+	worker.metrics.RecordQueueWait(workerActionName(action.Name), wait)
 }
 
-// parseEnqueuedAt reads the enqueue timestamp off action attributes.
+// parseEnqueuedAt reads the enqueue timestamp, reporting false (never an
+// error) so an older or foreign message just skips the queue-wait sample.
 // For example, Attributes["enqueuedAt"] = "2025-01-06T18:30:00Z" becomes that
 // timestamp, while a missing or malformed value reports false.
 func parseEnqueuedAt(attributes map[string]string) (time.Time, bool) {
@@ -148,9 +158,10 @@ func dispatch(ctx context.Context, action queue.Action, handlers Handlers) error
 	return dispatcher(ctx, action)
 }
 
-// processMessageResult decodes, dispatches, deletes, and classifies a queue message.
-func processMessageResult(ctx context.Context, queueURL string, raw queue.RawMessage, handlers Handlers, deleter queueDeleter) (string, string, error) {
-	action := queue.DecodeMessage(raw)
+// processDecodedMessageResult dispatches, deletes, and classifies a queue
+// message whose action was already decoded, so the caller that also needs
+// the decoded action for queue-wait metrics only decodes it once.
+func processDecodedMessageResult(ctx context.Context, queueURL string, raw queue.RawMessage, action queue.Action, handlers Handlers, deleter queueDeleter) (string, string, error) {
 	dispatchErr := dispatch(ctx, action, handlers)
 	if dispatchErr != nil {
 		slog.Error("queue message dispatch failed", "action", action.Name, "err", dispatchErr)

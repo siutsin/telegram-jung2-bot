@@ -190,8 +190,7 @@ func (metrics *Metrics) RecordWorkerAction(action string, outcome string, durati
 	metrics.workerActionTiming.WithLabelValues(action).Observe(duration.Seconds())
 }
 
-// RecordQueueWait records how long one queue action waited between enqueue
-// and pickup.
+// RecordQueueWait records enqueue-to-pickup lag, to surface peak-hour backlog.
 func (metrics *Metrics) RecordQueueWait(action string, duration time.Duration) {
 	metrics.queueWaitTiming.WithLabelValues(action).Observe(duration.Seconds())
 }

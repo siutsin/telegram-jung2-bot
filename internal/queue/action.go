@@ -108,9 +108,10 @@ func (p producer) Enqueue(ctx context.Context, action Action) error {
 	return nil
 }
 
-// withEnqueuedAt stamps an action with its enqueue time so the worker can
-// measure queue wait on pickup. For example, an action enqueued at
-// 2025-01-06T18:30:00Z gets Attributes["enqueuedAt"] = "2025-01-06T18:30:00Z".
+// withEnqueuedAt stamps an action with its enqueue time, the only way the
+// worker can later measure queue wait.
+// For example, an action enqueued at 2025-01-06T18:30:00Z gets
+// Attributes["enqueuedAt"] = "2025-01-06T18:30:00Z".
 func withEnqueuedAt(action Action) Action {
 	attributes := make(map[string]string, len(action.Attributes)+1)
 	maps.Copy(attributes, action.Attributes)
