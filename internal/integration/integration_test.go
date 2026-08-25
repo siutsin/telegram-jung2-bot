@@ -70,7 +70,7 @@ func TestFlociHTTPHealth(t *testing.T) {
 	t.Parallel()
 
 	ctx, clients, resources := startIntegrationTest(t)
-	runHTTPHealthIntegration(t, ctx, clients.dynamo, clients.sqs, resources)
+	runHTTPHealthIntegration(t, ctx, clients.sqs, resources)
 }
 
 // TestFlociHTTPWebhook protects webhook routing and persistence against integration regressions.
@@ -86,7 +86,7 @@ func TestFlociHTTPWebhookTelegramClient(t *testing.T) {
 	t.Parallel()
 
 	ctx, clients, resources := startIntegrationTest(t)
-	runWebhookTelegramClientIntegration(t, ctx, clients.dynamo, clients.sqs, resources)
+	runWebhookTelegramClientIntegration(t, ctx, clients.sqs, resources)
 }
 
 // TestFlociHTTPStage protects stage-specific routing and scheduler authentication.

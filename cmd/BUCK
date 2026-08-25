@@ -10,6 +10,7 @@ go_binary(
         "//vendor/github.com/aws/aws-sdk-go-v2/config:config",
         "//vendor/github.com/aws/aws-sdk-go-v2/service/dynamodb:dynamodb",
         "//vendor/github.com/aws/aws-sdk-go-v2/service/sqs:sqs",
+        "//vendor/golang.org/x/sync/errgroup:errgroup",
     ],
     visibility = ["PUBLIC"],
 )
@@ -26,7 +27,9 @@ go_test(
         "//vendor/github.com/aws/aws-sdk-go-v2/config:config",
         "//vendor/github.com/aws/aws-sdk-go-v2/service/dynamodb:dynamodb",
         "//vendor/github.com/aws/aws-sdk-go-v2/service/sqs:sqs",
+        "//vendor/golang.org/x/sync/errgroup:errgroup",
         "//vendor/github.com/stretchr/testify/assert:assert",
         "//vendor/github.com/stretchr/testify/require:require",
+        "//vendor/go.uber.org/mock/gomock:gomock",
     ],
 )

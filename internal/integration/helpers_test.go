@@ -13,7 +13,6 @@ import (
 
 	bot "github.com/siutsin/telegram-jung2-bot/internal"
 
-	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	awssqs "github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/stretchr/testify/require"
 
@@ -81,15 +80,16 @@ func (messenger *recordingMessenger) IsAdmin(_ context.Context, _ int64, _ int64
 	return messenger.admin, nil
 }
 
-type queueClient interface {
+type queueRequester interface {
 	ReceiveMessage(context.Context, queue.ReceiveMessageRequest) (queue.ReceiveMessageResponse, error)
 	Delete(context.Context, queue.DeleteMessageRequest) error
 }
 
 type integrationHTTPServer struct {
-	baseURL     string
-	queueURL    string
-	queueClient queueClient
+	baseURL             string
+	queueURL            string
+	messageSaveQueueURL string
+	queueClient         queueRequester
 }
 
 type integrationServerOptions struct {
@@ -101,7 +101,6 @@ type integrationServerOptions struct {
 
 func buildIntegrationHTTPServer(
 	t *testing.T,
-	dynamoClient *awsdynamodb.Client,
 	sqsClient *awssqs.Client,
 	resources testResources,
 	options integrationServerOptions,
@@ -110,6 +109,7 @@ func buildIntegrationHTTPServer(
 
 	queueClient := queue.NewClient(sqsClient)
 	producer := queue.NewProducer(resources.queueURL, queueClient)
+	messageProducer := queue.NewProducer(resources.messageSaveQueueURL, queueClient)
 
 	messenger := options.messenger
 	if messenger == nil {
@@ -121,9 +121,8 @@ func buildIntegrationHTTPServer(
 	deps := httpserver.Dependencies{
 		ChatTable:            resources.chatTable,
 		MessageTable:         resources.messageTable,
-		Messages:             appdynamodb.NewMessageClient(dynamoClient),
-		Chats:                appdynamodb.NewChatClient(dynamoClient),
 		Enqueuer:             producer,
+		MessageEnqueuer:      messageProducer,
 		Messenger:            messenger,
 		ScaleUpper:           options.scaleUpper,
 		SchedulerSecretToken: options.schedulerSecretToken,
@@ -140,9 +139,10 @@ func buildIntegrationHTTPServer(
 	t.Cleanup(testServer.Close)
 
 	return integrationHTTPServer{
-		baseURL:     testServer.URL,
-		queueURL:    resources.queueURL,
-		queueClient: queueClient,
+		baseURL:             testServer.URL,
+		queueURL:            resources.queueURL,
+		messageSaveQueueURL: resources.messageSaveQueueURL,
+		queueClient:         queueClient,
 	}
 }
 
@@ -182,7 +182,7 @@ func readResponseBody(t *testing.T, response *http.Response) string {
 }
 
 // drainQueue removes residual messages and verifies the queue becomes empty.
-func drainQueue(t *testing.T, ctx context.Context, queueClient queueClient, queueURL string) {
+func drainQueue(t *testing.T, ctx context.Context, queueClient queueRequester, queueURL string) {
 	t.Helper()
 
 	deadline := time.Now().Add(5 * time.Second)

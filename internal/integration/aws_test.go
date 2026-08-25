@@ -21,10 +21,10 @@ type awsClients struct {
 }
 
 type testResources struct {
-	messageTable string
-	chatTable    string
-	queueName    string
-	queueURL     string
+	messageTable        string
+	chatTable           string
+	queueURL            string
+	messageSaveQueueURL string
 }
 
 // newAWSClients connects production adapters to the isolated Floci endpoint.
@@ -53,7 +53,6 @@ func provisionResources(ctx context.Context, clients awsClients) (testResources,
 	resources := testResources{
 		messageTable: "telegram-jung2-bot-messages-it-" + suffix,
 		chatTable:    "telegram-jung2-bot-chats-it-" + suffix,
-		queueName:    "telegram-jung2-bot-it-" + suffix,
 	}
 	cleanup := func() {
 		cleanupCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -80,12 +79,24 @@ func provisionResources(ctx context.Context, clients awsClients) (testResources,
 	})
 	group.Go(func() error {
 		output, err := clients.sqs.CreateQueue(groupCtx, &awssqs.CreateQueueInput{
-			QueueName: awscore.String(resources.queueName),
+			QueueName: awscore.String("telegram-jung2-bot-it-" + suffix),
 		})
 		if err != nil {
 			return fmt.Errorf("create SQS queue: %w", err)
 		}
 		resources.queueURL = awscore.ToString(output.QueueUrl)
+
+		return nil
+	})
+	group.Go(func() error {
+		output, err := clients.sqs.CreateQueue(groupCtx, &awssqs.CreateQueueInput{
+			QueueName:  awscore.String("telegram-jung2-bot-message-save-it-" + suffix + ".fifo"),
+			Attributes: map[string]string{"FifoQueue": "true"},
+		})
+		if err != nil {
+			return fmt.Errorf("create FIFO message-save queue: %w", err)
+		}
+		resources.messageSaveQueueURL = awscore.ToString(output.QueueUrl)
 
 		return nil
 	})
@@ -144,6 +155,14 @@ func waitForTableActive(ctx context.Context, client *awsdynamodb.Client, tableNa
 
 // cleanupResources prevents test data from consuming the shared emulator across later tests.
 func cleanupResources(ctx context.Context, clients awsClients, resources testResources) {
+	if resources.messageSaveQueueURL != "" {
+		_, err := clients.sqs.DeleteQueue(ctx, &awssqs.DeleteQueueInput{
+			QueueUrl: awscore.String(resources.messageSaveQueueURL),
+		})
+		if err != nil {
+			reportCleanupError("delete FIFO message-save queue", err)
+		}
+	}
 	if resources.queueURL != "" {
 		_, err := clients.sqs.DeleteQueue(ctx, &awssqs.DeleteQueueInput{
 			QueueUrl: awscore.String(resources.queueURL),
