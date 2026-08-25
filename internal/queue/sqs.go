@@ -33,6 +33,17 @@ type sqsClient struct {
 	metrics dependencyObserver
 }
 
+// partialBatchError identifies entries that SQS rejected so accepted entries
+// are not sent again.
+type partialBatchError struct {
+	failedIDs map[string]struct{}
+}
+
+// Error keeps the SQS failure count visible to the retry loop and logs.
+func (err *partialBatchError) Error() string {
+	return fmt.Sprintf("send SQS message batch: %d entries failed", len(err.failedIDs))
+}
+
 // NewClient builds an SQS-backed queue client.
 func NewClient(queue queueRequester, metrics ...dependencyObserver) sqsClient {
 	return sqsClient{queue: queue, metrics: firstMetrics(metrics)}
@@ -186,7 +197,11 @@ func (client sqsClient) SendMessageBatch(ctx context.Context, request SendMessag
 		return fmt.Errorf("send SQS message batch: %w", err)
 	}
 	if len(output.Failed) > 0 {
-		return fmt.Errorf("send SQS message batch: %d entries failed", len(output.Failed))
+		failedIDs := make(map[string]struct{}, len(output.Failed))
+		for _, failed := range output.Failed {
+			failedIDs[awscore.ToString(failed.Id)] = struct{}{}
+		}
+		return &partialBatchError{failedIDs: failedIDs}
 	}
 
 	return nil

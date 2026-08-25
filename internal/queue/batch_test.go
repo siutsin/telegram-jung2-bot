@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 	"errors"
+	"strconv"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -28,7 +29,7 @@ func TestBatchProducerFlushesFullBatch(t *testing.T) {
 		for index := range maxBatchSize {
 			err := producer.Enqueue(ctx, Action{
 				Body:                   BodySaveMessage,
-				MessageGroupID:         "42",
+				MessageGroupID:         "group-" + strconv.Itoa(index),
 				MessageDeduplicationID: "42:" + string(rune('a'+index)),
 				Attributes:             map[string]string{"action": ActionSaveMessage},
 			})
@@ -41,7 +42,7 @@ func TestBatchProducerFlushesFullBatch(t *testing.T) {
 		require.NoError(t, <-done)
 		require.Len(t, requests, 1)
 		assert.Len(t, requests[0].Entries, maxBatchSize)
-		assert.Equal(t, "42", requests[0].Entries[0].MessageGroupID)
+		assert.Equal(t, "group-0", requests[0].Entries[0].MessageGroupID)
 		assert.Equal(t, "42:a", requests[0].Entries[0].MessageDeduplicationID)
 	})
 }
@@ -207,6 +208,19 @@ func TestBatchProducerStopsIdleOnCancellation(t *testing.T) {
 	require.NoError(t, producer.Run(ctx))
 }
 
+// TestBatchProducerRejectsEnqueueAfterShutdown keeps a webhook retryable when
+// the final batch flush has finished.
+func TestBatchProducerRejectsEnqueueAfterShutdown(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	producer := NewBatchProducer("fifo-url", NewMockBatchMessageSender(gomock.NewController(t)), time.Hour)
+	require.NoError(t, producer.Run(ctx))
+
+	require.EqualError(t, producer.Enqueue(context.Background(), Action{}), "queue batch producer is stopping")
+}
+
 // TestWaitForWakeAcceptsAnEnqueueSignal lets an idle producer start its flush timer.
 func TestWaitForWakeAcceptsAnEnqueueSignal(t *testing.T) {
 	t.Parallel()
@@ -232,6 +246,44 @@ func TestBatchProducerWaitsForTheLastBatchEntry(t *testing.T) {
 		synctest.Wait()
 		assert.True(t, <-done)
 	})
+}
+
+// TestBatchProducerSeparatesFIFOMessageGroups keeps a partial batch failure
+// from putting a later action in the same group ahead of its retry.
+func TestBatchProducerSeparatesFIFOMessageGroups(t *testing.T) {
+	t.Parallel()
+
+	producer := NewBatchProducer("fifo-url", NewMockBatchMessageSender(gomock.NewController(t)), time.Hour)
+	for _, action := range []Action{
+		{MessageGroupID: "chat-1", MessageDeduplicationID: "chat-1:1"},
+		{MessageGroupID: "chat-1", MessageDeduplicationID: "chat-1:2"},
+		{MessageGroupID: "chat-2", MessageDeduplicationID: "chat-2:1"},
+	} {
+		require.NoError(t, producer.Enqueue(context.Background(), action))
+	}
+
+	batch := producer.takeBatch()
+	require.Len(t, batch, 2)
+	assert.Equal(t, []string{"chat-1:1", "chat-2:1"}, []string{batch[0].MessageDeduplicationID, batch[1].MessageDeduplicationID})
+	assert.Equal(t, "chat-1:2", producer.actions[0].MessageDeduplicationID)
+}
+
+// TestBatchProducerRestoresOnlyFailedEntries keeps acknowledged FIFO actions
+// from being sent again after a partial SQS result.
+func TestBatchProducerRestoresOnlyFailedEntries(t *testing.T) {
+	t.Parallel()
+
+	controller := gomock.NewController(t)
+	sender := NewMockBatchMessageSender(controller)
+	producer := NewBatchProducer("fifo-url", sender, time.Hour)
+	require.NoError(t, producer.Enqueue(context.Background(), Action{MessageGroupID: "chat-1", MessageDeduplicationID: "chat-1:1"}))
+	require.NoError(t, producer.Enqueue(context.Background(), Action{MessageGroupID: "chat-2", MessageDeduplicationID: "chat-2:1"}))
+	sender.EXPECT().SendMessageBatch(gomock.Any(), gomock.Any()).Return(&partialBatchError{failedIDs: map[string]struct{}{"0": {}}})
+
+	err := producer.flush(context.Background())
+	require.EqualError(t, err, "send SQS message batch: 1 entries failed")
+	require.Len(t, producer.actions, 1)
+	assert.Equal(t, "chat-1:1", producer.actions[0].MessageDeduplicationID)
 }
 
 // TestBuildSendMessageBatchRequestPreservesFIFOFields keeps deduplication metadata on every SQS entry.
