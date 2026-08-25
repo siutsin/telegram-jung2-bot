@@ -46,20 +46,21 @@ tests.
 [Prometheus](https://prometheus.io/) `/metrics` includes Go and process
 collectors plus:
 
-| Metric                                                   | Meaning                           |
-|----------------------------------------------------------|-----------------------------------|
-| `telegram_jung2_bot_dependency_request_duration_seconds` | Outbound call duration            |
-| `telegram_jung2_bot_dependency_requests_total`           | DynamoDB, SQS, and Telegram calls |
-| `telegram_jung2_bot_http_request_duration_seconds`       | HTTP duration                     |
-| `telegram_jung2_bot_http_requests_in_flight`             | In-flight HTTP requests           |
-| `telegram_jung2_bot_http_requests_total`                 | HTTP requests                     |
-| `telegram_jung2_bot_off_work_reports_enqueued_total`     | Scheduled report enqueue results  |
-| `telegram_jung2_bot_ready`                               | Readiness                         |
-| `telegram_jung2_bot_scale_up_total`                      | DynamoDB scale-up results         |
-| `telegram_jung2_bot_webhook_commands_enqueued_total`     | Commands queued                   |
-| `telegram_jung2_bot_webhook_updates_total`               | Webhook outcomes                  |
-| `telegram_jung2_bot_worker_action_duration_seconds`      | Queue action duration             |
-| `telegram_jung2_bot_worker_actions_total`                | Queue actions                     |
+| Metric                                                   | Meaning                                 |
+|----------------------------------------------------------|-----------------------------------------|
+| `telegram_jung2_bot_dependency_request_duration_seconds` | Outbound call duration                  |
+| `telegram_jung2_bot_dependency_requests_total`           | DynamoDB, SQS, and Telegram calls       |
+| `telegram_jung2_bot_http_request_duration_seconds`       | HTTP duration                           |
+| `telegram_jung2_bot_http_requests_in_flight`             | In-flight HTTP requests                 |
+| `telegram_jung2_bot_http_requests_total`                 | HTTP requests                           |
+| `telegram_jung2_bot_off_work_reports_enqueued_total`     | Scheduled report enqueue results        |
+| `telegram_jung2_bot_ready`                               | Readiness                               |
+| `telegram_jung2_bot_scale_up_total`                      | DynamoDB scale-up results               |
+| `telegram_jung2_bot_webhook_commands_enqueued_total`     | Commands queued                         |
+| `telegram_jung2_bot_webhook_updates_total`               | Webhook outcomes                        |
+| `telegram_jung2_bot_worker_action_duration_seconds`      | Queue action duration, pickup to finish |
+| `telegram_jung2_bot_worker_actions_total`                | Queue actions                           |
+| `telegram_jung2_bot_worker_queue_wait_duration_seconds`  | Queue lag, enqueue to pickup            |
 
 HTTP metrics use fixed method, status, and route labels.
 
