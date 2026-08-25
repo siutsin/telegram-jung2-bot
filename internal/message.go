@@ -2,6 +2,8 @@ package bot
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -18,6 +20,7 @@ var storageLocation = time.FixedZone("UTC+8", storageOffsetSeconds)
 type StoredMessage struct {
 	ChatID      int64
 	DateCreated time.Time
+	MessageID   int64
 	ChatTitle   string
 	UserID      int64
 	Username    string
@@ -30,9 +33,14 @@ type StoredMessage struct {
 // For example, a Telegram chat ID 42 becomes StoredMessage{ChatID: 42} with
 // DateCreated stored in UTC+8 format.
 func StoredMessageFromTelegram(input TelegramMessage, now time.Time) StoredMessage {
+	dateCreated := now
+	if input.Date > 0 {
+		dateCreated = time.Unix(input.Date, 0)
+	}
 	message := StoredMessage{
 		ChatID:      input.Chat.ID,
-		DateCreated: now.In(storageLocation),
+		DateCreated: dateCreated.In(storageLocation),
+		MessageID:   input.MessageID,
 		ChatTitle:   input.Chat.Title,
 		TTL:         TTL(now, DefaultTTL),
 	}
@@ -47,6 +55,17 @@ func StoredMessageFromTelegram(input TelegramMessage, now time.Time) StoredMessa
 	return message
 }
 
+// FormatMessageDateCreated formats an idempotent message sort key.
+// For example, 2026-05-02T20:00:00+08:00 and message ID 42 become
+// "2026-05-02T20:00:00+08:00#42".
+func FormatMessageDateCreated(timestamp time.Time, messageID int64) string {
+	if messageID == 0 {
+		return FormatDateCreated(timestamp)
+	}
+
+	return FormatDateCreated(timestamp) + "#" + strconv.FormatInt(messageID, 10)
+}
+
 // FormatDateCreated formats the DynamoDB sort key in the contract UTC+8 format.
 // For example, midnight UTC becomes "2006-01-02T08:00:00+08:00".
 func FormatDateCreated(timestamp time.Time) string {
@@ -57,7 +76,8 @@ func FormatDateCreated(timestamp time.Time) string {
 // For example, "2006-01-02T08:00:00+08:00" becomes the same instant as a
 // time.Time.
 func ParseDateCreated(raw string) (time.Time, error) {
-	parsed, err := time.Parse(time.RFC3339, raw)
+	dateCreated, _, _ := strings.Cut(raw, "#")
+	parsed, err := time.Parse(time.RFC3339, dateCreated)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("parse dateCreated: %w", err)
 	}
