@@ -48,51 +48,113 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	awsConfig, err := loadAWSConfig(ctx, loadedConfig.AWSRegion)
+	app, err := newApp(ctx, loadedConfig)
 	if err != nil {
 		return err
+	}
+
+	return app.run(ctx)
+}
+
+// app keeps runtime dependencies together so a test can replace one at a time.
+type app struct {
+	config     bot.Config
+	readiness  *atomic.Bool
+	metrics    *bot.Metrics
+	queue      queueTransporter
+	messages   messageKeeper
+	chats      chatMaintainer
+	messenger  telegramMessenger
+	scaleUpper scaleUpper
+}
+
+type queueTransporter interface {
+	SendMessage(ctx context.Context, request queue.SendMessageRequest) error
+	ReceiveMessage(ctx context.Context, request queue.ReceiveMessageRequest) (queue.ReceiveMessageResponse, error)
+	Delete(ctx context.Context, request queue.DeleteMessageRequest) error
+}
+
+type messageKeeper interface {
+	Save(ctx context.Context, tableName string, row bot.StoredMessage) error
+	QueryByChat(ctx context.Context, tableName string, chatID int64, since time.Time) ([]bot.StoredMessage, error)
+}
+
+type chatMaintainer interface {
+	DueChatIDs(ctx context.Context, tableName string, timestamp time.Time) ([]int64, error)
+	Get(ctx context.Context, tableName string, chatID int64) (bot.ChatSetting, bool, error)
+	Save(ctx context.Context, tableName string, settings bot.ChatSetting) error
+	SaveStatistics(ctx context.Context, tableName string, chatID int64, userCount int, messageCount int, now time.Time) error
+	Update(ctx context.Context, update bot.UpdateExpression) error
+}
+
+type telegramMessenger interface {
+	IsAdmin(ctx context.Context, chatID int64, userID int64) (bool, error)
+	SendMessage(ctx context.Context, chatID int64, text string) error
+	SendMessageWithOptions(ctx context.Context, chatID int64, text string, options bot.SendMessageOptions) error
+}
+
+type scaleUpper interface {
+	ScaleUp(ctx context.Context) error
+}
+
+// newApp builds production dependencies once at the process boundary.
+func newApp(ctx context.Context, loadedConfig bot.Config) (app, error) {
+	awsConfig, err := loadAWSConfig(ctx, loadedConfig.AWSRegion)
+	if err != nil {
+		return app{}, err
 	}
 
 	readiness := &atomic.Bool{}
 	metrics := bot.NewMetrics(readiness)
 	dynamoClient := newDynamoClient(awsConfig, loadedConfig.AWSEndpointURL)
 	queueClient := queue.NewClient(newSQSClient(awsConfig, loadedConfig.AWSEndpointURL), metrics)
-	telegramClient := newTelegramClient(loadedConfig, metrics)
-	messageClient := dynamodb.NewMessageClient(dynamoClient, metrics)
-	chatClient := dynamodb.NewChatClient(dynamoClient, metrics)
-	scaleUpper := dynamodb.NewScaleUpper(dynamoClient, loadedConfig.MessageTable, loadedConfig.ScaleUpReadCapacity, metrics)
+
+	return app{
+		config:     loadedConfig,
+		readiness:  readiness,
+		metrics:    metrics,
+		queue:      queueClient,
+		messages:   dynamodb.NewMessageClient(dynamoClient, metrics),
+		chats:      dynamodb.NewChatClient(dynamoClient, metrics),
+		messenger:  newTelegramClient(loadedConfig, metrics),
+		scaleUpper: dynamodb.NewScaleUpper(dynamoClient, loadedConfig.MessageTable, loadedConfig.ScaleUpReadCapacity, metrics),
+	}, nil
+}
+
+// run starts the assembled application after tests have swapped dependencies.
+func (app app) run(ctx context.Context) error {
 	actions := bot.NewService(
-		chatClient,
-		loadedConfig.ChatIDTable,
-		messageClient,
-		loadedConfig.MessageTable,
-		telegramClient,
+		app.chats,
+		app.config.ChatIDTable,
+		app.messages,
+		app.config.MessageTable,
+		app.messenger,
 		time.Now,
-		loadedConfig.EventQueueURL,
-		queueClient,
-		metrics,
+		app.config.EventQueueURL,
+		app.queue,
+		app.metrics,
 	)
-	queueWorker, err := newQueueWorker(loadedConfig.EventQueueURL, queueClient, actions, metrics)
+	queueWorker, err := newQueueWorker(app, actions)
 	if err != nil {
 		return err
 	}
-	httpServer, err := newHTTPServer(loadedConfig, readiness, chatClient, messageClient, queueClient, telegramClient, scaleUpper, metrics)
+	httpServer, err := newHTTPServer(app)
 	if err != nil {
 		return err
 	}
-	metricsServer := newMetricsServer(loadedConfig, metrics)
-	application := bot.NewApp(
-		bot.NewHTTPServer("HTTP", loadedConfig.ServerAddress, httpServer),
-		bot.NewHTTPServer("metrics", loadedConfig.MetricsServerAddress, metricsServer),
+	metricsServer := newMetricsServer(app)
+	runtime := bot.NewApp(
+		bot.NewHTTPServer("HTTP", app.config.ServerAddress, httpServer),
+		bot.NewHTTPServer("metrics", app.config.MetricsServerAddress, metricsServer),
 		queueWorker,
 		bot.AppOptions{
-			Readiness:       readiness,
-			ReadinessDrain:  loadedConfig.ReadinessDrain,
-			ShutdownTimeout: loadedConfig.ShutdownTimeout,
+			Readiness:       app.readiness,
+			ReadinessDrain:  app.config.ReadinessDrain,
+			ShutdownTimeout: app.config.ShutdownTimeout,
 		},
 	)
 
-	return application.Run(ctx)
+	return runtime.Run(ctx)
 }
 
 // loadAWSConfig loads the AWS SDK config for the requested region.
@@ -139,65 +201,51 @@ func newTelegramClient(loadedConfig bot.Config, metrics *bot.Metrics) bot.Client
 	)
 }
 
-// newHTTPServer builds the production HTTP server.
-func newHTTPServer(
-	loadedConfig bot.Config,
-	readiness *atomic.Bool,
-	chats dynamodb.ChatClient,
-	messages dynamodb.MessageClient,
-	sender interface {
-		SendMessage(ctx context.Context, request queue.SendMessageRequest) error
-	},
-	messenger bot.Client,
-	scaleUpper dynamodb.ScaleUpper,
-	metrics *bot.Metrics,
-) (*http.Server, error) {
+// newHTTPServer keeps HTTP wiring in the app so tests can swap one dependency.
+func newHTTPServer(app app) (*http.Server, error) {
 	dependencies := httpserver.Dependencies{
-		ChatTable:            loadedConfig.ChatIDTable,
-		MessageTable:         loadedConfig.MessageTable,
-		Chats:                chats,
-		Messages:             messages,
-		Enqueuer:             queue.NewProducer(loadedConfig.EventQueueURL, sender),
-		Messenger:            messenger,
-		ScaleUpper:           scaleUpper,
+		ChatTable:            app.config.ChatIDTable,
+		MessageTable:         app.config.MessageTable,
+		Chats:                app.chats,
+		Messages:             app.messages,
+		Enqueuer:             queue.NewProducer(app.config.EventQueueURL, app.queue),
+		Messenger:            app.messenger,
+		ScaleUpper:           app.scaleUpper,
 		Now:                  time.Now,
-		WebhookSecretToken:   loadedConfig.WebhookSecretToken,
-		SchedulerSecretToken: loadedConfig.SchedulerSecretToken,
-		Readiness:            readiness,
-		Metrics:              metrics,
+		WebhookSecretToken:   app.config.WebhookSecretToken,
+		SchedulerSecretToken: app.config.SchedulerSecretToken,
+		Readiness:            app.readiness,
+		Metrics:              app.metrics,
 	}
 
 	return httpserver.NewServer(
-		loadedConfig.ServerAddress,
-		loadedConfig.HTTPTimeout,
-		loadedConfig.Stage,
+		app.config.ServerAddress,
+		app.config.HTTPTimeout,
+		app.config.Stage,
 		dependencies,
 	)
 }
 
 // newMetricsServer builds the dedicated Prometheus metrics server.
-func newMetricsServer(loadedConfig bot.Config, metrics *bot.Metrics) *http.Server {
+func newMetricsServer(app app) *http.Server {
 	return &http.Server{
-		Addr:              loadedConfig.MetricsServerAddress,
-		Handler:           metrics.Handler(),
-		ReadHeaderTimeout: loadedConfig.HTTPTimeout,
-		ReadTimeout:       loadedConfig.HTTPTimeout,
-		WriteTimeout:      loadedConfig.HTTPTimeout,
-		IdleTimeout:       loadedConfig.HTTPTimeout,
+		Addr:              app.config.MetricsServerAddress,
+		Handler:           app.metrics.Handler(),
+		ReadHeaderTimeout: app.config.HTTPTimeout,
+		ReadTimeout:       app.config.HTTPTimeout,
+		WriteTimeout:      app.config.HTTPTimeout,
+		IdleTimeout:       app.config.HTTPTimeout,
 	}
 }
 
 // newQueueWorker builds the production queue worker.
-func newQueueWorker(queueURL string, queueClient interface {
-	ReceiveMessage(ctx context.Context, request queue.ReceiveMessageRequest) (queue.ReceiveMessageResponse, error)
-	Delete(ctx context.Context, request queue.DeleteMessageRequest) error
-}, actions bot.Service, metrics *bot.Metrics) (interface {
+func newQueueWorker(app app, actions bot.Service) (interface {
 	Run(ctx context.Context) error
 }, error) {
 	return bot.NewPollingWorker(
-		queueURL,
-		queueClient,
-		queueClient,
+		app.config.EventQueueURL,
+		app.queue,
+		app.queue,
 		bot.Handlers{
 			JungHelp:       actions.JungHelp,
 			TopTen:         actions.TopTen,
@@ -208,7 +256,7 @@ func newQueueWorker(queueURL string, queueClient interface {
 			DisableAllJung: actions.DisableAllJung,
 			SetOffWorkTime: actions.SetOffWorkTime,
 			OnOffFromWork:  actions.OnOffFromWork,
-		}, metrics,
+		}, app.metrics,
 	)
 }
 
