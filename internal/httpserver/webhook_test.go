@@ -225,6 +225,23 @@ func TestHandleWebhookCarriesTelegramMessageIdentity(t *testing.T) {
 	assert.Equal(t, "123:789", mocks.messageActions[0].MessageDeduplicationID)
 }
 
+// TestHandleWebhookSaveActionFitsSQSAttributeLimit preserves the SQS hard
+// cap of ten message attributes per message. The queue producer adds one
+// more attribute ("enqueuedAt") before sending, so a fully populated
+// message-save action must carry nine or fewer of its own.
+func TestHandleWebhookSaveActionFitsSQSAttributeLimit(t *testing.T) {
+	t.Parallel()
+
+	const sqsMaxMessageAttributes = 10
+	mocks, dependencies := newMockDependencies(t)
+	mocks.expectSaveWebhookState()
+	got := handleWebhook(context.Background(), []byte(`{"update_id":789,"message":{"message_id":456,"date":1777723200,"chat":{"id":123,"title":"Group","type":"group"},"from":{"id":456,"username":"username","first_name":"first","last_name":"last"},"text":"hello"}}`), dependencies)
+
+	assert.Equal(t, 200, got.statusCode)
+	require.Len(t, mocks.messageActions, 1)
+	assert.LessOrEqual(t, len(mocks.messageActions[0].Attributes), sqsMaxMessageAttributes-1)
+}
+
 func TestEnqueueWebhookCommandIgnoresUnsupportedCommand(t *testing.T) {
 	t.Parallel()
 
