@@ -1,5 +1,7 @@
 package bot
 
+//go:generate sh -c "GOFLAGS=-mod=mod go run go.uber.org/mock/mockgen -destination=worker_mock_test.go -package=bot -mock_names queueReceiver=MockQueueReceiver . queueReceiver"
+
 import (
 	"context"
 	"errors"
@@ -196,7 +198,8 @@ func workerActionName(action string) string {
 	switch action {
 	case queue.ActionJungHelp, queue.ActionTopTen, queue.ActionTopDiver,
 		queue.ActionAllJung, queue.ActionOffFromWork, queue.ActionEnableAllJung,
-		queue.ActionDisableAllJung, queue.ActionSetOffWorkTime, queue.ActionOnOffFromWork:
+		queue.ActionDisableAllJung, queue.ActionSetOffWorkTime, queue.ActionOnOffFromWork,
+		queue.ActionSaveMessage:
 		return action
 	default:
 		return "unknown"

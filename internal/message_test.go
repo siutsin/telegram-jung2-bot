@@ -97,6 +97,18 @@ func TestDateCreatedContract(t *testing.T) {
 	}
 }
 
+// TestMessageDateCreatedKeyKeepsTelegramRetriesOnOneDynamoDBRow.
+func TestMessageDateCreatedKeyKeepsTelegramRetriesOnOneDynamoDBRow(t *testing.T) {
+	t.Parallel()
+
+	date := mustParseMessageTime(t)
+	assert.Equal(t, "2019-04-01T10:38:24+08:00#42", FormatMessageDateCreated(date, 42))
+	assert.Equal(t, "2019-04-01T10:38:24+08:00", FormatMessageDateCreated(date, 0))
+	parsed, err := ParseDateCreated("2019-04-01T10:38:24+08:00#42")
+	require.NoError(t, err)
+	assert.Equal(t, "2019-04-01T10:38:24+08:00", FormatDateCreated(parsed))
+}
+
 func TestTTLUsesContractSevenDayRetention(t *testing.T) {
 	now := mustParseMessageTime(t)
 

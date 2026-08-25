@@ -30,6 +30,7 @@ func TestLoadBuildsConfig(t *testing.T) {
 				assert.Equal(t, 10*time.Second, config.ShutdownTimeout)
 				assert.Equal(t, 5*time.Second, config.ReadinessDrain)
 				assert.Equal(t, 0, config.ScaleUpReadCapacity)
+				assert.Equal(t, 15*time.Second, config.MessageSaveFlush)
 			},
 		},
 		{
@@ -47,6 +48,7 @@ func TestLoadBuildsConfig(t *testing.T) {
 				env["HTTP_TIMEOUT_SECONDS"] = "3"
 				env["SHUTDOWN_TIMEOUT_SECONDS"] = "4"
 				env["READINESS_DRAIN_SECONDS"] = "2"
+				env["MESSAGE_SAVE_QUEUE_FLUSH_SECONDS"] = "9"
 			},
 			check: func(t *testing.T, config Config) {
 				assert.Equal(t, "ap-east-1", config.AWSRegion)
@@ -59,6 +61,7 @@ func TestLoadBuildsConfig(t *testing.T) {
 				assert.Equal(t, 3*time.Second, config.HTTPTimeout)
 				assert.Equal(t, 4*time.Second, config.ShutdownTimeout)
 				assert.Equal(t, 2*time.Second, config.ReadinessDrain)
+				assert.Equal(t, 9*time.Second, config.MessageSaveFlush)
 			},
 		},
 		{
@@ -113,6 +116,7 @@ func TestLoadRejectsMissingRequiredValues(t *testing.T) {
 		"MESSAGE_TABLE",
 		"CHATID_TABLE",
 		"EVENT_QUEUE_URL",
+		"MESSAGE_SAVE_QUEUE_URL",
 	}
 
 	for _, key := range tests {
@@ -153,6 +157,7 @@ func TestLoadRejectsInvalidQueueURL(t *testing.T) {
 		value string
 	}{
 		{key: "EVENT_QUEUE_URL", value: "not-a-url"},
+		{key: "MESSAGE_SAVE_QUEUE_URL", value: "not-a-url"},
 		{key: "AWS_ENDPOINT_URL", value: "localhost:4566"},
 		{key: "TELEGRAM_API_BASE_URL", value: "localhost:8081"},
 	}
@@ -248,6 +253,7 @@ func TestLoadRejectsInvalidTimeouts(t *testing.T) {
 		{key: "READINESS_DRAIN_SECONDS", value: "0"},
 		{key: "READINESS_DRAIN_SECONDS", value: "-1"},
 		{key: "READINESS_DRAIN_SECONDS", value: "many"},
+		{key: "MESSAGE_SAVE_QUEUE_FLUSH_SECONDS", value: "0"},
 	}
 
 	for _, test := range tests {
@@ -268,6 +274,7 @@ func TestLoadEnvironIgnoresMalformedEntries(t *testing.T) {
 		"MESSAGE_TABLE=messages-dev",
 		"CHATID_TABLE=chat-id-dev",
 		"EVENT_QUEUE_URL=https://sqs.eu-west-1.amazonaws.com/123/events",
+		"MESSAGE_SAVE_QUEUE_URL=https://sqs.eu-west-1.amazonaws.com/123/message-save.fifo",
 		"NOPE",
 	})
 
@@ -277,9 +284,10 @@ func TestLoadEnvironIgnoresMalformedEntries(t *testing.T) {
 
 func validEnv() map[string]string {
 	return map[string]string{
-		"TELEGRAM_BOT_TOKEN": "token",
-		"MESSAGE_TABLE":      "messages-dev",
-		"CHATID_TABLE":       "chat-id-dev",
-		"EVENT_QUEUE_URL":    "https://sqs.eu-west-1.amazonaws.com/123/events",
+		"TELEGRAM_BOT_TOKEN":     "token",
+		"MESSAGE_TABLE":          "messages-dev",
+		"CHATID_TABLE":           "chat-id-dev",
+		"EVENT_QUEUE_URL":        "https://sqs.eu-west-1.amazonaws.com/123/events",
+		"MESSAGE_SAVE_QUEUE_URL": "https://sqs.eu-west-1.amazonaws.com/123/message-save.fifo",
 	}
 }
