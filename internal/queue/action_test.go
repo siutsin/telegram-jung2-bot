@@ -300,6 +300,7 @@ func TestContractBodiesRemainStable(t *testing.T) {
 	}
 }
 
+// TestBuildSendMessageRequest keeps optional empty Telegram fields out of SQS requests.
 func TestBuildSendMessageRequest(t *testing.T) {
 	action := Action{
 		Body: BodySetOffWorkTime,
@@ -308,6 +309,7 @@ func TestBuildSendMessageRequest(t *testing.T) {
 			"chatId":    "-123",
 			"userId":    "456",
 			"chatTitle": "Group",
+			"lastName":  "",
 		},
 	}
 
@@ -319,6 +321,7 @@ func TestBuildSendMessageRequest(t *testing.T) {
 	assert.Equal(t, SendMessageAttribute{DataType: "Number", StringValue: "-123"}, request.MessageAttributes["chatId"])
 	assert.Equal(t, SendMessageAttribute{DataType: "Number", StringValue: "456"}, request.MessageAttributes["userId"])
 	assert.Equal(t, SendMessageAttribute{DataType: "String", StringValue: "Group"}, request.MessageAttributes["chatTitle"])
+	assert.NotContains(t, request.MessageAttributes, "lastName")
 }
 
 type fakeSender struct {
