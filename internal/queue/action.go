@@ -1,11 +1,14 @@
 // Package queue contains SQS action models and decoding helpers.
 package queue
 
+//go:generate sh -c "GOFLAGS=-mod=mod go run go.uber.org/mock/mockgen -source=action.go -destination=action_mock_test.go -package=queue -mock_names batchMessageSender=MockBatchMessageSender"
+
 import (
 	"context"
 	"encoding/json"
 	"fmt"
 	"maps"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -21,6 +24,7 @@ const (
 	ActionSetOffWorkTime = "setOffFromWorkTimeUTC"
 	ActionOffFromWork    = "offFromWork"
 	ActionOnOffFromWork  = "onOffFromWork"
+	ActionSaveMessage    = "saveMessage"
 )
 
 // Contract SQS message bodies.
@@ -34,6 +38,7 @@ const (
 	BodySetOffWorkTime = "sendSetOffFromWorkTimeUTC"
 	BodyOffFromWork    = "sendOffFromWorkMessage"
 	BodyOnOffFromWork  = "sendOnOffFromWork"
+	BodySaveMessage    = "saveMessage"
 )
 
 // EnqueuedAtAttribute names the message attribute that carries the enqueue
@@ -42,16 +47,35 @@ const EnqueuedAtAttribute = "enqueuedAt"
 
 // Action is the service's typed representation of a queued action.
 type Action struct {
-	Name       string
-	Body       string
-	Attributes map[string]string
+	Name                   string
+	Body                   string
+	Attributes             map[string]string
+	MessageGroupID         string
+	MessageDeduplicationID string
 }
 
 // SendMessageRequest is the SDK-free contract SQS sendMessage request shape.
 type SendMessageRequest struct {
-	QueueURL          string
-	MessageBody       string
-	MessageAttributes map[string]SendMessageAttribute
+	QueueURL               string
+	MessageBody            string
+	MessageAttributes      map[string]SendMessageAttribute
+	MessageGroupID         string
+	MessageDeduplicationID string
+}
+
+// SendMessageBatchRequest is the SDK-free contract SQS batch send shape.
+type SendMessageBatchRequest struct {
+	QueueURL string
+	Entries  []SendMessageBatchEntry
+}
+
+// SendMessageBatchEntry is one SQS batch-send entry.
+type SendMessageBatchEntry struct {
+	ID                     string
+	MessageBody            string
+	MessageAttributes      map[string]SendMessageAttribute
+	MessageGroupID         string
+	MessageDeduplicationID string
 }
 
 // SendMessageAttribute is the SDK-free SQS message attribute value shape.
@@ -64,6 +88,12 @@ type SendMessageAttribute struct {
 type DeleteMessageRequest struct {
 	QueueURL      string
 	ReceiptHandle string
+}
+
+// DeleteMessageBatchRequest is the SDK-free contract SQS batch-delete shape.
+type DeleteMessageBatchRequest struct {
+	QueueURL       string
+	ReceiptHandles []string
 }
 
 // ReceiveMessageRequest is the SDK-free SQS receiveMessage request shape.
@@ -79,6 +109,10 @@ type ReceiveMessageResponse struct {
 
 type messageSender interface {
 	SendMessage(ctx context.Context, request SendMessageRequest) error
+}
+
+type batchMessageSender interface {
+	SendMessageBatch(ctx context.Context, request SendMessageBatchRequest) error
 }
 
 type messageReceiver interface {
@@ -250,10 +284,30 @@ func buildSendMessageRequest(queueURL string, action Action) SendMessageRequest 
 	}
 
 	return SendMessageRequest{
-		QueueURL:          queueURL,
-		MessageBody:       action.Body,
-		MessageAttributes: attributes,
+		QueueURL:               queueURL,
+		MessageBody:            action.Body,
+		MessageAttributes:      attributes,
+		MessageGroupID:         action.MessageGroupID,
+		MessageDeduplicationID: action.MessageDeduplicationID,
 	}
+}
+
+// buildSendMessageBatchRequest converts up to ten actions into one SQS batch
+// request. For example, actions for two chats keep their own group IDs.
+func buildSendMessageBatchRequest(queueURL string, actions []Action) SendMessageBatchRequest {
+	entries := make([]SendMessageBatchEntry, 0, len(actions))
+	for index, action := range actions {
+		request := buildSendMessageRequest(queueURL, action)
+		entries = append(entries, SendMessageBatchEntry{
+			ID:                     strconv.Itoa(index),
+			MessageBody:            request.MessageBody,
+			MessageAttributes:      request.MessageAttributes,
+			MessageGroupID:         request.MessageGroupID,
+			MessageDeduplicationID: request.MessageDeduplicationID,
+		})
+	}
+
+	return SendMessageBatchRequest{QueueURL: queueURL, Entries: entries}
 }
 
 // maxNumberOfMessages returns the receive batch size.
