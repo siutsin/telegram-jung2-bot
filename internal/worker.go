@@ -91,12 +91,45 @@ func (worker pollingWorker) Run(ctx context.Context) error {
 // processMessage records the result of one worker action before returning it.
 func (worker pollingWorker) processMessage(ctx context.Context, raw queue.RawMessage) error {
 	started := time.Now()
+	worker.recordQueueWait(raw, started)
 	action, outcome, err := processMessageResult(ctx, worker.queueURL, raw, worker.handlers, worker.deleter)
 	if worker.metrics != nil {
 		worker.metrics.RecordWorkerAction(action, outcome, time.Since(started))
 	}
 
 	return err
+}
+
+// recordQueueWait records the lag between one message being enqueued and
+// picked up here, when the enqueue time is present and well-formed.
+func (worker pollingWorker) recordQueueWait(raw queue.RawMessage, pickedUp time.Time) {
+	if worker.metrics == nil {
+		return
+	}
+
+	action := queue.DecodeMessage(raw)
+	enqueuedAt, ok := parseEnqueuedAt(action.Attributes)
+	if !ok {
+		return
+	}
+	worker.metrics.RecordQueueWait(workerActionName(action.Name), pickedUp.Sub(enqueuedAt))
+}
+
+// parseEnqueuedAt reads the enqueue timestamp off action attributes.
+// For example, Attributes["enqueuedAt"] = "2025-01-06T18:30:00Z" becomes that
+// timestamp, while a missing or malformed value reports false.
+func parseEnqueuedAt(attributes map[string]string) (time.Time, bool) {
+	raw, ok := attributes[queue.EnqueuedAtAttribute]
+	if !ok || raw == "" {
+		return time.Time{}, false
+	}
+
+	enqueuedAt, err := time.Parse(time.RFC3339Nano, raw)
+	if err != nil {
+		return time.Time{}, false
+	}
+
+	return enqueuedAt, true
 }
 
 // dispatch routes an action to its handler.

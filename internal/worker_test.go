@@ -188,6 +188,105 @@ func TestPollingWorkerStopsOnCancelledContext(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// TestPollingWorkerRecordsQueueWaitWhenEnqueuedAtPresent proves a message
+// carrying a valid enqueuedAt attribute records queue wait.
+func TestPollingWorkerRecordsQueueWaitWhenEnqueuedAtPresent(t *testing.T) {
+	t.Parallel()
+
+	metrics := NewMetrics(nil)
+	raw := mustRawMessage(t, `{
+		"receiptHandle": "receipt",
+		"messageAttributes": {
+			"action": {"StringValue": "topten"},
+			"chatId": {"StringValue": "123"},
+			"enqueuedAt": {"StringValue": "2020-01-01T00:00:00Z"}
+		}
+	}`)
+
+	err := (pollingWorker{
+		queueURL: "queue-url",
+		handlers: testHandlers(nil, nil),
+		deleter:  &fakeDeleter{},
+		metrics:  metrics,
+	}).processMessage(context.Background(), raw)
+
+	require.NoError(t, err)
+	body := scrapeMetrics(t, metrics)
+	assert.Contains(t, body, `telegram_jung2_bot_worker_queue_wait_duration_seconds_count{action="topten"} 1`)
+}
+
+// TestPollingWorkerSkipsQueueWaitWithoutEnqueuedAt proves a message missing
+// the enqueuedAt attribute records no queue wait sample.
+func TestPollingWorkerSkipsQueueWaitWithoutEnqueuedAt(t *testing.T) {
+	t.Parallel()
+
+	metrics := NewMetrics(nil)
+	raw := mustRawMessage(t, `{
+		"receiptHandle": "receipt",
+		"messageAttributes": {
+			"action": {"StringValue": "topten"},
+			"chatId": {"StringValue": "123"}
+		}
+	}`)
+
+	err := (pollingWorker{
+		queueURL: "queue-url",
+		handlers: testHandlers(nil, nil),
+		deleter:  &fakeDeleter{},
+		metrics:  metrics,
+	}).processMessage(context.Background(), raw)
+
+	require.NoError(t, err)
+	assert.NotContains(t, scrapeMetrics(t, metrics), "telegram_jung2_bot_worker_queue_wait_duration_seconds")
+}
+
+// TestPollingWorkerSkipsQueueWaitWithoutMetrics proves a worker with no
+// metrics collector processes messages without panicking.
+func TestPollingWorkerSkipsQueueWaitWithoutMetrics(t *testing.T) {
+	t.Parallel()
+
+	raw := mustRawMessage(t, `{
+		"receiptHandle": "receipt",
+		"messageAttributes": {
+			"action": {"StringValue": "topten"},
+			"chatId": {"StringValue": "123"},
+			"enqueuedAt": {"StringValue": "2020-01-01T00:00:00Z"}
+		}
+	}`)
+
+	err := (pollingWorker{
+		queueURL: "queue-url",
+		handlers: testHandlers(nil, nil),
+		deleter:  &fakeDeleter{},
+	}).processMessage(context.Background(), raw)
+
+	require.NoError(t, err)
+}
+
+// TestParseEnqueuedAt proves parseEnqueuedAt accepts a valid RFC3339Nano
+// timestamp and rejects missing, empty, or malformed values.
+func TestParseEnqueuedAt(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		attributes map[string]string
+		wantOK     bool
+	}{
+		{name: "missing", attributes: map[string]string{}, wantOK: false},
+		{name: "empty", attributes: map[string]string{"enqueuedAt": ""}, wantOK: false},
+		{name: "malformed", attributes: map[string]string{"enqueuedAt": "not-a-time"}, wantOK: false},
+		{name: "valid", attributes: map[string]string{"enqueuedAt": "2020-01-01T00:00:00Z"}, wantOK: true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, ok := parseEnqueuedAt(test.attributes)
+			assert.Equal(t, test.wantOK, ok)
+		})
+	}
+}
+
 func TestDispatchPassesSetOffInput(t *testing.T) {
 	t.Parallel()
 

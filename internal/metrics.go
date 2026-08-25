@@ -25,6 +25,7 @@ type Metrics struct {
 	webhookCommands         *prometheus.CounterVec
 	workerActions           *prometheus.CounterVec
 	workerActionTiming      *prometheus.HistogramVec
+	queueWaitTiming         *prometheus.HistogramVec
 	dependencyRequests      *prometheus.CounterVec
 	dependencyRequestTiming *prometheus.HistogramVec
 	offWorkReportsEnqueued  *prometheus.CounterVec
@@ -95,7 +96,13 @@ func (metrics *Metrics) registerWorker(factory promauto.Factory) {
 	metrics.workerActionTiming = factory.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: metricsNamespace,
 		Name:      "worker_action_duration_seconds",
-		Help:      "Queue action processing duration in seconds.",
+		Help:      "Queue action processing duration in seconds, from pickup to finish.",
+	}, []string{"action"})
+	metrics.queueWaitTiming = factory.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: metricsNamespace,
+		Name:      "worker_queue_wait_duration_seconds",
+		Help:      "Time in seconds between a queue action being enqueued and picked up by the worker.",
+		Buckets:   []float64{0.1, 0.5, 1, 2, 5, 10, 30, 60, 120, 300, 600},
 	}, []string{"action"})
 }
 
@@ -181,6 +188,12 @@ func (metrics *Metrics) RecordWebhookCommand(action string) {
 func (metrics *Metrics) RecordWorkerAction(action string, outcome string, duration time.Duration) {
 	metrics.workerActions.WithLabelValues(action, outcome).Inc()
 	metrics.workerActionTiming.WithLabelValues(action).Observe(duration.Seconds())
+}
+
+// RecordQueueWait records how long one queue action waited between enqueue
+// and pickup.
+func (metrics *Metrics) RecordQueueWait(action string, duration time.Duration) {
+	metrics.queueWaitTiming.WithLabelValues(action).Observe(duration.Seconds())
 }
 
 // ObserveDependency records one outbound call to a fixed dependency operation.

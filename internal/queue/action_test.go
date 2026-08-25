@@ -7,21 +7,61 @@ import (
 	"slices"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+// TestProducerEnqueueSendsContractRequest proves Enqueue builds the contract
+// SQS request and stamps a fresh enqueuedAt attribute.
 func TestProducerEnqueueSendsContractRequest(t *testing.T) {
 	t.Parallel()
 
 	queueSender := &fakeSender{}
 	action := Action{Body: BodyTopTen, Attributes: map[string]string{"action": ActionTopTen}}
+	before := time.Now().UTC()
 
 	err := (NewProducer("queue-url", queueSender)).Enqueue(context.Background(), action)
+	after := time.Now().UTC()
 
 	require.NoError(t, err)
-	assert.Equal(t, []SendMessageRequest{buildSendMessageRequest("queue-url", action)}, queueSender.requests)
+	require.Len(t, queueSender.requests, 1)
+	request := queueSender.requests[0]
+	assert.Equal(t, "queue-url", request.QueueURL)
+	assert.Equal(t, BodyTopTen, request.MessageBody)
+	assert.Equal(t, SendMessageAttribute{DataType: "String", StringValue: ActionTopTen}, request.MessageAttributes["action"])
+
+	enqueuedAt, err := time.Parse(time.RFC3339Nano, request.MessageAttributes[EnqueuedAtAttribute].StringValue)
+	require.NoError(t, err)
+	assert.False(t, enqueuedAt.Before(before))
+	assert.False(t, enqueuedAt.After(after))
+}
+
+// TestWithEnqueuedAtPreservesExistingAttributesAndAddsTimestamp proves
+// existing attributes survive alongside a fresh enqueuedAt timestamp.
+func TestWithEnqueuedAtPreservesExistingAttributesAndAddsTimestamp(t *testing.T) {
+	t.Parallel()
+
+	before := time.Now().UTC()
+	action := withEnqueuedAt(Action{Attributes: map[string]string{"action": ActionTopTen}})
+	after := time.Now().UTC()
+
+	assert.Equal(t, ActionTopTen, action.Attributes["action"])
+	enqueuedAt, err := time.Parse(time.RFC3339Nano, action.Attributes[EnqueuedAtAttribute])
+	require.NoError(t, err)
+	assert.False(t, enqueuedAt.Before(before))
+	assert.False(t, enqueuedAt.After(after))
+}
+
+// TestWithEnqueuedAtHandlesNilAttributes proves a nil Attributes map still
+// gets an enqueuedAt timestamp.
+func TestWithEnqueuedAtHandlesNilAttributes(t *testing.T) {
+	t.Parallel()
+
+	action := withEnqueuedAt(Action{})
+
+	assert.NotEmpty(t, action.Attributes[EnqueuedAtAttribute])
 }
 
 func TestProducerEnqueueRequiresSender(t *testing.T) {
