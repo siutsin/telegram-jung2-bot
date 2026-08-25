@@ -4,29 +4,28 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"time"
+	"strconv"
 
 	bot "github.com/siutsin/telegram-jung2-bot/internal"
-
-	"golang.org/x/sync/errgroup"
+	"github.com/siutsin/telegram-jung2-bot/internal/queue"
 )
 
 // handleWebhook processes a Telegram webhook payload.
 func handleWebhook(ctx context.Context, payload []byte, dependencies Dependencies) response {
-	telegramMessage, result, ok := parseGroupMessage(payload)
+	update, result, ok := parseGroupMessage(payload)
 	if !ok {
 		return result
 	}
-	if saveResult, saved := saveWebhookState(ctx, *telegramMessage, currentTime(dependencies), dependencies); !saved {
-		return saveResult
+	if result, saved := enqueueWebhookSave(ctx, update.UpdateID, *update.Message, dependencies); !saved {
+		return result
 	}
 
-	return enqueueWebhookCommands(ctx, *telegramMessage, dependencies)
+	return enqueueWebhookCommands(ctx, *update.Message, dependencies)
 }
 
 // parseGroupMessage parses a Telegram webhook and keeps only group messages.
 // For example, a private-chat webhook is filtered out with a 204 response.
-func parseGroupMessage(payload []byte) (*bot.TelegramMessage, response, bool) {
+func parseGroupMessage(payload []byte) (*bot.Update, response, bool) {
 	update, err := bot.ParseUpdate(payload)
 	if err != nil {
 		slog.Warn("decode Telegram update", "err", err)
@@ -42,54 +41,40 @@ func parseGroupMessage(payload []byte) (*bot.TelegramMessage, response, bool) {
 		return nil, response{statusCode: 204, message: "edited_message or non-group"}, false
 	}
 
-	return update.Message, response{}, true
+	return &update, response{}, true
 }
 
-// saveWebhookState persists the message and chat records for a webhook update.
-// For example, one Telegram message becomes one saved message row plus one saved
-// chat metadata row.
-// The writes hit different tables, so run them together and pay one round trip.
-func saveWebhookState(ctx context.Context, telegramMessage bot.TelegramMessage, now time.Time, dependencies Dependencies) (response, bool) {
-	var group errgroup.Group
-	group.Go(func() error {
-		err := saveWebhookMessage(ctx, telegramMessage, now, dependencies)
-		if err != nil {
-			slog.Error("save webhook message", "err", err)
-			return fmt.Errorf("save message: %w", err)
-		}
+// enqueueWebhookSave sends one idempotent message-save action to the FIFO queue.
+// For example, chat 42 and update 7 get the deduplication ID "42:7".
+func enqueueWebhookSave(ctx context.Context, updateID int64, telegramMessage bot.TelegramMessage, dependencies Dependencies) (response, bool) {
+	action := queue.Action{
+		Name:                   queue.ActionSaveMessage,
+		Body:                   queue.BodySaveMessage,
+		MessageGroupID:         strconv.FormatInt(telegramMessage.Chat.ID, 10),
+		MessageDeduplicationID: strconv.FormatInt(telegramMessage.Chat.ID, 10) + ":" + strconv.FormatInt(updateID, 10),
+		Attributes: map[string]string{
+			"action":    queue.ActionSaveMessage,
+			"chatId":    strconv.FormatInt(telegramMessage.Chat.ID, 10),
+			"chatTitle": telegramMessage.Chat.Title,
+			"messageId": strconv.FormatInt(telegramMessage.MessageID, 10),
+			"date":      strconv.FormatInt(telegramMessage.Date, 10),
+			"updateId":  strconv.FormatInt(updateID, 10),
+		},
+	}
+	if telegramMessage.From != nil {
+		action.Attributes["userId"] = strconv.FormatInt(telegramMessage.From.ID, 10)
+		action.Attributes["username"] = telegramMessage.From.UserName
+		action.Attributes["firstName"] = telegramMessage.From.FirstName
+		action.Attributes["lastName"] = telegramMessage.From.LastName
+	}
 
-		return nil
-	})
-	group.Go(func() error {
-		err := saveWebhookChat(ctx, telegramMessage, now, dependencies)
-		if err != nil {
-			slog.Error("save webhook chat", "err", err)
-			return fmt.Errorf("save chat: %w", err)
-		}
-
-		return nil
-	})
-
-	err := group.Wait()
+	err := dependencies.MessageEnqueuer.Enqueue(ctx, action)
 	if err != nil {
-		return response{statusCode: 500, message: "save webhook state"}, false
+		slog.Error("enqueue webhook message save", "err", err)
+		return response{statusCode: 500, message: "enqueue message save"}, false
 	}
 
 	return response{}, true
-}
-
-// saveWebhookMessage persists a Telegram message row.
-// For example, a webhook message becomes bot.StoredMessageFromTelegram(...) before save.
-func saveWebhookMessage(ctx context.Context, telegramMessage bot.TelegramMessage, now time.Time, dependencies Dependencies) error {
-	storedMessage := bot.StoredMessageFromTelegram(telegramMessage, now)
-	return dependencies.Messages.Save(ctx, dependencies.MessageTable, storedMessage)
-}
-
-// saveWebhookChat persists Telegram chat metadata.
-// For example, a webhook message becomes bot.ChatFromTelegram(...) before save.
-func saveWebhookChat(ctx context.Context, telegramMessage bot.TelegramMessage, now time.Time, dependencies Dependencies) error {
-	storedChat := bot.ChatFromTelegram(telegramMessage, now)
-	return dependencies.Chats.Save(ctx, dependencies.ChatTable, storedChat)
 }
 
 // enqueueWebhookCommands converts and enqueues supported Telegram commands.
@@ -153,15 +138,6 @@ func sendInvalidSetOffReply(ctx context.Context, telegramMessage bot.TelegramMes
 		telegramMessage.Chat.ID,
 		bot.InvalidSetOffFromWorkTimeUTCMessage(telegramMessage.Chat.Title),
 	)
-}
-
-// currentTime returns the injected time or time.Now.
-func currentTime(dependencies Dependencies) time.Time {
-	if dependencies.Now == nil {
-		return time.Now()
-	}
-
-	return dependencies.Now()
 }
 
 // userID returns the Telegram user ID or zero.

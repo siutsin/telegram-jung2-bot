@@ -119,7 +119,7 @@ func TestNewRoutesWebhook(t *testing.T) {
 	handler.ServeHTTP(recorder, request)
 
 	assert.Equal(t, http.StatusOK, recorder.Code)
-	assert.Len(t, mocks.savedMessages, 1)
+	assert.Len(t, mocks.messageActions, 1)
 	assert.Len(t, mocks.actions, 1)
 }
 
@@ -162,7 +162,7 @@ func TestNewRoutesContractWebhookAndHealthPaths(t *testing.T) {
 	handler.ServeHTTP(webhook, httptest.NewRequest(http.MethodPost, "/jung2bot/dev/", strings.NewReader(`{"message":{"chat":{"id":123,"title":"Group","type":"group"},"text":"hi"}}`)))
 	assert.Equal(t, http.StatusOK, webhook.Code)
 	assert.JSONEq(t, `{"statusCode":200}`, webhook.Body.String())
-	assert.Len(t, mocks.savedMessages, 1)
+	assert.Len(t, mocks.messageActions, 1)
 }
 
 func TestNewContractWebhookPathMatching(t *testing.T) {

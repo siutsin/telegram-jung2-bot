@@ -16,7 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	appdynamodb "github.com/siutsin/telegram-jung2-bot/internal/dynamodb"
 	"github.com/siutsin/telegram-jung2-bot/internal/httpserver"
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
 )
@@ -45,12 +44,11 @@ func runAppRunIntegration(
 	queueProducer := queue.NewProducer(resources.queueURL, queueClient)
 	readiness := &atomic.Bool{}
 	deps := httpserver.Dependencies{
-		ChatTable:    resources.chatTable,
-		MessageTable: resources.messageTable,
-		Messages:     appdynamodb.NewMessageClient(dynamoClient),
-		Chats:        appdynamodb.NewChatClient(dynamoClient),
-		Enqueuer:     queueProducer,
-		Messenger:    noopMessenger{},
+		ChatTable:       resources.chatTable,
+		MessageTable:    resources.messageTable,
+		Enqueuer:        queueProducer,
+		MessageEnqueuer: queueProducer,
+		Messenger:       noopMessenger{},
 		Now: func() time.Time {
 			return integrationNow
 		},

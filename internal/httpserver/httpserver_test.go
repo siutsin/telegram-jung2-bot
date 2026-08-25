@@ -66,5 +66,5 @@ func TestNewServerRejectsInvalidDependencies(t *testing.T) {
 	_, err := NewServer(":3000", 5*time.Second, "dev", Dependencies{})
 
 	require.Error(t, err)
-	assert.EqualError(t, err, "validate HTTP dependencies: message store is required")
+	assert.EqualError(t, err, "validate HTTP dependencies: enqueuer is required")
 }

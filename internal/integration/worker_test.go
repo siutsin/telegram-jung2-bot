@@ -330,7 +330,7 @@ func stopIntegrationWorker(
 	cancel context.CancelFunc,
 	done <-chan error,
 	ctx context.Context,
-	queueClient queueClient,
+	queueClient queueRequester,
 	queueURL string,
 ) {
 	t.Helper()

@@ -12,7 +12,6 @@ import (
 
 	bot "github.com/siutsin/telegram-jung2-bot/internal"
 
-	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	awssqs "github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -100,7 +99,6 @@ func (harness *telegramTestHarness) capturedMessages() []telegramCapturedMessage
 func runWebhookTelegramClientIntegration(
 	t *testing.T,
 	ctx context.Context,
-	dynamoClient *awsdynamodb.Client,
 	sqsClient *awssqs.Client,
 	resources testResources,
 ) {
@@ -113,7 +111,7 @@ func runWebhookTelegramClientIntegration(
 	)
 
 	harness, telegramClient := newTelegramTestHarness(t, telegramUserID)
-	httpServer := buildIntegrationHTTPServer(t, dynamoClient, sqsClient, resources, integrationServerOptions{
+	httpServer := buildIntegrationHTTPServer(t, sqsClient, resources, integrationServerOptions{
 		messenger: telegramClient,
 	})
 
@@ -136,5 +134,6 @@ func runWebhookTelegramClientIntegration(
 	require.Len(t, messages, 1)
 	assert.Equal(t, telegramChatID, messages[0].chatID)
 	assert.Contains(t, messages[0].text, "Error: Invalid format for setOffFromWorkTimeUTC")
+	assertMessageSaveQueued(t, ctx, httpServer, telegramChatID)
 	assertQueueEmpty(t, ctx, httpServer.queueClient, httpServer.queueURL)
 }

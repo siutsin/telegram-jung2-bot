@@ -13,6 +13,7 @@ import (
 	"github.com/siutsin/telegram-jung2-bot/internal/queue"
 )
 
+// TestHandleWebhookSavesAndEnqueuesCommand preserves independent save and command enqueue work.
 func TestHandleWebhookSavesAndEnqueuesCommand(t *testing.T) {
 	t.Parallel()
 
@@ -23,11 +24,10 @@ func TestHandleWebhookSavesAndEnqueuesCommand(t *testing.T) {
 	got := handleWebhook(context.Background(), []byte(`{"message":{"chat":{"id":123,"title":"Group","type":"supergroup"},"from":{"id":456},"text":"/topTen","entities":[{"type":"bot_command"}]}}`), dependencies)
 
 	assert.Equal(t, response{statusCode: 200}, got)
-	require.Len(t, mocks.savedMessages, 1)
-	assert.Equal(t, int64(123), mocks.savedMessages[0].ChatID)
-	assert.Equal(t, "2026-05-02T20:00:00+08:00", bot.FormatDateCreated(mocks.savedMessages[0].DateCreated))
-	require.Len(t, mocks.savedChats, 1)
-	assert.Equal(t, int64(123), mocks.savedChats[0].ChatID)
+	require.Len(t, mocks.messageActions, 1)
+	assert.Equal(t, queue.ActionSaveMessage, mocks.messageActions[0].Name)
+	assert.Equal(t, "123", mocks.messageActions[0].Attributes["chatId"])
+	assert.Equal(t, "123:0", mocks.messageActions[0].MessageDeduplicationID)
 	require.Len(t, mocks.actions, 1)
 	assert.Equal(t, queue.ActionTopTen, mocks.actions[0].Name)
 	assert.Equal(t, "123", mocks.actions[0].Attributes["chatId"])
@@ -107,6 +107,7 @@ func TestHandleWebhookReturnsParseResponses(t *testing.T) {
 	}
 }
 
+// TestHandleWebhookSavesMessagesWithoutEnqueue keeps every group message countable without a command.
 func TestHandleWebhookSavesMessagesWithoutEnqueue(t *testing.T) {
 	t.Parallel()
 
@@ -137,7 +138,7 @@ func TestHandleWebhookSavesMessagesWithoutEnqueue(t *testing.T) {
 			got := handleWebhook(context.Background(), []byte(tc.payload), dependencies)
 
 			assert.Equal(t, response{statusCode: 200}, got)
-			assert.Len(t, mocks.savedMessages, 1)
+			assert.Len(t, mocks.messageActions, 1)
 			assert.Empty(t, mocks.actions)
 		})
 	}
@@ -179,31 +180,12 @@ func TestHandleWebhookReturnsDependencyErrors(t *testing.T) {
 		want    response
 	}{
 		{
-			name:    "save message",
+			name:    "enqueue message save",
 			payload: groupMessage,
 			setup: func(mocks *httpserverMocks) {
-				mocks.expectSaveMessage(errors.New("boom"))
-				mocks.expectSaveChat(nil)
+				mocks.expectMessageEnqueue(errors.New("boom"))
 			},
-			want: response{statusCode: 500, message: "save webhook state"},
-		},
-		{
-			name:    "save chat",
-			payload: groupMessage,
-			setup: func(mocks *httpserverMocks) {
-				mocks.expectSaveMessage(nil)
-				mocks.expectSaveChat(errors.New("boom"))
-			},
-			want: response{statusCode: 500, message: "save webhook state"},
-		},
-		{
-			name:    "save message and chat",
-			payload: groupMessage,
-			setup: func(mocks *httpserverMocks) {
-				mocks.expectSaveMessage(errors.New("boom"))
-				mocks.expectSaveChat(errors.New("boom"))
-			},
-			want: response{statusCode: 500, message: "save webhook state"},
+			want: response{statusCode: 500, message: "enqueue message save"},
 		},
 		{
 			name:    "enqueue",
@@ -229,16 +211,18 @@ func TestHandleWebhookReturnsDependencyErrors(t *testing.T) {
 	}
 }
 
-func TestHandleWebhookDefaultsTime(t *testing.T) {
+// TestHandleWebhookCarriesTelegramMessageIdentity preserves FIFO deduplication and DynamoDB row identity.
+func TestHandleWebhookCarriesTelegramMessageIdentity(t *testing.T) {
 	t.Parallel()
 
 	mocks, dependencies := newMockDependencies(t)
 	mocks.expectSaveWebhookState()
-	dependencies.Now = nil
-	got := handleWebhook(context.Background(), []byte(`{"message":{"chat":{"id":123,"title":"Group","type":"group"},"text":"hello"}}`), dependencies)
+	got := handleWebhook(context.Background(), []byte(`{"update_id":789,"message":{"message_id":456,"date":1777723200,"chat":{"id":123,"title":"Group","type":"group"},"text":"hello"}}`), dependencies)
 
 	assert.Equal(t, 200, got.statusCode)
-	assert.False(t, mocks.savedMessages[0].DateCreated.IsZero())
+	assert.Equal(t, "456", mocks.messageActions[0].Attributes["messageId"])
+	assert.Equal(t, "1777723200", mocks.messageActions[0].Attributes["date"])
+	assert.Equal(t, "123:789", mocks.messageActions[0].MessageDeduplicationID)
 }
 
 func TestEnqueueWebhookCommandIgnoresUnsupportedCommand(t *testing.T) {
