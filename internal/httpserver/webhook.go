@@ -58,7 +58,6 @@ func enqueueWebhookSave(ctx context.Context, updateID int64, telegramMessage bot
 			"chatTitle": telegramMessage.Chat.Title,
 			"messageId": strconv.FormatInt(telegramMessage.MessageID, 10),
 			"date":      strconv.FormatInt(telegramMessage.Date, 10),
-			"updateId":  strconv.FormatInt(updateID, 10),
 		},
 	}
 	if telegramMessage.From != nil {
