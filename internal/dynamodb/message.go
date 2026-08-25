@@ -107,7 +107,7 @@ func buildMessageSaveUpdate(tableName string, row bot.StoredMessage) itemUpdateR
 		tableName: tableName,
 		key: map[string]any{
 			"chatId":      row.ChatID,
-			"dateCreated": bot.FormatDateCreated(row.DateCreated),
+			"dateCreated": bot.FormatMessageDateCreated(row.DateCreated, row.MessageID),
 		},
 		updateExpression:          "SET " + strings.Join(assignments, ", "),
 		expressionAttributeNames:  attributeNames,

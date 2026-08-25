@@ -26,6 +26,8 @@ type Config struct {
 	MessageTable         string
 	ChatIDTable          string
 	EventQueueURL        string
+	MessageSaveQueueURL  string
+	MessageSaveFlush     time.Duration
 	AWSEndpointURL       string
 	TelegramAPIBaseURL   string
 	LogLevel             string
@@ -46,6 +48,8 @@ type rawConfig struct {
 	MessageTable           string `env:"MESSAGE_TABLE,required"`
 	ChatIDTable            string `env:"CHATID_TABLE,required"`
 	EventQueueURL          string `env:"EVENT_QUEUE_URL,required"`
+	MessageSaveQueueURL    string `env:"MESSAGE_SAVE_QUEUE_URL,required"`
+	MessageSaveFlushSecond string `env:"MESSAGE_SAVE_QUEUE_FLUSH_SECONDS"`
 	AWSEndpointURL         string `env:"AWS_ENDPOINT_URL"`
 	TelegramAPIBaseURL     string `env:"TELEGRAM_API_BASE_URL" envDefault:"https://api.telegram.org"`
 	LogLevel               string `env:"LOG_LEVEL" envDefault:"info"`
@@ -136,6 +140,14 @@ func configFromRaw(raw rawConfig) (Config, error) {
 	if err == nil && parsedScaleUpReadCapacity > 0 {
 		scaleUpReadCapacity = parsedScaleUpReadCapacity
 	}
+	messageSaveFlush := 15 * time.Second
+	if raw.MessageSaveFlushSecond != "" {
+		parsedFlush, parseErr := parsePositiveSeconds("MESSAGE_SAVE_QUEUE_FLUSH_SECONDS", raw.MessageSaveFlushSecond)
+		if parseErr != nil {
+			return Config{}, parseErr
+		}
+		messageSaveFlush = parsedFlush
+	}
 
 	return Config{
 		AWSRegion:            raw.AWSRegion,
@@ -148,6 +160,8 @@ func configFromRaw(raw rawConfig) (Config, error) {
 		MessageTable:         raw.MessageTable,
 		ChatIDTable:          raw.ChatIDTable,
 		EventQueueURL:        raw.EventQueueURL,
+		MessageSaveQueueURL:  raw.MessageSaveQueueURL,
+		MessageSaveFlush:     messageSaveFlush,
 		AWSEndpointURL:       raw.AWSEndpointURL,
 		HTTPTimeout:          httpTimeout,
 		ShutdownTimeout:      shutdownTimeout,
@@ -170,6 +184,10 @@ func validateConfig(config Config) error {
 		return err
 	}
 	err = validateURL("EVENT_QUEUE_URL", config.EventQueueURL)
+	if err != nil {
+		return err
+	}
+	err = validateURL("MESSAGE_SAVE_QUEUE_URL", config.MessageSaveQueueURL)
 	if err != nil {
 		return err
 	}
