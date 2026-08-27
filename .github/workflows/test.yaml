@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   changes:
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     outputs:
@@ -40,10 +40,8 @@ jobs:
               - 'hack/**'
               - 'Dockerfile'
 
-  # Run on arm64. Buck2 latest cannot link Go 1.27 stdlib on linux/amd64:
-  # `sync/atomic: invalid reference to internal/runtime/atomic.Load`.
   lint:
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
@@ -77,7 +75,7 @@ jobs:
   coverage:
     needs: changes
     if: needs.changes.outputs.code == 'true'
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
@@ -107,7 +105,7 @@ jobs:
         run: make vendor && make coverage
 
   test:
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
@@ -134,7 +132,7 @@ jobs:
   integration:
     needs: changes
     if: needs.changes.outputs.code == 'true'
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
