@@ -11,6 +11,23 @@
   rebaseWhen: 'behind-base-branch',
   packageRules: [
     {
+      description: 'Test Go module updates weekly instead of opening PRs',
+      matchManagers: [
+        'gomod',
+      ],
+      enabled: false,
+    },
+    {
+      description: 'Update GitHub Actions weekly in one PR',
+      matchManagers: [
+        'github-actions',
+      ],
+      schedule: [
+        '* 0-3 * * 0',
+      ],
+      groupName: 'GitHub Actions',
+    },
+    {
       matchPackageNames: [
         'go.uber.org/mock',
       ],
