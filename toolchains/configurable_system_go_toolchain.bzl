@@ -55,7 +55,9 @@ def _configurable_system_go_toolchain_impl(ctx):
         GoToolchainInfo(
             asan = ctx.attrs.asan,
             assembler = RunInfo(cmd_script(ctx.actions, "asm", cmd_args(go, "tool", "asm"), script_language)),
-            assembler_flags = [],
+            # Go 1.27 requires standard assembly mode.
+            # This toolchain has no version.
+            assembler_flags = ["-std"],
             build_tags = [],
             cgo = RunInfo(go_root.project(tool_prefix + "/cgo" + suffix)),
             compiler = RunInfo(cmd_script(ctx.actions, "compile", cmd_args(go, "tool", "compile"), script_language)),
