@@ -30,7 +30,7 @@ jobs:
         with:
           run: |
             sudo apt-get update -qq
-            sudo apt-get install -y -qq clang
+            sudo apt-get install -y -qq clang lld
             ./hack/install-buck2.sh
             export PATH="$HOME/.cargo/bin:$PATH"
             # Keep unreviewed dependency updates out of production to limit supply chain risk.
