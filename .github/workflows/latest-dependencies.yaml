@@ -1,6 +1,9 @@
 name: Test Latest Dependencies
 
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/latest-dependencies.yaml'
   schedule:
     - cron: '0 4 * * 0'
   workflow_dispatch:
@@ -32,4 +35,4 @@ jobs:
             # See https://words.filippo.io/dependabot/
             go get -u -t ./...
             make vendor
-            make test
+            make test-only
