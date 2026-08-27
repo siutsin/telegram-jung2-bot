@@ -29,6 +29,8 @@ jobs:
         uses: geomys/sandboxed-step@7d75eb49d17fdeeb3656b3a57d35932d205bcfb9 # v1.2.1
         with:
           run: |
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq clang
             ./hack/install-buck2.sh
             export PATH="$HOME/.cargo/bin:$PATH"
             # Keep unreviewed dependency updates out of production to limit supply chain risk.
