@@ -1,4 +1,4 @@
-name: Test Latest Dependencies
+name: Latest Dependencies
 
 on:
   pull_request:
