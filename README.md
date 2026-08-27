@@ -1,5 +1,7 @@
 # telegram-jung2-bot
 
+[![Latest Dependencies](https://github.com/siutsin/telegram-jung2-bot/actions/workflows/latest-dependencies.yaml/badge.svg)](https://github.com/siutsin/telegram-jung2-bot/actions/workflows/latest-dependencies.yaml)
+
 Add the bot to your group at [@jung2_bot](https://bit.ly/github-jung2bot)
 
 **冗員**[jung2jyun4] Excess personnel in Cantonese
