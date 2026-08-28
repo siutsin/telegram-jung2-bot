@@ -1,5 +1,16 @@
 # Gotchas
 
+## SQS User Message Attributes Cap At 10
+
+Problem: SQS rejects a send with more than 10 message attributes.
+
+Cause: `saveMessage` already uses `action`, `chatId`, `chatTitle`,
+`messageId`, `date`, `userId`, `username`, `firstName`, `lastName`, plus
+`enqueuedAt`. That is 10.
+
+Solution: Do not add another user message attribute. Receive-only data such as
+`ApproximateReceiveCount` is a system attribute on `ReceiveMessage`.
+
 ## Buck2 and Go 1.27
 
 Problem: Buck2 fails on linux/amd64 while it links `gobuckify`.

@@ -28,6 +28,7 @@ func TestClientReceiveMessageSupportsContractAttributes(t *testing.T) {
 			assert.Equal(t, int32(10), input.MaxNumberOfMessages)
 			assert.Equal(t, int32(20), input.WaitTimeSeconds)
 			assert.Equal(t, []string{"All"}, input.MessageAttributeNames)
+			assert.Equal(t, []sqstypes.MessageSystemAttributeName{sqstypes.MessageSystemAttributeNameApproximateReceiveCount}, input.MessageSystemAttributeNames)
 
 			return &awssqs.ReceiveMessageOutput{
 				Messages: []sqstypes.Message{
@@ -37,6 +38,9 @@ func TestClientReceiveMessageSupportsContractAttributes(t *testing.T) {
 						MessageAttributes: map[string]sqstypes.MessageAttributeValue{
 							"action": {StringValue: awscore.String("topten")},
 							"chatId": {StringValue: awscore.String("123")},
+						},
+						Attributes: map[string]string{
+							string(sqstypes.MessageSystemAttributeNameApproximateReceiveCount): "3",
 						},
 					},
 				},
@@ -53,8 +57,37 @@ func TestClientReceiveMessageSupportsContractAttributes(t *testing.T) {
 	require.Len(t, response.Messages, 1)
 	assert.Equal(t, "receipt", response.Messages[0].ReceiptHandle)
 	assert.Equal(t, `"sendTopTenMessage"`, string(response.Messages[0].Body))
+	assert.Equal(t, 3, response.Messages[0].ApproximateReceiveCount)
 	action := DecodeMessage(response.Messages[0])
 	assert.Equal(t, ActionTopTen, action.Attributes["action"])
+}
+
+func TestClientReceiveMessageTreatsInvalidReceiveCountAsZero(t *testing.T) {
+	t.Parallel()
+
+	controller := gomock.NewController(t)
+	queueAPI := mock.NewMockQueueRequester(controller)
+	queueAPI.EXPECT().
+		ReceiveMessage(gomock.Any(), gomock.Any()).
+		Return(&awssqs.ReceiveMessageOutput{
+			Messages: []sqstypes.Message{{
+				Body:          awscore.String("sendTopTenMessage"),
+				ReceiptHandle: awscore.String("receipt"),
+				Attributes: map[string]string{
+					string(sqstypes.MessageSystemAttributeNameApproximateReceiveCount): "bad",
+				},
+			}},
+		}, nil)
+
+	response, err := NewClient(queueAPI).ReceiveMessage(context.Background(), ReceiveMessageRequest{
+		MaxNumberOfMessages: 1,
+		QueueURL:            "queue-url",
+		WaitTimeSeconds:     1,
+	})
+
+	require.NoError(t, err)
+	require.Len(t, response.Messages, 1)
+	assert.Equal(t, 0, response.Messages[0].ApproximateReceiveCount)
 }
 
 func TestClientSendMessageEncodesAttributes(t *testing.T) {

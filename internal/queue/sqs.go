@@ -116,10 +116,11 @@ func (client sqsClient) ReceiveMessage(ctx context.Context, request ReceiveMessa
 
 	started := time.Now()
 	output, err := client.queue.ReceiveMessage(ctx, &awssqs.ReceiveMessageInput{
-		QueueUrl:              awscore.String(request.QueueURL),
-		MaxNumberOfMessages:   maxMessages,
-		MessageAttributeNames: []string{"All"},
-		WaitTimeSeconds:       waitSeconds,
+		QueueUrl:                    awscore.String(request.QueueURL),
+		MaxNumberOfMessages:         maxMessages,
+		MessageAttributeNames:       []string{"All"},
+		MessageSystemAttributeNames: []sqstypes.MessageSystemAttributeName{sqstypes.MessageSystemAttributeNameApproximateReceiveCount},
+		WaitTimeSeconds:             waitSeconds,
 	})
 	client.observe("receive", started, err)
 	if err != nil {
@@ -129,10 +130,15 @@ func (client sqsClient) ReceiveMessage(ctx context.Context, request ReceiveMessa
 	messages := make([]RawMessage, 0, len(output.Messages))
 	for _, item := range output.Messages {
 		payload := strconv.Quote(awscore.ToString(item.Body))
+		count, err := strconv.Atoi(item.Attributes[string(sqstypes.MessageSystemAttributeNameApproximateReceiveCount)])
+		if err != nil {
+			count = 0
+		}
 		messages = append(messages, RawMessage{
-			Body:              []byte(payload),
-			ReceiptHandle:     awscore.ToString(item.ReceiptHandle),
-			MessageAttributes: decodeQueueAttributes(item.MessageAttributes),
+			Body:                    []byte(payload),
+			ReceiptHandle:           awscore.ToString(item.ReceiptHandle),
+			MessageAttributes:       decodeQueueAttributes(item.MessageAttributes),
+			ApproximateReceiveCount: count,
 		})
 	}
 

@@ -230,9 +230,10 @@ func (attribute messageAttribute) value() string {
 
 // RawMessage is the subset of an SQS event message needed for action dispatch.
 type RawMessage struct {
-	Body              json.RawMessage             `json:"body"`
-	ReceiptHandle     string                      `json:"receiptHandle"`
-	MessageAttributes map[string]messageAttribute `json:"messageAttributes"`
+	Body                    json.RawMessage             `json:"body"`
+	ReceiptHandle           string                      `json:"receiptHandle"`
+	MessageAttributes       map[string]messageAttribute `json:"messageAttributes"`
+	ApproximateReceiveCount int                         `json:"approximateReceiveCount"`
 }
 
 // DecodeMessage converts a raw SQS event message into an action.
