@@ -130,11 +130,15 @@ func (client sqsClient) ReceiveMessage(ctx context.Context, request ReceiveMessa
 	messages := make([]RawMessage, 0, len(output.Messages))
 	for _, item := range output.Messages {
 		payload := strconv.Quote(awscore.ToString(item.Body))
+		count, err := strconv.Atoi(item.Attributes[string(sqstypes.MessageSystemAttributeNameApproximateReceiveCount)])
+		if err != nil {
+			count = 0
+		}
 		messages = append(messages, RawMessage{
 			Body:                    []byte(payload),
 			ReceiptHandle:           awscore.ToString(item.ReceiptHandle),
 			MessageAttributes:       decodeQueueAttributes(item.MessageAttributes),
-			ApproximateReceiveCount: receiveCount(item.Attributes),
+			ApproximateReceiveCount: count,
 		})
 	}
 
@@ -238,21 +242,6 @@ func encodeQueueAttributes(attributes map[string]SendMessageAttribute) map[strin
 	}
 
 	return encoded
-}
-
-// receiveCount reads ApproximateReceiveCount from SQS system attributes.
-// For example, Attributes["ApproximateReceiveCount"]="3" becomes 3.
-func receiveCount(attributes map[string]string) int {
-	raw, ok := attributes[string(sqstypes.MessageSystemAttributeNameApproximateReceiveCount)]
-	if !ok || raw == "" {
-		return 0
-	}
-	count, err := strconv.Atoi(raw)
-	if err != nil {
-		return 0
-	}
-
-	return count
 }
 
 // decodeQueueAttributes converts queue attributes from SQS.

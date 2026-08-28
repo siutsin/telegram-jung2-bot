@@ -62,12 +62,32 @@ func TestClientReceiveMessageSupportsContractAttributes(t *testing.T) {
 	assert.Equal(t, ActionTopTen, action.Attributes["action"])
 }
 
-func TestReceiveCountParsesApproximateReceiveCount(t *testing.T) {
+func TestClientReceiveMessageTreatsInvalidReceiveCountAsZero(t *testing.T) {
 	t.Parallel()
 
-	assert.Equal(t, 5, receiveCount(map[string]string{string(sqstypes.MessageSystemAttributeNameApproximateReceiveCount): "5"}))
-	assert.Equal(t, 0, receiveCount(map[string]string{string(sqstypes.MessageSystemAttributeNameApproximateReceiveCount): "bad"}))
-	assert.Equal(t, 0, receiveCount(nil))
+	controller := gomock.NewController(t)
+	queueAPI := mock.NewMockQueueRequester(controller)
+	queueAPI.EXPECT().
+		ReceiveMessage(gomock.Any(), gomock.Any()).
+		Return(&awssqs.ReceiveMessageOutput{
+			Messages: []sqstypes.Message{{
+				Body:          awscore.String("sendTopTenMessage"),
+				ReceiptHandle: awscore.String("receipt"),
+				Attributes: map[string]string{
+					string(sqstypes.MessageSystemAttributeNameApproximateReceiveCount): "bad",
+				},
+			}},
+		}, nil)
+
+	response, err := NewClient(queueAPI).ReceiveMessage(context.Background(), ReceiveMessageRequest{
+		MaxNumberOfMessages: 1,
+		QueueURL:            "queue-url",
+		WaitTimeSeconds:     1,
+	})
+
+	require.NoError(t, err)
+	require.Len(t, response.Messages, 1)
+	assert.Equal(t, 0, response.Messages[0].ApproximateReceiveCount)
 }
 
 func TestClientSendMessageEncodesAttributes(t *testing.T) {

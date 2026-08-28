@@ -469,20 +469,44 @@ func TestProcessMessageDropsAfterMaxReceives(t *testing.T) {
 		}
 	}`)
 
-	actionName, outcome, err := processDecodedMessageResult(context.Background(), "queue-url", raw, queue.DecodeMessage(raw), testHandlers(nil, errors.New("boom")), deleter)
-	require.NoError(t, err)
-	assert.Equal(t, "topten", actionName)
-	assert.Equal(t, "dropped", outcome)
-	assert.Equal(t, []queue.DeleteMessageRequest{{QueueURL: "queue-url", ReceiptHandle: "receipt"}}, deleter.requests)
-
-	err = (pollingWorker{
+	err := (pollingWorker{
 		queueURL: "queue-url",
 		handlers: testHandlers(nil, errors.New("boom")),
-		deleter:  &fakeDeleter{},
+		deleter:  deleter,
 		metrics:  metrics,
 	}).processMessage(context.Background(), raw)
+
 	require.NoError(t, err)
+	assert.Equal(t, []queue.DeleteMessageRequest{{QueueURL: "queue-url", ReceiptHandle: "receipt"}}, deleter.requests)
 	assert.Contains(t, scrapeMetrics(t, metrics), `telegram_jung2_bot_worker_actions_total{action="topten",outcome="dropped"} 1`)
+}
+
+func TestProcessMessageReturnsDeleteErrorAfterMaxReceives(t *testing.T) {
+	t.Parallel()
+
+	deleter := &fakeDeleter{err: errors.New("boom")}
+	metrics := NewMetrics(nil)
+	raw := mustRawMessage(t, `{
+		"receiptHandle": "receipt",
+		"approximateReceiveCount": 5,
+		"messageAttributes": {
+			"action": {"StringValue": "topten"},
+			"chatId": {"StringValue": "123"}
+		}
+	}`)
+
+	err := (pollingWorker{
+		queueURL: "queue-url",
+		handlers: testHandlers(nil, errors.New("throttle")),
+		deleter:  deleter,
+		metrics:  metrics,
+	}).processMessage(context.Background(), raw)
+
+	require.EqualError(t, err, "boom")
+	assert.Equal(t, []queue.DeleteMessageRequest{{QueueURL: "queue-url", ReceiptHandle: "receipt"}}, deleter.requests)
+	body := scrapeMetrics(t, metrics)
+	assert.NotContains(t, body, `telegram_jung2_bot_worker_actions_total{action="topten",outcome="dropped"}`)
+	assert.Contains(t, body, `telegram_jung2_bot_worker_actions_total{action="topten",outcome="failed"} 1`)
 }
 
 func TestProcessMessageKeepsMessageBeforeMaxReceives(t *testing.T) {
@@ -503,15 +527,6 @@ func TestProcessMessageKeepsMessageBeforeMaxReceives(t *testing.T) {
 	require.EqualError(t, err, "boom")
 	assert.Equal(t, "failed", outcome)
 	assert.Empty(t, deleter.requests)
-}
-
-func TestExceededReceiveLimit(t *testing.T) {
-	t.Parallel()
-
-	assert.False(t, exceededReceiveLimit(0))
-	assert.False(t, exceededReceiveLimit(4))
-	assert.True(t, exceededReceiveLimit(5))
-	assert.True(t, exceededReceiveLimit(6))
 }
 
 func TestProcessMessageKeepsMessageAndReturnsDispatchFailure(t *testing.T) {
