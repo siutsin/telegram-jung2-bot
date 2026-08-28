@@ -116,10 +116,11 @@ func (client sqsClient) ReceiveMessage(ctx context.Context, request ReceiveMessa
 
 	started := time.Now()
 	output, err := client.queue.ReceiveMessage(ctx, &awssqs.ReceiveMessageInput{
-		QueueUrl:              awscore.String(request.QueueURL),
-		MaxNumberOfMessages:   maxMessages,
-		MessageAttributeNames: []string{"All"},
-		WaitTimeSeconds:       waitSeconds,
+		QueueUrl:                    awscore.String(request.QueueURL),
+		MaxNumberOfMessages:         maxMessages,
+		MessageAttributeNames:       []string{"All"},
+		MessageSystemAttributeNames: []sqstypes.MessageSystemAttributeName{sqstypes.MessageSystemAttributeNameApproximateReceiveCount},
+		WaitTimeSeconds:             waitSeconds,
 	})
 	client.observe("receive", started, err)
 	if err != nil {
@@ -130,9 +131,10 @@ func (client sqsClient) ReceiveMessage(ctx context.Context, request ReceiveMessa
 	for _, item := range output.Messages {
 		payload := strconv.Quote(awscore.ToString(item.Body))
 		messages = append(messages, RawMessage{
-			Body:              []byte(payload),
-			ReceiptHandle:     awscore.ToString(item.ReceiptHandle),
-			MessageAttributes: decodeQueueAttributes(item.MessageAttributes),
+			Body:                    []byte(payload),
+			ReceiptHandle:           awscore.ToString(item.ReceiptHandle),
+			MessageAttributes:       decodeQueueAttributes(item.MessageAttributes),
+			ApproximateReceiveCount: receiveCount(item.Attributes),
 		})
 	}
 
@@ -236,6 +238,21 @@ func encodeQueueAttributes(attributes map[string]SendMessageAttribute) map[strin
 	}
 
 	return encoded
+}
+
+// receiveCount reads ApproximateReceiveCount from SQS system attributes.
+// For example, Attributes["ApproximateReceiveCount"]="3" becomes 3.
+func receiveCount(attributes map[string]string) int {
+	raw, ok := attributes[string(sqstypes.MessageSystemAttributeNameApproximateReceiveCount)]
+	if !ok || raw == "" {
+		return 0
+	}
+	count, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0
+	}
+
+	return count
 }
 
 // decodeQueueAttributes converts queue attributes from SQS.

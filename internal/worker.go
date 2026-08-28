@@ -18,6 +18,11 @@ import (
 // not retry.
 var ErrPermanentDispatch = errors.New("permanent queue dispatch error")
 
+// maxQueueReceives is how many times a transient dispatch may run before the
+// worker deletes the message. Queue visibility is 600s, so 5 receives is
+// about 50 minutes of retries.
+const maxQueueReceives = 5
+
 type Handlers struct {
 	JungHelp       func(ctx context.Context, chatID int64, chatTitle string) error
 	TopTen         func(ctx context.Context, chatID int64) error
@@ -168,7 +173,16 @@ func processDecodedMessageResult(ctx context.Context, queueURL string, raw queue
 	if dispatchErr != nil {
 		slog.Error("queue message dispatch failed", "action", action.Name, "err", dispatchErr)
 		if !isPermanentDispatchError(dispatchErr) {
-			return workerActionName(action.Name), "failed", dispatchErr
+			if !exceededReceiveLimit(raw.ApproximateReceiveCount) {
+				return workerActionName(action.Name), "failed", dispatchErr
+			}
+			slog.Error("queue message dropped after max receives", "action", action.Name, "receives", raw.ApproximateReceiveCount, "err", dispatchErr)
+			err := deleteProcessedMessage(ctx, deleter, queueURL, raw, action.Name)
+			if err != nil {
+				return workerActionName(action.Name), "failed", err
+			}
+
+			return workerActionName(action.Name), "dropped", nil
 		}
 	}
 
@@ -226,6 +240,13 @@ func deleteProcessedMessage(ctx context.Context, deleter queueDeleter, queueURL 
 // isPermanentDispatchError reports malformed queue payloads that should not retry.
 func isPermanentDispatchError(err error) bool {
 	return errors.Is(err, ErrPermanentDispatch)
+}
+
+// exceededReceiveLimit reports that a transient failure has been tried enough
+// times and the message should be deleted. For example, receive count 5 drops,
+// 4 stays on the queue.
+func exceededReceiveLimit(receiveCount int) bool {
+	return receiveCount >= maxQueueReceives
 }
 
 // actionDispatchers returns the queue action dispatch table.

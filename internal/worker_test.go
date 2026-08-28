@@ -455,6 +455,65 @@ func TestProcessMessageDeletesAfterSuccessfulDispatch(t *testing.T) {
 	assert.Equal(t, []queue.DeleteMessageRequest{{QueueURL: "queue-url", ReceiptHandle: "receipt"}}, deleter.requests)
 }
 
+func TestProcessMessageDropsAfterMaxReceives(t *testing.T) {
+	t.Parallel()
+
+	deleter := &fakeDeleter{}
+	metrics := NewMetrics(nil)
+	raw := mustRawMessage(t, `{
+		"receiptHandle": "receipt",
+		"approximateReceiveCount": 5,
+		"messageAttributes": {
+			"action": {"StringValue": "topten"},
+			"chatId": {"StringValue": "123"}
+		}
+	}`)
+
+	actionName, outcome, err := processDecodedMessageResult(context.Background(), "queue-url", raw, queue.DecodeMessage(raw), testHandlers(nil, errors.New("boom")), deleter)
+	require.NoError(t, err)
+	assert.Equal(t, "topten", actionName)
+	assert.Equal(t, "dropped", outcome)
+	assert.Equal(t, []queue.DeleteMessageRequest{{QueueURL: "queue-url", ReceiptHandle: "receipt"}}, deleter.requests)
+
+	err = (pollingWorker{
+		queueURL: "queue-url",
+		handlers: testHandlers(nil, errors.New("boom")),
+		deleter:  &fakeDeleter{},
+		metrics:  metrics,
+	}).processMessage(context.Background(), raw)
+	require.NoError(t, err)
+	assert.Contains(t, scrapeMetrics(t, metrics), `telegram_jung2_bot_worker_actions_total{action="topten",outcome="dropped"} 1`)
+}
+
+func TestProcessMessageKeepsMessageBeforeMaxReceives(t *testing.T) {
+	t.Parallel()
+
+	deleter := &fakeDeleter{}
+	raw := mustRawMessage(t, `{
+		"receiptHandle": "receipt",
+		"approximateReceiveCount": 4,
+		"messageAttributes": {
+			"action": {"StringValue": "topten"},
+			"chatId": {"StringValue": "123"}
+		}
+	}`)
+
+	_, outcome, err := processDecodedMessageResult(context.Background(), "queue-url", raw, queue.DecodeMessage(raw), testHandlers(nil, errors.New("boom")), deleter)
+
+	require.EqualError(t, err, "boom")
+	assert.Equal(t, "failed", outcome)
+	assert.Empty(t, deleter.requests)
+}
+
+func TestExceededReceiveLimit(t *testing.T) {
+	t.Parallel()
+
+	assert.False(t, exceededReceiveLimit(0))
+	assert.False(t, exceededReceiveLimit(4))
+	assert.True(t, exceededReceiveLimit(5))
+	assert.True(t, exceededReceiveLimit(6))
+}
+
 func TestProcessMessageKeepsMessageAndReturnsDispatchFailure(t *testing.T) {
 	t.Parallel()
 
