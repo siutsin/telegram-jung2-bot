@@ -30,4 +30,15 @@ jobs:
         uses: geomys/sandboxed-step@a6bfc174e532cea4f378e3427bcde8b714c2e810 # v1.2.2
         with:
           run: |
-            GOFLAGS=-mod=mod go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+            set +e
+            # Exit 3 is vulns found. Retry only tool failures (exit 1).
+            for attempt in 1 2 3; do
+              GOFLAGS=-mod=mod go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+              status=$?
+              if [ "$status" -eq 0 ] || [ "$status" -eq 3 ]; then
+                exit "$status"
+              fi
+              echo "govulncheck failed with $status (attempt $attempt)"
+              sleep 15
+            done
+            exit 1
