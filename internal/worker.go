@@ -19,8 +19,8 @@ import (
 var ErrPermanentDispatch = errors.New("permanent queue dispatch error")
 
 // maxQueueReceives is how many times a transient dispatch may run before the
-// worker deletes the message. Queue visibility is 600s, so 5 receives is
-// about 50 minutes of retries.
+// worker deletes the message. Queue visibility is 60s, so 5 receives is
+// about 5 minutes of retries.
 const maxQueueReceives = 5
 
 type Handlers struct {

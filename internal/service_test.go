@@ -378,16 +378,6 @@ func TestTopTenReturnsStatisticsErrors(t *testing.T) {
 			}(),
 			wantErr: "boom",
 		},
-		{
-			name: "send",
-			service: func() Service {
-				service := testService()
-				service.messageQuerier = &fakeMessageClient{rows: serviceRows()}
-				service.messenger = &fakeMessenger{err: errors.New("boom")}
-				return service
-			}(),
-			wantErr: "boom",
-		},
 	}
 
 	for _, test := range tests {
@@ -403,6 +393,32 @@ func TestTopTenReturnsStatisticsErrors(t *testing.T) {
 			assert.EqualError(t, err, test.wantErr)
 		})
 	}
+}
+
+func TestOffFromWorkDropsSendTransportError(t *testing.T) {
+	t.Parallel()
+
+	service := testService()
+	service.messageQuerier = &fakeMessageClient{rows: serviceRows()}
+	service.messenger = &fakeMessenger{err: errors.New("call Telegram sendMessage: request timed out")}
+
+	err := service.OffFromWork(context.Background(), 123)
+
+	require.NoError(t, err)
+}
+
+func TestOffFromWorkReturnsSendErrorWhenCallerContextIsDone(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	service := testService()
+	service.messageQuerier = &fakeMessageClient{rows: serviceRows()}
+	service.messenger = &fakeMessenger{err: errors.New("call Telegram sendMessage: request cancelled")}
+
+	err := service.OffFromWork(ctx, 123)
+
+	require.EqualError(t, err, "call Telegram sendMessage: request cancelled")
 }
 
 func TestOffFromWorkSkipsEmptyChatWindow(t *testing.T) {
