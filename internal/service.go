@@ -226,7 +226,9 @@ func pauseFanOut(ctx context.Context, duration time.Duration) error {
 
 // sendStatistics renders, stores counts, and sends one report.
 // For example, top-ten options become a rendered report, a saved chat count
-// update, and one Telegram send.
+// update, and one Telegram send. A finished SendMessage error returns nil so
+// the worker deletes the queue message. A cancelled caller context still
+// returns that error.
 func (service Service) sendStatistics(ctx context.Context, chatID int64, options ReportOptions) error {
 	now := service.now()
 	options.Now = now
@@ -253,10 +255,11 @@ func (service Service) sendStatistics(ctx context.Context, chatID int64, options
 
 	err = service.messenger.SendMessage(ctx, chatID, summary.Report)
 	if err != nil {
-		if isTelegramStatusError(err) {
-			return nil
+		if ctx.Err() != nil {
+			return err
 		}
-		return err
+		slog.Error("statistics report send failed", "chatId", chatID, "err", err)
+		return nil
 	}
 
 	return nil
