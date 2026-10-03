@@ -77,6 +77,8 @@ jobs:
           claude_args: |
             --model claude-sonnet-5 --effort high --allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*)"
           prompt: |
+            Before reviewing, read AGENTS.md at the repository root and follow its conventions.
+
             Review only. Do not push commits, edit PR metadata, change labels, write repository content, or run code from the PR.
 
             Use only read-only GitHub CLI commands such as `gh pr view` and `gh pr diff`.
