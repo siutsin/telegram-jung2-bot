@@ -11,6 +11,12 @@
   osvVulnerabilityAlerts: true,
   vulnerabilityAlerts: { enabled: true },
   rebaseWhen: 'behind-base-branch',
+  logLevelRemap: [
+    {
+      matchMessage: "/Some .+ did not have a releaseTimestamp, but as we're running with minimumReleaseAgeBehaviour=timestamp-optional, proceeding/",
+      newLogLevel: 'info',
+    },
+  ],
   packageRules: [
     {
       // Image CVE fixes keep the 1 day wait. Routine updates wait 3 days.
