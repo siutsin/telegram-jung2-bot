@@ -1,6 +1,6 @@
 # Build natively, cross-compile to the target. Avoids running the Go compiler
 # under QEMU for the arm64 half of a multi-arch build.
-FROM --platform=$BUILDPLATFORM golang:1.27@sha256:3680233e3204827fbdc66088528ae6d4b3d034f51d03a99d454f6de034888244 AS build-env
+FROM --platform=$BUILDPLATFORM golang:1.27@sha256:f20d83a83e18dbd2a4714b8ffd4b30b287b6243962dd75608e86abcc63ba4efc AS build-env
 ARG TARGETARCH
 WORKDIR /app
 COPY go.mod go.sum ./
