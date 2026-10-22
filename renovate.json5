@@ -14,8 +14,9 @@
   packageRules: [
     {
       // Image CVE fixes keep the 1 day wait. Routine updates wait 3 days.
-      matchManagers: ['docker', 'helm-values'],
+      matchManagers: ['docker', 'dockerfile', 'helm', 'helm-values'],
       minimumReleaseAge: '1 day',
+      minimumReleaseAgeBehaviour: 'timestamp-optional',
     },
     {
       description: 'Test Go module updates weekly instead of opening PRs',
