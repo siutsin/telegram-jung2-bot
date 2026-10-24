@@ -1,51 +1,29 @@
 {
   $schema: 'https://docs.renovatebot.com/renovate-schema.json',
-  extends: [
-    'config:best-practices',
-  ],
-  automerge: true,
-  major: {
-    automerge: false,
+  dependencyDashboard: false,
+  lockFileMaintenance: {
+    enabled: false,
   },
-  minimumReleaseAge: '3 days',
   osvVulnerabilityAlerts: true,
-  vulnerabilityAlerts: { enabled: true },
-  rebaseWhen: 'behind-base-branch',
-  logLevelRemap: [
-    {
-      matchMessage: "/Some .+ did not have a releaseTimestamp, but as we're running with minimumReleaseAgeBehaviour=timestamp-optional, proceeding/",
-      newLogLevel: 'info',
-    },
-  ],
   packageRules: [
     {
-      // Image CVE fixes keep the 1 day wait. Routine updates wait 3 days.
-      matchManagers: ['docker', 'dockerfile', 'helm', 'helm-values'],
-      minimumReleaseAge: '1 day',
-      minimumReleaseAgeBehaviour: 'timestamp-optional',
-    },
-    {
-      description: 'Test Go module updates weekly instead of opening PRs',
-      matchManagers: [
-        'gomod',
-      ],
+      description: 'Disable all non-vulnerability updates',
       enabled: false,
-    },
-    {
-      description: 'Update GitHub Actions weekly in one PR',
-      matchManagers: [
-        'github-actions',
-      ],
-      schedule: [
-        '* 0-3 * * 0',
-      ],
-      groupName: 'GitHub Actions',
-    },
-    {
       matchPackageNames: [
-        'go.uber.org/mock',
+        '*',
       ],
-      abandonmentThreshold: null,
+    },
+    {
+      description: 'Vulnerability fixes: immediate and automerged',
+      matchJsonata: [
+        '$exists(vulnerabilityFixVersion) or $exists(isVulnerabilityAlert)',
+      ],
+      enabled: true,
+      automerge: true,
+      minimumReleaseAge: null,
     },
   ],
+  vulnerabilityAlerts: {
+    enabled: true,
+  },
 }
