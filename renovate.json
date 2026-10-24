@@ -1,0 +1,29 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "dependencyDashboard": false,
+  "lockFileMaintenance": {
+    "enabled": false
+  },
+  "osvVulnerabilityAlerts": true,
+  "packageRules": [
+    {
+      "description": "Disable all non-vulnerability updates",
+      "enabled": false,
+      "matchPackageNames": [
+        "*"
+      ]
+    },
+    {
+      "description": "Vulnerability fixes: immediate and automerged",
+      "matchJsonata": [
+        "$exists(vulnerabilityFixVersion) or $exists(isVulnerabilityAlert)"
+      ],
+      "enabled": true,
+      "automerge": true,
+      "minimumReleaseAge": null
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true
+  }
+}
