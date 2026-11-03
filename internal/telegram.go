@@ -326,15 +326,16 @@ func (apiErr *APIError) Error() string {
 }
 
 // IsFrozen reports whether err is a Telegram API error for a frozen
-// account. For example, an APIError with description
-// "FROZEN_METHOD_INVALID" returns true, while a rate limit returns false.
+// account. Telegram prefixes the frozen code in live replies, so an
+// APIError with description "Bad Request: FROZEN_METHOD_INVALID" returns
+// true, while a rate limit returns false.
 func IsFrozen(err error) bool {
 	apiErr, ok := errors.AsType[*APIError](err)
 	if !ok {
 		return false
 	}
 
-	return apiErr.Description == frozenDescription
+	return strings.HasSuffix(apiErr.Description, frozenDescription)
 }
 
 // telegramAPIError converts non-2xx responses into errors. It reads the
