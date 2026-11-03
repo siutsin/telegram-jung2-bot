@@ -1,3 +1,6 @@
+> [!WARNING]
+> **@jung2_bot is currently unavailable.** Telegram suspended the bot account on 3 November 2026 without any notice, so it cannot read or reply to messages in groups. I have appealed to Telegram and am waiting for their decision. In the meantime, you can use the test bot [@tj2b_bot](https://t.me/tj2b_bot) instead — note that it keeps its own separate counts. This notice will be removed once @jung2_bot is restored.
+
 # telegram-jung2-bot
 
 [![Latest Dependencies](https://github.com/siutsin/telegram-jung2-bot/actions/workflows/latest-dependencies.yaml/badge.svg)](https://github.com/siutsin/telegram-jung2-bot/actions/workflows/latest-dependencies.yaml)
