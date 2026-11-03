@@ -276,7 +276,7 @@ func TestGetMyCommandsSucceeds(t *testing.T) {
 func TestGetMyCommandsDetectsFrozenAccount(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		response.WriteHeader(http.StatusBadRequest)
-		_, writeErr := response.Write([]byte(`{"ok":false,"error_code":400,"description":"FROZEN_METHOD_INVALID"}`))
+		_, writeErr := response.Write([]byte(`{"ok":false,"error_code":400,"description":"Bad Request: FROZEN_METHOD_INVALID"}`))
 		assert.NoError(t, writeErr)
 	}))
 	defer server.Close()
@@ -286,7 +286,7 @@ func TestGetMyCommandsDetectsFrozenAccount(t *testing.T) {
 	err := client.GetMyCommands(context.Background())
 
 	require.Error(t, err)
-	require.EqualError(t, err, "telegram API returned HTTP 400: FROZEN_METHOD_INVALID")
+	require.EqualError(t, err, "telegram API returned HTTP 400: Bad Request: FROZEN_METHOD_INVALID")
 	assert.True(t, IsFrozen(err))
 }
 
@@ -309,7 +309,10 @@ func TestIsFrozen(t *testing.T) {
 		want bool
 	}{
 		{name: "frozen", err: &APIError{StatusCode: 400, Description: "FROZEN_METHOD_INVALID"}, want: true},
+		{name: "prefixed frozen", err: &APIError{StatusCode: 400, Description: "Bad Request: FROZEN_METHOD_INVALID"}, want: true},
 		{name: "wrapped frozen", err: fmt.Errorf("readiness check: %w", &APIError{StatusCode: 400, Description: "FROZEN_METHOD_INVALID"}), want: true},
+		{name: "frozen code not at end", err: &APIError{StatusCode: 400, Description: "FROZEN_METHOD_INVALID: see docs"}, want: false},
+		{name: "other bad request", err: &APIError{StatusCode: 400, Description: "Bad Request: chat not found"}, want: false},
 		{name: "other api error", err: &APIError{StatusCode: 429, Description: "Too Many Requests: retry after 5"}, want: false},
 		{name: "plain error", err: errors.New("boom"), want: false},
 		{name: "nil", err: nil, want: false},
