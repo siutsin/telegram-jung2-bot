@@ -45,6 +45,7 @@ type runtimeApp struct {
 	metricsServer   HTTPServer
 	queueWorker     queueRunner
 	readiness       *atomic.Bool
+	stopping        *atomic.Bool
 	readinessDrain  time.Duration
 	shutdownTimeout time.Duration
 	listen          func(network string, address string) (net.Listener, error)
@@ -53,17 +54,24 @@ type runtimeApp struct {
 // AppOptions configures application runtime behaviour.
 type AppOptions struct {
 	Readiness       *atomic.Bool
+	Stopping        *atomic.Bool
 	ReadinessDrain  time.Duration
 	ShutdownTimeout time.Duration
 }
 
 // NewApp constructs an application with the provided processes and options.
 func NewApp(httpServer HTTPServer, metricsServer HTTPServer, queueWorker queueRunner, options AppOptions) *runtimeApp {
+	stopping := options.Stopping
+	if stopping == nil {
+		stopping = &atomic.Bool{}
+	}
+
 	return &runtimeApp{
 		httpServer:      httpServer,
 		metricsServer:   metricsServer,
 		queueWorker:     queueWorker,
 		readiness:       options.Readiness,
+		stopping:        stopping,
 		readinessDrain:  readinessDrain(options),
 		shutdownTimeout: shutdownTimeout(options),
 		listen:          net.Listen,
@@ -106,6 +114,10 @@ func (app *runtimeApp) Run(ctx context.Context) error {
 	})
 
 	componentErr := waitForStop(ctx, componentErrs)
+	// Halt background readiness writers before the final false and the
+	// drain: the runners keep their context until after the drain, so
+	// the context alone cannot stop a late store.
+	app.stopping.Store(true)
 	app.readiness.Store(false)
 	waitReadinessDrain(app.readinessDrain)
 	shutdownStarted.Store(true)

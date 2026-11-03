@@ -29,6 +29,7 @@ func TestLoadBuildsConfig(t *testing.T) {
 				assert.Equal(t, 10*time.Second, config.HTTPTimeout)
 				assert.Equal(t, 10*time.Second, config.ShutdownTimeout)
 				assert.Equal(t, 5*time.Second, config.ReadinessDrain)
+				assert.Equal(t, 60*time.Second, config.TelegramReadinessCheck)
 				assert.Equal(t, 0, config.ScaleUpReadCapacity)
 				assert.Equal(t, 15*time.Second, config.MessageSaveFlush)
 			},
@@ -48,6 +49,7 @@ func TestLoadBuildsConfig(t *testing.T) {
 				env["HTTP_TIMEOUT_SECONDS"] = "3"
 				env["SHUTDOWN_TIMEOUT_SECONDS"] = "4"
 				env["READINESS_DRAIN_SECONDS"] = "2"
+				env["TELEGRAM_READINESS_CHECK_SECONDS"] = "30"
 				env["MESSAGE_SAVE_QUEUE_FLUSH_SECONDS"] = "9"
 			},
 			check: func(t *testing.T, config Config) {
@@ -61,6 +63,7 @@ func TestLoadBuildsConfig(t *testing.T) {
 				assert.Equal(t, 3*time.Second, config.HTTPTimeout)
 				assert.Equal(t, 4*time.Second, config.ShutdownTimeout)
 				assert.Equal(t, 2*time.Second, config.ReadinessDrain)
+				assert.Equal(t, 30*time.Second, config.TelegramReadinessCheck)
 				assert.Equal(t, 9*time.Second, config.MessageSaveFlush)
 			},
 		},
@@ -275,6 +278,9 @@ func TestLoadRejectsInvalidTimeouts(t *testing.T) {
 		{key: "READINESS_DRAIN_SECONDS", value: "0"},
 		{key: "READINESS_DRAIN_SECONDS", value: "-1"},
 		{key: "READINESS_DRAIN_SECONDS", value: "many"},
+		{key: "TELEGRAM_READINESS_CHECK_SECONDS", value: "0"},
+		{key: "TELEGRAM_READINESS_CHECK_SECONDS", value: "-1"},
+		{key: "TELEGRAM_READINESS_CHECK_SECONDS", value: "many"},
 		{key: "MESSAGE_SAVE_QUEUE_FLUSH_SECONDS", value: "0"},
 	}
 

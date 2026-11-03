@@ -34,6 +34,16 @@ func TestNewMetricsServerUsesAppConfig(t *testing.T) {
 	require.NotNil(t, server.Handler)
 }
 
+// TestTelegramMessengerProvidesReadinessCheck proves the app messenger
+// carries the Telegram call the readiness checker is wired with in
+// newQueueWorker.
+func TestTelegramMessengerProvidesReadinessCheck(t *testing.T) {
+	var messenger telegramMessenger = bot.NewClient("token")
+	checker := bot.NewReadinessChecker(messenger, &atomic.Bool{}, &atomic.Bool{}, time.Second, time.Second)
+
+	assert.NotNil(t, checker)
+}
+
 // TestNewHTTPServerUsesAppMessageEnqueuer proves a test can replace one app dependency.
 func TestNewHTTPServerUsesAppMessageEnqueuer(t *testing.T) {
 	controller := gomock.NewController(t)

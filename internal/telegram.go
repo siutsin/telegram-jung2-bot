@@ -19,6 +19,12 @@ const ReportLimit = 3800
 
 const defaultAPIBaseURL = "https://api.telegram.org"
 
+// maxErrorBodyBytes bounds how much of a Telegram error body is read, so
+// a broken or hostile response cannot grow memory without limit.
+const maxErrorBodyBytes = 4096
+
+const frozenDescription = "FROZEN_METHOD_INVALID"
+
 // Client calls the Telegram Bot API.
 type Client struct {
 	baseURL    string
@@ -198,6 +204,24 @@ func (client Client) GetChatAdministrators(ctx context.Context, chatID int64) (a
 	return result.Result, nil
 }
 
+// GetMyCommands calls getMyCommands and discards the command list. The call
+// has no side effects and fails on a frozen account, so the readiness
+// checker uses it to read the account state. For example, a frozen account
+// returns an error that IsFrozen reports as true.
+func (client Client) GetMyCommands(ctx context.Context) (err error) {
+	started := time.Now()
+	defer func() { client.observe("get_my_commands", started, err) }()
+	response, err := client.do(ctx, http.MethodGet, "getMyCommands", nil, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err = errors.Join(err, closeResponseBody(response.Body, "getMyCommands"))
+	}()
+
+	return telegramAPIError(response)
+}
+
 // observe records a completed Telegram API request when metrics are enabled.
 func (client Client) observe(operation string, started time.Time, err error) {
 	if client.metrics != nil {
@@ -280,20 +304,63 @@ func telegramTransportError(endpoint string, err error) error {
 	}
 }
 
-// telegramAPIError converts non-2xx responses into errors.
-// For example, HTTP 429 becomes error "telegram API returned HTTP 429".
+// APIError is a Telegram API error response. StatusCode is the HTTP status
+// and Description is the error text Telegram returned. For example, a
+// frozen account returns StatusCode 400 and Description
+// "FROZEN_METHOD_INVALID".
+type APIError struct {
+	StatusCode  int
+	Description string
+}
+
+// Error returns the API error in the shape existing callers already log.
+// For example, it returns "telegram API returned HTTP 400:
+// FROZEN_METHOD_INVALID", or "telegram API returned HTTP 500" when Telegram
+// sent no description.
+func (apiErr *APIError) Error() string {
+	if apiErr.Description == "" {
+		return fmt.Sprintf("telegram API returned HTTP %d", apiErr.StatusCode)
+	}
+
+	return fmt.Sprintf("telegram API returned HTTP %d: %s", apiErr.StatusCode, apiErr.Description)
+}
+
+// IsFrozen reports whether err is a Telegram API error for a frozen
+// account. For example, an APIError with description
+// "FROZEN_METHOD_INVALID" returns true, while a rate limit returns false.
+func IsFrozen(err error) bool {
+	apiErr, ok := errors.AsType[*APIError](err)
+	if !ok {
+		return false
+	}
+
+	return apiErr.Description == frozenDescription
+}
+
+// telegramAPIError converts non-2xx responses into errors. It reads the
+// error body (bounded) so the returned APIError carries the description
+// Telegram sent. For example, HTTP 429 with a "Too Many Requests"
+// description becomes error "telegram API returned HTTP 429: Too Many
+// Requests".
 func telegramAPIError(response *http.Response) error {
 	if response.StatusCode >= http.StatusOK && response.StatusCode < http.StatusMultipleChoices {
 		return nil
 	}
 
-	statusErr := fmt.Errorf("telegram API returned HTTP %d", response.StatusCode)
-	_, err := io.Copy(io.Discard, response.Body)
+	apiErr := &APIError{StatusCode: response.StatusCode}
+	body, err := io.ReadAll(io.LimitReader(response.Body, maxErrorBodyBytes))
 	if err != nil {
-		return errors.Join(statusErr, fmt.Errorf("drain telegram API error response: %w", err))
+		return errors.Join(apiErr, fmt.Errorf("drain telegram API error response: %w", err))
 	}
 
-	return statusErr
+	var envelope struct {
+		Description string `json:"description"`
+	}
+	if json.Unmarshal(body, &envelope) == nil {
+		apiErr.Description = envelope.Description
+	}
+
+	return apiErr
 }
 
 // closeResponseBody closes a Telegram HTTP response body with context.

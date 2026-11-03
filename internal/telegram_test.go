@@ -3,6 +3,7 @@ package bot
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -251,6 +252,76 @@ func TestIsAdminReportsMembership(t *testing.T) {
 	isAdmin, err = client.IsAdmin(context.Background(), 123, 999)
 	require.NoError(t, err)
 	assert.False(t, isAdmin)
+}
+
+func TestGetMyCommandsSucceeds(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		assert.Equal(t, "/bottoken/getMyCommands", request.URL.Path)
+		assert.Equal(t, http.MethodGet, request.Method)
+
+		_, writeErr := response.Write([]byte(`{"ok":true,"result":[{"command":"junghelp","description":"help"}]}`))
+		assert.NoError(t, writeErr)
+	}))
+	defer server.Close()
+
+	client := NewClient("token", WithBaseURL(server.URL), WithHTTPClient(server.Client()))
+
+	err := client.GetMyCommands(context.Background())
+
+	require.NoError(t, err)
+}
+
+// TestGetMyCommandsDetectsFrozenAccount proves the readiness checker can
+// tell a frozen account from a working one through the client error.
+func TestGetMyCommandsDetectsFrozenAccount(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		response.WriteHeader(http.StatusBadRequest)
+		_, writeErr := response.Write([]byte(`{"ok":false,"error_code":400,"description":"FROZEN_METHOD_INVALID"}`))
+		assert.NoError(t, writeErr)
+	}))
+	defer server.Close()
+
+	client := NewClient("token", WithBaseURL(server.URL), WithHTTPClient(server.Client()))
+
+	err := client.GetMyCommands(context.Background())
+
+	require.Error(t, err)
+	require.EqualError(t, err, "telegram API returned HTTP 400: FROZEN_METHOD_INVALID")
+	assert.True(t, IsFrozen(err))
+}
+
+func TestGetMyCommandsReturnsRequestCreationError(t *testing.T) {
+	client := NewClient("token", WithBaseURL("\n"))
+
+	err := client.GetMyCommands(context.Background())
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "create Telegram getMyCommands request")
+	assert.False(t, IsFrozen(err))
+}
+
+func TestIsFrozen(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{name: "frozen", err: &APIError{StatusCode: 400, Description: "FROZEN_METHOD_INVALID"}, want: true},
+		{name: "wrapped frozen", err: fmt.Errorf("readiness check: %w", &APIError{StatusCode: 400, Description: "FROZEN_METHOD_INVALID"}), want: true},
+		{name: "other api error", err: &APIError{StatusCode: 429, Description: "Too Many Requests: retry after 5"}, want: false},
+		{name: "plain error", err: errors.New("boom"), want: false},
+		{name: "nil", err: nil, want: false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, test.want, IsFrozen(test.err))
+		})
+	}
 }
 
 func TestIsAdminReturnsLookupError(t *testing.T) {
