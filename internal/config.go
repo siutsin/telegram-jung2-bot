@@ -14,55 +14,58 @@ import (
 var dynamoDBTableNamePattern = regexp.MustCompile(`^[A-Za-z0-9_.-]{3,255}$`)
 
 const (
-	defaultHTTPTimeout     = 10 * time.Second
-	defaultShutdownTimeout = 10 * time.Second
-	defaultReadinessDrain  = 5 * time.Second
+	defaultHTTPTimeout            = 10 * time.Second
+	defaultShutdownTimeout        = 10 * time.Second
+	defaultReadinessDrain         = 5 * time.Second
+	defaultTelegramReadinessCheck = 60 * time.Second
 )
 
 // Config contains validated startup configuration.
 type Config struct {
-	AWSRegion            string
-	TelegramBotToken     string
-	MessageTable         string
-	ChatIDTable          string
-	EventQueueURL        string
-	MessageSaveQueueURL  string
-	MessageSaveFlush     time.Duration
-	AWSEndpointURL       string
-	TelegramAPIBaseURL   string
-	LogLevel             string
-	Stage                string
-	ServerAddress        string
-	MetricsServerAddress string
-	HTTPTimeout          time.Duration
-	ShutdownTimeout      time.Duration
-	ReadinessDrain       time.Duration
-	ScaleUpReadCapacity  int
-	WebhookSecretToken   string
-	SchedulerSecretToken string
+	AWSRegion              string
+	TelegramBotToken       string
+	MessageTable           string
+	ChatIDTable            string
+	EventQueueURL          string
+	MessageSaveQueueURL    string
+	MessageSaveFlush       time.Duration
+	AWSEndpointURL         string
+	TelegramAPIBaseURL     string
+	LogLevel               string
+	Stage                  string
+	ServerAddress          string
+	MetricsServerAddress   string
+	HTTPTimeout            time.Duration
+	ShutdownTimeout        time.Duration
+	ReadinessDrain         time.Duration
+	TelegramReadinessCheck time.Duration
+	ScaleUpReadCapacity    int
+	WebhookSecretToken     string
+	SchedulerSecretToken   string
 }
 
 type rawConfig struct {
-	AWSRegion              string `env:"AWS_REGION" envDefault:"eu-west-1"`
-	TelegramBotToken       string `env:"TELEGRAM_BOT_TOKEN,required"`
-	MessageTable           string `env:"MESSAGE_TABLE,required"`
-	ChatIDTable            string `env:"CHATID_TABLE,required"`
-	EventQueueURL          string `env:"EVENT_QUEUE_URL,required"`
-	MessageSaveQueueURL    string `env:"MESSAGE_SAVE_QUEUE_URL,required"`
-	MessageSaveFlushSecond string `env:"MESSAGE_SAVE_QUEUE_FLUSH_SECONDS"`
-	AWSEndpointURL         string `env:"AWS_ENDPOINT_URL"`
-	TelegramAPIBaseURL     string `env:"TELEGRAM_API_BASE_URL" envDefault:"https://api.telegram.org"`
-	LogLevel               string `env:"LOG_LEVEL" envDefault:"info"`
-	Stage                  string `env:"STAGE" envDefault:"dev"`
-	ServerAddress          string `env:"SERVER_ADDRESS"`
-	MetricsServerAddress   string `env:"METRICS_SERVER_ADDRESS"`
-	Docker                 string `env:"DOCKER"`
-	HTTPTimeoutSeconds     string `env:"HTTP_TIMEOUT_SECONDS"`
-	ShutdownTimeoutSeconds string `env:"SHUTDOWN_TIMEOUT_SECONDS"`
-	ReadinessDrainSeconds  string `env:"READINESS_DRAIN_SECONDS"`
-	ScaleUpReadCapacity    string `env:"SCALE_UP_READ_CAPACITY"`
-	WebhookSecretToken     string `env:"WEBHOOK_SECRET_TOKEN"`
-	SchedulerSecretToken   string `env:"SCHEDULER_SECRET_TOKEN"`
+	AWSRegion                     string `env:"AWS_REGION" envDefault:"eu-west-1"`
+	TelegramBotToken              string `env:"TELEGRAM_BOT_TOKEN,required"`
+	MessageTable                  string `env:"MESSAGE_TABLE,required"`
+	ChatIDTable                   string `env:"CHATID_TABLE,required"`
+	EventQueueURL                 string `env:"EVENT_QUEUE_URL,required"`
+	MessageSaveQueueURL           string `env:"MESSAGE_SAVE_QUEUE_URL,required"`
+	MessageSaveFlushSecond        string `env:"MESSAGE_SAVE_QUEUE_FLUSH_SECONDS"`
+	AWSEndpointURL                string `env:"AWS_ENDPOINT_URL"`
+	TelegramAPIBaseURL            string `env:"TELEGRAM_API_BASE_URL" envDefault:"https://api.telegram.org"`
+	LogLevel                      string `env:"LOG_LEVEL" envDefault:"info"`
+	Stage                         string `env:"STAGE" envDefault:"dev"`
+	ServerAddress                 string `env:"SERVER_ADDRESS"`
+	MetricsServerAddress          string `env:"METRICS_SERVER_ADDRESS"`
+	Docker                        string `env:"DOCKER"`
+	HTTPTimeoutSeconds            string `env:"HTTP_TIMEOUT_SECONDS"`
+	ShutdownTimeoutSeconds        string `env:"SHUTDOWN_TIMEOUT_SECONDS"`
+	ReadinessDrainSeconds         string `env:"READINESS_DRAIN_SECONDS"`
+	TelegramReadinessCheckSeconds string `env:"TELEGRAM_READINESS_CHECK_SECONDS"`
+	ScaleUpReadCapacity           string `env:"SCALE_UP_READ_CAPACITY"`
+	WebhookSecretToken            string `env:"WEBHOOK_SECRET_TOKEN"`
+	SchedulerSecretToken          string `env:"SCHEDULER_SECRET_TOKEN"`
 }
 
 // Load validates configuration from an environment map.
@@ -108,31 +111,24 @@ func parseRawConfig(env map[string]string) (rawConfig, error) {
 // For example, it turns raw timeout strings into time.Duration values and
 // fills the default server address when none is set.
 func configFromRaw(raw rawConfig) (Config, error) {
-	httpTimeout := defaultHTTPTimeout
-	if raw.HTTPTimeoutSeconds != "" {
-		parsedTimeout, parseErr := parsePositiveSeconds("HTTP_TIMEOUT_SECONDS", raw.HTTPTimeoutSeconds)
-		if parseErr != nil {
-			return Config{}, parseErr
-		}
-		httpTimeout = parsedTimeout
+	httpTimeout, err := durationOrDefault("HTTP_TIMEOUT_SECONDS", raw.HTTPTimeoutSeconds, defaultHTTPTimeout)
+	if err != nil {
+		return Config{}, err
 	}
 
-	shutdownTimeout := defaultShutdownTimeout
-	if raw.ShutdownTimeoutSeconds != "" {
-		parsedTimeout, parseErr := parsePositiveSeconds("SHUTDOWN_TIMEOUT_SECONDS", raw.ShutdownTimeoutSeconds)
-		if parseErr != nil {
-			return Config{}, parseErr
-		}
-		shutdownTimeout = parsedTimeout
+	shutdownTimeout, err := durationOrDefault("SHUTDOWN_TIMEOUT_SECONDS", raw.ShutdownTimeoutSeconds, defaultShutdownTimeout)
+	if err != nil {
+		return Config{}, err
 	}
 
-	readinessDrain := defaultReadinessDrain
-	if raw.ReadinessDrainSeconds != "" {
-		parsedDrain, parseErr := parsePositiveSeconds("READINESS_DRAIN_SECONDS", raw.ReadinessDrainSeconds)
-		if parseErr != nil {
-			return Config{}, parseErr
-		}
-		readinessDrain = parsedDrain
+	readinessDrain, err := durationOrDefault("READINESS_DRAIN_SECONDS", raw.ReadinessDrainSeconds, defaultReadinessDrain)
+	if err != nil {
+		return Config{}, err
+	}
+
+	telegramReadinessCheck, err := durationOrDefault("TELEGRAM_READINESS_CHECK_SECONDS", raw.TelegramReadinessCheckSeconds, defaultTelegramReadinessCheck)
+	if err != nil {
+		return Config{}, err
 	}
 
 	scaleUpReadCapacity := 0
@@ -140,35 +136,32 @@ func configFromRaw(raw rawConfig) (Config, error) {
 	if err == nil && parsedScaleUpReadCapacity > 0 {
 		scaleUpReadCapacity = parsedScaleUpReadCapacity
 	}
-	messageSaveFlush := 15 * time.Second
-	if raw.MessageSaveFlushSecond != "" {
-		parsedFlush, parseErr := parsePositiveSeconds("MESSAGE_SAVE_QUEUE_FLUSH_SECONDS", raw.MessageSaveFlushSecond)
-		if parseErr != nil {
-			return Config{}, parseErr
-		}
-		messageSaveFlush = parsedFlush
+	messageSaveFlush, err := durationOrDefault("MESSAGE_SAVE_QUEUE_FLUSH_SECONDS", raw.MessageSaveFlushSecond, 15*time.Second)
+	if err != nil {
+		return Config{}, err
 	}
 
 	return Config{
-		AWSRegion:            raw.AWSRegion,
-		LogLevel:             raw.LogLevel,
-		Stage:                strings.ToLower(strings.TrimSpace(raw.Stage)),
-		ServerAddress:        serverAddress(raw.ServerAddress, raw.Docker),
-		MetricsServerAddress: metricsServerAddress(raw.MetricsServerAddress, raw.Docker),
-		TelegramAPIBaseURL:   raw.TelegramAPIBaseURL,
-		TelegramBotToken:     raw.TelegramBotToken,
-		MessageTable:         raw.MessageTable,
-		ChatIDTable:          raw.ChatIDTable,
-		EventQueueURL:        raw.EventQueueURL,
-		MessageSaveQueueURL:  raw.MessageSaveQueueURL,
-		MessageSaveFlush:     messageSaveFlush,
-		AWSEndpointURL:       raw.AWSEndpointURL,
-		HTTPTimeout:          httpTimeout,
-		ShutdownTimeout:      shutdownTimeout,
-		ReadinessDrain:       readinessDrain,
-		ScaleUpReadCapacity:  scaleUpReadCapacity,
-		WebhookSecretToken:   raw.WebhookSecretToken,
-		SchedulerSecretToken: raw.SchedulerSecretToken,
+		AWSRegion:              raw.AWSRegion,
+		LogLevel:               raw.LogLevel,
+		Stage:                  strings.ToLower(strings.TrimSpace(raw.Stage)),
+		ServerAddress:          serverAddress(raw.ServerAddress, raw.Docker),
+		MetricsServerAddress:   metricsServerAddress(raw.MetricsServerAddress, raw.Docker),
+		TelegramAPIBaseURL:     raw.TelegramAPIBaseURL,
+		TelegramBotToken:       raw.TelegramBotToken,
+		MessageTable:           raw.MessageTable,
+		ChatIDTable:            raw.ChatIDTable,
+		EventQueueURL:          raw.EventQueueURL,
+		MessageSaveQueueURL:    raw.MessageSaveQueueURL,
+		MessageSaveFlush:       messageSaveFlush,
+		AWSEndpointURL:         raw.AWSEndpointURL,
+		HTTPTimeout:            httpTimeout,
+		ShutdownTimeout:        shutdownTimeout,
+		ReadinessDrain:         readinessDrain,
+		TelegramReadinessCheck: telegramReadinessCheck,
+		ScaleUpReadCapacity:    scaleUpReadCapacity,
+		WebhookSecretToken:     raw.WebhookSecretToken,
+		SchedulerSecretToken:   raw.SchedulerSecretToken,
 	}, nil
 }
 
@@ -315,6 +308,17 @@ func validateFIFOQueueURL(key string, value string) error {
 	}
 
 	return nil
+}
+
+// durationOrDefault parses an optional seconds value, or returns the
+// fallback when the value is unset. For example, an unset value with a
+// 10 second fallback returns 10 seconds, while "5" returns 5 seconds.
+func durationOrDefault(key string, raw string, fallback time.Duration) (time.Duration, error) {
+	if raw == "" {
+		return fallback, nil
+	}
+
+	return parsePositiveSeconds(key, raw)
 }
 
 // parsePositiveSeconds parses a positive timeout in seconds.

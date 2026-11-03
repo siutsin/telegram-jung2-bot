@@ -64,6 +64,7 @@ func run(ctx context.Context) error {
 type app struct {
 	config          bot.Config
 	readiness       *atomic.Bool
+	stopping        *atomic.Bool
 	metrics         *bot.Metrics
 	queue           queueTransporter
 	messages        messageKeeper
@@ -98,6 +99,7 @@ type telegramMessenger interface {
 	IsAdmin(ctx context.Context, chatID int64, userID int64) (bool, error)
 	SendMessage(ctx context.Context, chatID int64, text string) error
 	SendMessageWithOptions(ctx context.Context, chatID int64, text string, options bot.SendMessageOptions) error
+	GetMyCommands(ctx context.Context) error
 }
 
 type scaleUpper interface {
@@ -117,6 +119,7 @@ func newApp(ctx context.Context, loadedConfig bot.Config) (app, error) {
 	}
 
 	readiness := &atomic.Bool{}
+	stopping := &atomic.Bool{}
 	metrics := bot.NewMetrics(readiness)
 	dynamoClient := newDynamoClient(awsConfig, loadedConfig.AWSEndpointURL)
 	queueClient := queue.NewClient(newSQSClient(awsConfig, loadedConfig.AWSEndpointURL), metrics)
@@ -124,6 +127,7 @@ func newApp(ctx context.Context, loadedConfig bot.Config) (app, error) {
 	return app{
 		config:          loadedConfig,
 		readiness:       readiness,
+		stopping:        stopping,
 		metrics:         metrics,
 		queue:           queueClient,
 		messages:        dynamodb.NewMessageClient(dynamoClient, metrics),
@@ -162,6 +166,7 @@ func (app app) run(ctx context.Context) error {
 		queueWorker,
 		bot.AppOptions{
 			Readiness:       app.readiness,
+			Stopping:        app.stopping,
 			ReadinessDrain:  app.config.ReadinessDrain,
 			ShutdownTimeout: app.config.ShutdownTimeout,
 		},
@@ -286,7 +291,15 @@ func newQueueWorker(app app, actions bot.Service) (queueRunner, error) {
 		return nil, err
 	}
 
-	return queueWorkers{runners: []queueRunner{commandWorker, messageWorker, app.messageEnqueuer}}, nil
+	readinessChecker := bot.NewReadinessChecker(
+		app.messenger,
+		app.readiness,
+		app.stopping,
+		app.config.TelegramReadinessCheck,
+		app.config.HTTPTimeout,
+	)
+
+	return queueWorkers{runners: []queueRunner{commandWorker, messageWorker, app.messageEnqueuer, readinessChecker}}, nil
 }
 
 type queueRunner interface {
@@ -297,7 +310,7 @@ type queueWorkers struct {
 	runners []queueRunner
 }
 
-// Run keeps command, message-save, and batch-flush work alive together.
+// Run keeps command, message-save, batch-flush, and readiness work alive together.
 func (workers queueWorkers) Run(ctx context.Context) error {
 	group, groupCtx := errgroup.WithContext(ctx)
 	for _, runner := range workers.runners {

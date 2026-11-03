@@ -113,6 +113,34 @@ func TestRunStopsBothServersAfterComponentFailure(t *testing.T) {
 	}
 }
 
+// TestRunSetsStoppingOnTeardown proves the lifecycle halts background
+// readiness writers before the final readiness store and the drain, so
+// a late store cannot put a dying pod back in the endpoints.
+func TestRunSetsStoppingOnTeardown(t *testing.T) {
+	t.Parallel()
+
+	readiness := &atomic.Bool{}
+	stopping := &atomic.Bool{}
+	httpServer, metricsServer, queueWorker := newMocks(t)
+	stopped := make(chan struct{})
+	var stopOnce sync.Once
+	expectBlockingServer(httpServer, "HTTP", nil, stopped, &stopOnce)
+	expectBlockingServer(metricsServer, "metrics", nil, stopped, &stopOnce)
+	queueWorker.EXPECT().Run(gomock.Any()).Return(errors.New("worker boom"))
+	application := NewApp(
+		NewHTTPServer("HTTP", "127.0.0.1:0", httpServer),
+		NewHTTPServer("metrics", "127.0.0.1:0", metricsServer),
+		queueWorker,
+		AppOptions{Readiness: readiness, Stopping: stopping, ReadinessDrain: time.Nanosecond, ShutdownTimeout: time.Second},
+	)
+
+	err := application.Run(context.Background())
+
+	require.Error(t, err)
+	assert.True(t, stopping.Load())
+	assert.False(t, readiness.Load())
+}
+
 func TestRunHandlesConcurrentComponentFailures(t *testing.T) {
 	t.Parallel()
 
