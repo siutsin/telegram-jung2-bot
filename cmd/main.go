@@ -88,6 +88,7 @@ type messageKeeper interface {
 }
 
 type chatMaintainer interface {
+	DeleteChat(ctx context.Context, tableName string, chatID int64) error
 	DueChatIDs(ctx context.Context, tableName string, timestamp time.Time) ([]int64, error)
 	Get(ctx context.Context, tableName string, chatID int64) (bot.ChatSetting, bool, error)
 	Save(ctx context.Context, tableName string, settings bot.ChatSetting) error

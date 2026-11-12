@@ -13,6 +13,7 @@ import (
 
 // chatMaintainer is the chat persistence surface the service actions need.
 type chatMaintainer interface {
+	DeleteChat(ctx context.Context, tableName string, chatID int64) error
 	DueChatIDs(ctx context.Context, tableName string, timestamp time.Time) ([]int64, error)
 	Get(ctx context.Context, tableName string, chatID int64) (ChatSetting, bool, error)
 	SaveStatistics(ctx context.Context, tableName string, chatID int64, userCount int, messageCount int, now time.Time) error
@@ -259,10 +260,44 @@ func (service Service) sendStatistics(ctx context.Context, chatID int64, options
 			return err
 		}
 		slog.Error("statistics report send failed", "chatId", chatID, "err", err)
+		if isDeadChatError(err) {
+			service.pruneDeadChat(ctx, chatID)
+		}
 		return nil
 	}
 
 	return nil
+}
+
+// pruneDeadChat deletes a chat the bot can no longer reach.
+func (service Service) pruneDeadChat(ctx context.Context, chatID int64) {
+	if err := service.chatMaintainer.DeleteChat(ctx, service.chatTable, chatID); err != nil {
+		slog.Error("prune dead chat failed", "chatId", chatID, "err", err)
+		return
+	}
+	slog.Info("pruned dead chat", "chatId", chatID)
+}
+
+// isDeadChatError reports whether err proves the chat is gone for good.
+// A migrated chat is not dead, and rate limits and server errors can pass.
+func isDeadChatError(err error) bool {
+	apiErr, ok := errors.AsType[*APIError](err)
+	if !ok || apiErr.MigrateToChatID != 0 {
+		return false
+	}
+
+	switch apiErr.StatusCode {
+	case 403:
+		for _, text := range []string{"bot was blocked by the user", "bot was kicked from the group chat", "bot was kicked from the supergroup chat", "bot is not a member"} {
+			if strings.Contains(apiErr.Description, text) {
+				return true
+			}
+		}
+	case 400:
+		return strings.Contains(apiErr.Description, "chat not found")
+	}
+
+	return false
 }
 
 // isTelegramStatusError reports whether err is a Telegram API 4xx or 5xx error.

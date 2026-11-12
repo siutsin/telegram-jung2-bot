@@ -322,29 +322,41 @@ func TestTopTenIgnoresTelegramStatusErrors(t *testing.T) {
 	t.Parallel()
 
 	now := time.Date(2026, 5, 2, 12, 0, 0, 0, time.UTC)
-	messenger := &fakeMessenger{err: errors.New("telegram API returned HTTP 403")}
-	chatStore := &fakeChatStore{}
-	service := testService()
-	service.chatMaintainer = chatStore
-	service.messageQuerier = &fakeMessageClient{
-		rows: []StoredMessage{
-			{
-				ChatID:      123,
-				ChatTitle:   "Group",
-				DateCreated: time.Date(2026, 5, 2, 20, 0, 0, 0, time.FixedZone("UTC+8", 8*60*60)),
-				FirstName:   "Ada",
-				TTL:         1,
-				UserID:      1,
-			},
-		},
+	tests := []struct {
+		name         string
+		sendErr      error
+		deleteErr    error
+		wantPrunedID int64
+	}{
+		{name: "permanent 403 prunes", sendErr: &APIError{StatusCode: 403, Description: "Forbidden: bot was blocked by the user"}, wantPrunedID: 123},
+		{name: "kicked from group prunes", sendErr: &APIError{StatusCode: 403, Description: "Forbidden: bot was kicked from the group chat"}, wantPrunedID: 123},
+		{name: "kicked from supergroup prunes", sendErr: &APIError{StatusCode: 403, Description: "Forbidden: bot was kicked from the supergroup chat"}, wantPrunedID: 123},
+		{name: "not a member prunes", sendErr: &APIError{StatusCode: 403, Description: "Forbidden: bot is not a member of the chat"}, wantPrunedID: 123},
+		{name: "chat not found prunes", sendErr: &APIError{StatusCode: 400, Description: "Bad Request: chat not found"}, wantPrunedID: 123},
+		{name: "prune failure still returns nil", sendErr: &APIError{StatusCode: 403, Description: "Forbidden: bot was blocked by the user"}, deleteErr: errors.New("boom"), wantPrunedID: 123},
+		{name: "other 403 keeps chat", sendErr: &APIError{StatusCode: 403, Description: "Forbidden: some other reason"}},
+		{name: "other 400 keeps chat", sendErr: &APIError{StatusCode: 400, Description: "Bad Request: message is too long"}},
+		{name: "rate limit keeps chat", sendErr: &APIError{StatusCode: 429, Description: "Too Many Requests: retry after 5"}},
+		{name: "server error keeps chat", sendErr: &APIError{StatusCode: 500, Description: "Internal Server Error"}},
+		{name: "migrated chat is kept", sendErr: &APIError{StatusCode: 403, Description: "Forbidden: bot was kicked from the group chat", MigrateToChatID: 456}},
 	}
-	service.messenger = messenger
-	service.nowFunc = func() time.Time { return now }
 
-	err := service.TopTen(context.Background(), 123)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			chatStore := &fakeChatStore{deleteErr: test.deleteErr}
+			service := testService()
+			service.chatMaintainer = chatStore
+			service.messageQuerier = &fakeMessageClient{rows: serviceRows()}
+			service.messenger = &fakeMessenger{err: test.sendErr}
+			service.nowFunc = func() time.Time { return now }
 
-	require.NoError(t, err)
-	assert.Equal(t, statisticsChatCountUpdate(now), chatStore.statisticsUpdate)
+			err := service.TopTen(context.Background(), 123)
+
+			require.NoError(t, err)
+			assert.Equal(t, statisticsChatCountUpdate(now), chatStore.statisticsUpdate)
+			assert.Equal(t, test.wantPrunedID, chatStore.deletedChatID)
+		})
+	}
 }
 
 func TestTopTenReturnsStatisticsErrors(t *testing.T) {
@@ -630,6 +642,8 @@ func serviceRows() []StoredMessage {
 }
 
 type fakeChatStore struct {
+	deleteErr        error
+	deletedChatID    int64
 	dueChatIDs       []int64
 	dueErr           error
 	enabled          *bool
@@ -638,6 +652,11 @@ type fakeChatStore struct {
 	statisticsUpdate UpdateExpression
 	updateErr        error
 	updatedChatID    int64
+}
+
+func (store *fakeChatStore) DeleteChat(ctx context.Context, tableName string, chatID int64) error {
+	store.deletedChatID = chatID
+	return store.deleteErr
 }
 
 func (store *fakeChatStore) DueChatIDs(ctx context.Context, tableName string, timestamp time.Time) ([]int64, error) {

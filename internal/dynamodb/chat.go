@@ -41,6 +41,21 @@ func (client ChatClient) Get(ctx context.Context, tableName string, chatID int64
 	return settings, true, nil
 }
 
+// DeleteChat deletes one chat row so a dead chat gets no more sends.
+func (client ChatClient) DeleteChat(ctx context.Context, tableName string, chatID int64) (err error) {
+	started := time.Now()
+	defer func() { observeDependency(client.metrics, "delete", started, err) }()
+	_, err = client.dynamo.DeleteItem(ctx, &awsdynamodb.DeleteItemInput{
+		TableName: awscore.String(tableName),
+		Key:       encodeDynamoValues(map[string]any{"chatId": chatID}),
+	})
+	if err != nil {
+		return fmt.Errorf("delete DynamoDB chat row: %w", err)
+	}
+
+	return nil
+}
+
 // Update stores a chat setting update expression.
 func (client ChatClient) Update(ctx context.Context, update bot.UpdateExpression) error {
 	return updateContractUpdate(ctx, client.dynamo, client.metrics, update.TableName, update.Key, update.UpdateExpression, update.ExpressionAttributeNames, update.ExpressionAttributeValues)

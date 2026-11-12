@@ -309,8 +309,9 @@ func telegramTransportError(endpoint string, err error) error {
 // frozen account returns StatusCode 400 and Description
 // "FROZEN_METHOD_INVALID".
 type APIError struct {
-	StatusCode  int
-	Description string
+	StatusCode      int
+	Description     string
+	MigrateToChatID int64
 }
 
 // Error returns the API error in the shape existing callers already log.
@@ -356,9 +357,13 @@ func telegramAPIError(response *http.Response) error {
 
 	var envelope struct {
 		Description string `json:"description"`
+		Parameters  struct {
+			MigrateToChatID int64 `json:"migrate_to_chat_id"`
+		} `json:"parameters"`
 	}
 	if json.Unmarshal(body, &envelope) == nil {
 		apiErr.Description = envelope.Description
+		apiErr.MigrateToChatID = envelope.Parameters.MigrateToChatID
 	}
 
 	return apiErr

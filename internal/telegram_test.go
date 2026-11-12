@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -137,6 +138,19 @@ func TestTelegramAPIErrorIncludesDrainError(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "telegram API returned HTTP 500")
 	assert.Contains(t, err.Error(), "drain telegram API error response")
+}
+
+func TestTelegramAPIErrorParsesMigrateToChatID(t *testing.T) {
+	t.Parallel()
+
+	err := telegramAPIError(&http.Response{
+		StatusCode: http.StatusForbidden,
+		Body:       io.NopCloser(strings.NewReader(`{"description":"Forbidden: bot was kicked from the group chat","parameters":{"migrate_to_chat_id":456}}`)),
+	})
+
+	var apiErr *APIError
+	require.ErrorAs(t, err, &apiErr)
+	assert.Equal(t, int64(456), apiErr.MigrateToChatID)
 }
 
 func TestCloseResponseBodyWrapsCloseError(t *testing.T) {
