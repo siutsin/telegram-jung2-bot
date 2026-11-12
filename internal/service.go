@@ -271,7 +271,8 @@ func (service Service) sendStatistics(ctx context.Context, chatID int64, options
 
 // pruneDeadChat deletes a chat the bot can no longer reach.
 func (service Service) pruneDeadChat(ctx context.Context, chatID int64) {
-	if err := service.chatMaintainer.DeleteChat(ctx, service.chatTable, chatID); err != nil {
+	err := service.chatMaintainer.DeleteChat(ctx, service.chatTable, chatID)
+	if err != nil {
 		slog.Error("prune dead chat failed", "chatId", chatID, "err", err)
 		return
 	}
