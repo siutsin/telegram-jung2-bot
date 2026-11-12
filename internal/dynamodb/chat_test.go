@@ -123,6 +123,41 @@ func TestChatClientUpdateAndSaveStatistics(t *testing.T) {
 	}
 }
 
+func TestChatClientDeleteChat(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		deleteErr   error
+		wantErrText string
+	}{
+		{name: "success"},
+		{name: "sdk error", deleteErr: errors.New("boom"), wantErrText: "delete DynamoDB chat row: boom"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			controller := gomock.NewController(t)
+			dynamoClient := mock.NewMockDynamoRequester(controller)
+			dynamoClient.EXPECT().
+				DeleteItem(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(ctx context.Context, input *awsdynamodb.DeleteItemInput, optFns ...func(*awsdynamodb.Options)) (*awsdynamodb.DeleteItemOutput, error) {
+					assert.Equal(t, "chats", awscore.ToString(input.TableName))
+					return &awsdynamodb.DeleteItemOutput{}, test.deleteErr
+				})
+
+			err := NewChatClient(dynamoClient).DeleteChat(context.Background(), "chats", 123)
+
+			if test.wantErrText != "" {
+				require.ErrorContains(t, err, test.wantErrText)
+				return
+			}
+
+			require.NoError(t, err)
+		})
+	}
+}
+
 func TestChatClientDueChatIDs(t *testing.T) {
 	t.Parallel()
 
