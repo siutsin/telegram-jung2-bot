@@ -3,6 +3,7 @@ package bot
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -49,6 +50,7 @@ func TestNewBuildsService(t *testing.T) {
 		func() time.Time { return now },
 		"queue-url",
 		sender,
+		nil,
 		metrics,
 	)
 
@@ -60,7 +62,46 @@ func TestNewBuildsService(t *testing.T) {
 	assert.Equal(t, now, service.nowFunc())
 	assert.Equal(t, "queue-url", service.queueURL)
 	assert.Equal(t, sender, service.sender)
+	assert.Nil(t, service.announcements)
 	assert.Same(t, metrics, service.metrics)
+}
+
+func TestOffFromWorkAppendsLiveAnnouncements(t *testing.T) {
+	t.Parallel()
+
+	expired := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
+	messenger := &fakeMessenger{}
+	service := testService()
+	service.announcements = []Announcement{
+		{Message: "Office closed tomorrow"},
+		{Message: "Old news", ExpiresOn: &expired},
+	}
+	service.messageQuerier = &fakeMessageClient{rows: serviceRows()}
+	service.messenger = messenger
+
+	err := service.OffFromWork(context.Background(), 123)
+
+	require.NoError(t, err)
+	assert.True(t, strings.HasSuffix(messenger.text, "\n\nOffice closed tomorrow"))
+	assert.NotContains(t, messenger.text, "Old news")
+
+	topTenMessenger := &fakeMessenger{}
+	service.messenger = topTenMessenger
+
+	err = service.TopTen(context.Background(), 123)
+
+	require.NoError(t, err)
+	assert.NotContains(t, topTenMessenger.text, "Office closed tomorrow")
+	assert.NotContains(t, topTenMessenger.text, "Old news")
+
+	allJungMessenger := &fakeMessenger{}
+	service.messenger = allJungMessenger
+
+	err = service.AllJung(context.Background(), 123)
+
+	require.NoError(t, err)
+	assert.NotContains(t, allJungMessenger.text, "Office closed tomorrow")
+	assert.NotContains(t, allJungMessenger.text, "Old news")
 }
 
 func TestOnOffFromWorkEnqueuesDueChats(t *testing.T) {

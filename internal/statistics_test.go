@@ -134,6 +134,198 @@ func TestGenerateOffFromWorkReport(t *testing.T) {
 	assert.True(t, strings.HasSuffix(summary.Report, "\n\n---\nUse /setOffFromWorkTimeUTC to set the off-work time.\nSee /jungHelp for more info."))
 }
 
+func TestGenerateOffFromWorkReportWithNoAnnouncementsIsUnchanged(t *testing.T) {
+	t.Parallel()
+
+	baseline, err := GenerateReport(sampleRows(), ReportOptions{Limit: 1, OffFromWork: true, Now: now()})
+	require.NoError(t, err)
+	assert.True(t, strings.HasSuffix(baseline.Report, "\n\n---\nUse /setOffFromWorkTimeUTC to set the off-work time.\nSee /jungHelp for more info."))
+
+	for _, announcements := range [][]Announcement{nil, {}} {
+		summary, err := GenerateReport(sampleRows(), ReportOptions{
+			Limit: 1, OffFromWork: true, Now: now(), Announcements: announcements,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, baseline.Report, summary.Report)
+	}
+}
+
+func TestGenerateOffFromWorkReportKeepsAnnouncementWithoutExpiration(t *testing.T) {
+	t.Parallel()
+
+	baseline, err := GenerateReport(sampleRows(), ReportOptions{Limit: 1, OffFromWork: true, Now: now()})
+	require.NoError(t, err)
+
+	summary, err := GenerateReport(sampleRows(), ReportOptions{
+		Limit: 1, OffFromWork: true, Now: now(),
+		Announcements: []Announcement{{Message: "Office closed tomorrow"}},
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, baseline.Report+"\n\nOffice closed tomorrow", summary.Report)
+}
+
+func TestGenerateOffFromWorkReportDropsExpiredAnnouncement(t *testing.T) {
+	t.Parallel()
+
+	expired := time.Date(2026, 5, 1, 0, 0, 0, 0, hongKongLocation(t))
+
+	baseline, err := GenerateReport(sampleRows(), ReportOptions{Limit: 1, OffFromWork: true, Now: now()})
+	require.NoError(t, err)
+
+	summary, err := GenerateReport(sampleRows(), ReportOptions{
+		Limit: 1, OffFromWork: true, Now: now(),
+		Announcements: []Announcement{{Message: "Old news", ExpiresOn: &expired}},
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, baseline.Report, summary.Report)
+	assert.NotContains(t, summary.Report, "Old news")
+}
+
+func TestGenerateOffFromWorkReportDropsAnnouncementAtExpirationBoundary(t *testing.T) {
+	t.Parallel()
+
+	expiry := time.Date(2026, 5, 3, 0, 0, 0, 0, hongKongLocation(t))
+
+	baseline, err := GenerateReport(sampleRows(), ReportOptions{Limit: 1, OffFromWork: true, Now: expiry})
+	require.NoError(t, err)
+
+	summary, err := GenerateReport(sampleRows(), ReportOptions{
+		Limit: 1, OffFromWork: true, Now: expiry,
+		Announcements: []Announcement{{Message: "Last day", ExpiresOn: &expiry}},
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, baseline.Report, summary.Report)
+	assert.NotContains(t, summary.Report, "Last day")
+}
+
+func TestGenerateOffFromWorkReportKeepsNotYetExpiredAnnouncement(t *testing.T) {
+	t.Parallel()
+
+	expiresOn := time.Date(2026, 5, 3, 0, 0, 0, 0, hongKongLocation(t))
+
+	baseline, err := GenerateReport(sampleRows(), ReportOptions{Limit: 1, OffFromWork: true, Now: now()})
+	require.NoError(t, err)
+
+	summary, err := GenerateReport(sampleRows(), ReportOptions{
+		Limit: 1, OffFromWork: true, Now: now(),
+		Announcements: []Announcement{{Message: "Office moves on Monday", ExpiresOn: &expiresOn}},
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, baseline.Report+"\n\nOffice moves on Monday", summary.Report)
+}
+
+func TestGenerateOffFromWorkReportJoinsMultipleAnnouncementsWithNewline(t *testing.T) {
+	t.Parallel()
+
+	baseline, err := GenerateReport(sampleRows(), ReportOptions{Limit: 1, OffFromWork: true, Now: now()})
+	require.NoError(t, err)
+
+	summary, err := GenerateReport(sampleRows(), ReportOptions{
+		Limit: 1, OffFromWork: true, Now: now(),
+		Announcements: []Announcement{{Message: "First"}, {Message: "Second"}},
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, baseline.Report+"\n\nFirst\nSecond", summary.Report)
+}
+
+func TestGenerateOffFromWorkReportWithAllAnnouncementsExpiredIsUnchanged(t *testing.T) {
+	t.Parallel()
+
+	location := hongKongLocation(t)
+	first := time.Date(2026, 4, 1, 0, 0, 0, 0, location)
+	second := time.Date(2026, 5, 1, 0, 0, 0, 0, location)
+
+	baseline, err := GenerateReport(sampleRows(), ReportOptions{Limit: 1, OffFromWork: true, Now: now()})
+	require.NoError(t, err)
+
+	summary, err := GenerateReport(sampleRows(), ReportOptions{
+		Limit: 1, OffFromWork: true, Now: now(),
+		Announcements: []Announcement{
+			{Message: "Old news", ExpiresOn: &first},
+			{Message: "Older news", ExpiresOn: &second},
+		},
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, baseline.Report, summary.Report)
+}
+
+func TestGenerateOffFromWorkReportWithAllBlankAnnouncementsIsUnchanged(t *testing.T) {
+	t.Parallel()
+
+	baseline, err := GenerateReport(sampleRows(), ReportOptions{Limit: 1, OffFromWork: true, Now: now()})
+	require.NoError(t, err)
+
+	summary, err := GenerateReport(sampleRows(), ReportOptions{
+		Limit: 1, OffFromWork: true, Now: now(),
+		Announcements: []Announcement{{Message: ""}, {Message: "   "}, {Message: "\t\n"}},
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, baseline.Report, summary.Report)
+}
+
+func TestGenerateOffFromWorkReportSkipsBlankAnnouncements(t *testing.T) {
+	t.Parallel()
+
+	baseline, err := GenerateReport(sampleRows(), ReportOptions{Limit: 1, OffFromWork: true, Now: now()})
+	require.NoError(t, err)
+
+	summary, err := GenerateReport(sampleRows(), ReportOptions{
+		Limit: 1, OffFromWork: true, Now: now(),
+		Announcements: []Announcement{{Message: "  "}, {Message: "Live one"}, {Message: ""}},
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, baseline.Report+"\n\nLive one", summary.Report)
+}
+
+func TestGenerateReportDoesNotAppendAnnouncementsToNonOffWorkReports(t *testing.T) {
+	t.Parallel()
+
+	baseline, err := GenerateReport(sampleRows(), ReportOptions{Limit: 10, Now: now()})
+	require.NoError(t, err)
+
+	summary, err := GenerateReport(sampleRows(), ReportOptions{
+		Limit: 10, Now: now(),
+		Announcements: []Announcement{{Message: "Office closed tomorrow"}},
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, baseline.Report, summary.Report)
+	assert.NotContains(t, summary.Report, "Office closed tomorrow")
+	assert.NotContains(t, summary.Report, "/setOffFromWorkTimeUTC")
+}
+
+func TestGenerateOffFromWorkReportAnnouncementsCountAgainstReportLimit(t *testing.T) {
+	t.Parallel()
+
+	rows := make([]StoredMessage, 0, 200)
+	for index := range 200 {
+		rows = append(rows, StoredMessage{
+			ChatTitle:   "Group",
+			UserID:      int64(index + 1),
+			FirstName:   strings.Repeat("冗", 20),
+			DateCreated: now().Add(-time.Hour),
+		})
+	}
+
+	summary, err := GenerateReport(rows, ReportOptions{
+		OffFromWork:   true,
+		Now:           now(),
+		Announcements: []Announcement{{Message: "Short notice"}},
+	})
+
+	require.NoError(t, err)
+	assert.LessOrEqual(t, jsStringLength(summary.Report), ReportLimit)
+	assert.True(t, strings.HasSuffix(summary.Report, "See /jungHelp for more info.\n\nShort notice"))
+}
+
 func TestGenerateReportRejectsEmptyRows(t *testing.T) {
 	t.Parallel()
 
@@ -264,7 +456,7 @@ func TestTruncateReportByJSLengthKeepsValidUTF8(t *testing.T) {
 	t.Parallel()
 
 	text := strings.Repeat("a", ReportLimit-1) + "😀"
-	truncated := truncateReportByJSLength(text)
+	truncated := truncateByJSLength(text, ReportLimit)
 
 	assert.True(t, utf8.ValidString(truncated))
 	assert.LessOrEqual(t, jsStringLength(truncated), ReportLimit)
@@ -394,4 +586,13 @@ func sampleRows() []StoredMessage {
 
 func now() time.Time {
 	return time.Date(2026, 5, 2, 12, 0, 0, 0, time.UTC)
+}
+
+func hongKongLocation(t *testing.T) *time.Location {
+	t.Helper()
+
+	location, err := time.LoadLocation("Asia/Hong_Kong")
+	require.NoError(t, err)
+
+	return location
 }

@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -308,6 +309,98 @@ func TestLoadEnvironIgnoresMalformedEntries(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, "token", config.TelegramBotToken)
+}
+
+func TestLoadParsesAnnouncements(t *testing.T) {
+	t.Parallel()
+
+	env := validEnv()
+	env["ANNOUNCEMENTS"] = `[{"message":"Happy holidays"},{"message":"Office moves on Monday","expires_on":"2026-12-26"}]`
+
+	config, err := Load(env)
+
+	require.NoError(t, err)
+	require.Len(t, config.Announcements, 2)
+	assert.Equal(t, "Happy holidays", config.Announcements[0].Message)
+	assert.Nil(t, config.Announcements[0].ExpiresOn)
+	assert.Equal(t, "Office moves on Monday", config.Announcements[1].Message)
+	require.NotNil(t, config.Announcements[1].ExpiresOn)
+	assert.Equal(t, "Asia/Hong_Kong", config.Announcements[1].ExpiresOn.Location().String())
+	assert.True(t, config.Announcements[1].ExpiresOn.Equal(
+		time.Date(2026, 12, 26, 0, 0, 0, 0, config.Announcements[1].ExpiresOn.Location()),
+	))
+}
+
+func TestLoadAnnouncementsUnsetGivesEmptySlice(t *testing.T) {
+	t.Parallel()
+
+	config, err := Load(validEnv())
+	require.NoError(t, err)
+	assert.Empty(t, config.Announcements)
+
+	env := validEnv()
+	env["ANNOUNCEMENTS"] = "[]"
+
+	config, err = Load(env)
+	require.NoError(t, err)
+	assert.Empty(t, config.Announcements)
+}
+
+func TestLoadRejectsMalformedAnnouncementsJSON(t *testing.T) {
+	t.Parallel()
+
+	values := []string{
+		"not json",
+		`{"message":"Happy holidays"}`,
+		`[{"message":"Happy holidays","unknown":true}]`,
+		`[{"message":"Happy holidays"}] trailing`,
+	}
+
+	for _, value := range values {
+		t.Run(value, func(t *testing.T) {
+			t.Parallel()
+
+			env := validEnv()
+			env["ANNOUNCEMENTS"] = value
+
+			_, err := Load(env)
+			require.ErrorContains(t, err, "ANNOUNCEMENTS")
+		})
+	}
+}
+
+func TestLoadRejectsInvalidAnnouncementExpirationDate(t *testing.T) {
+	t.Parallel()
+
+	values := []string{"26-12-2026", "2026-02-30", "2026-12-26T00:00:00"}
+
+	for _, value := range values {
+		t.Run(value, func(t *testing.T) {
+			t.Parallel()
+
+			env := validEnv()
+			env["ANNOUNCEMENTS"] = `[{"message":"Happy holidays","expires_on":"` + value + `"}]`
+
+			_, err := Load(env)
+			require.ErrorContains(t, err, "ANNOUNCEMENTS")
+		})
+	}
+}
+
+// TestLoadRejectsAnnouncementLocationFailure keeps a missing Asia/Hong_Kong
+// zone from silently moving the expiry boundary to UTC.
+func TestLoadRejectsAnnouncementLocationFailure(t *testing.T) {
+	original := loadHongKongLocation
+	loadHongKongLocation = func() (*time.Location, error) {
+		return nil, errors.New("no zoneinfo")
+	}
+	defer func() { loadHongKongLocation = original }()
+
+	env := validEnv()
+	env["ANNOUNCEMENTS"] = `[{"message":"Happy holidays","expires_on":"2026-12-26"}]`
+
+	_, err := Load(env)
+	require.ErrorContains(t, err, "ANNOUNCEMENTS")
 }
 
 func validEnv() map[string]string {

@@ -1,12 +1,17 @@
 package bot
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	// The production image ships no system time zone data, so announcement
+	// expiry dates could never load Asia/Hong_Kong without the embedded copy.
+	_ "time/tzdata"
 
 	caarlosenv "github.com/caarlos0/env/v11"
 )
@@ -19,6 +24,26 @@ const (
 	defaultReadinessDrain         = 5 * time.Second
 	defaultTelegramReadinessCheck = 60 * time.Second
 )
+
+// Announcement is one off-work announcement.
+// For example, Announcement{Message: "Office closed tomorrow"} never expires.
+// A dated announcement stops at the start of its ExpiresOn date, so one
+// expiring on 2026-12-26 is last live on 25 Dec.
+type Announcement struct {
+	Message   string
+	ExpiresOn *time.Time // nil = never expires; otherwise 00:00 Asia/Hong_Kong on that date
+}
+
+type announcementJSON struct {
+	Message   string `json:"message"`
+	ExpiresOn string `json:"expires_on"` // omitted or "" = never expires
+}
+
+// loadHongKongLocation is a variable so a test can force the load failure
+// that startup must reject instead of falling back to UTC.
+var loadHongKongLocation = func() (*time.Location, error) {
+	return time.LoadLocation("Asia/Hong_Kong")
+}
 
 // Config contains validated startup configuration.
 type Config struct {
@@ -42,6 +67,7 @@ type Config struct {
 	ScaleUpReadCapacity    int
 	WebhookSecretToken     string
 	SchedulerSecretToken   string
+	Announcements          []Announcement
 }
 
 type rawConfig struct {
@@ -66,6 +92,7 @@ type rawConfig struct {
 	ScaleUpReadCapacity           string `env:"SCALE_UP_READ_CAPACITY"`
 	WebhookSecretToken            string `env:"WEBHOOK_SECRET_TOKEN"`
 	SchedulerSecretToken          string `env:"SCHEDULER_SECRET_TOKEN"`
+	Announcements                 string `env:"ANNOUNCEMENTS"`
 }
 
 // Load validates configuration from an environment map.
@@ -141,6 +168,11 @@ func configFromRaw(raw rawConfig) (Config, error) {
 		return Config{}, err
 	}
 
+	announcements, err := parseAnnouncements(raw.Announcements)
+	if err != nil {
+		return Config{}, err
+	}
+
 	return Config{
 		AWSRegion:              raw.AWSRegion,
 		LogLevel:               raw.LogLevel,
@@ -162,7 +194,49 @@ func configFromRaw(raw rawConfig) (Config, error) {
 		ScaleUpReadCapacity:    scaleUpReadCapacity,
 		WebhookSecretToken:     raw.WebhookSecretToken,
 		SchedulerSecretToken:   raw.SchedulerSecretToken,
+		Announcements:          announcements,
 	}, nil
+}
+
+// parseAnnouncements decodes the ANNOUNCEMENTS JSON list.
+// For example, `[{"message":"Office closed tomorrow"}]` becomes one
+// announcement that never expires. An unset value becomes a nil slice.
+func parseAnnouncements(raw string) ([]Announcement, error) {
+	if strings.TrimSpace(raw) == "" {
+		return nil, nil
+	}
+
+	decoder := json.NewDecoder(strings.NewReader(raw))
+	decoder.DisallowUnknownFields()
+
+	var wire []announcementJSON
+	err := decoder.Decode(&wire)
+	if err != nil {
+		return nil, fmt.Errorf("ANNOUNCEMENTS must be a JSON array of announcements: %w", err)
+	}
+	if decoder.More() {
+		return nil, fmt.Errorf("ANNOUNCEMENTS must be a JSON array of announcements")
+	}
+
+	location, err := loadHongKongLocation()
+	if err != nil {
+		return nil, fmt.Errorf("ANNOUNCEMENTS expiry dates need the Asia/Hong_Kong time zone: %w", err)
+	}
+
+	announcements := make([]Announcement, 0, len(wire))
+	for _, entry := range wire {
+		announcement := Announcement{Message: entry.Message}
+		if entry.ExpiresOn != "" {
+			expiresOn, err := time.ParseInLocation(time.DateOnly, entry.ExpiresOn, location)
+			if err != nil {
+				return nil, fmt.Errorf("ANNOUNCEMENTS expires_on %q must be a date like 2026-12-26: %w", entry.ExpiresOn, err)
+			}
+			announcement.ExpiresOn = &expiresOn
+		}
+		announcements = append(announcements, announcement)
+	}
+
+	return announcements, nil
 }
 
 // validateConfig checks required startup settings before clients are built.

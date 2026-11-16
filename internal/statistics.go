@@ -22,11 +22,12 @@ func DefaultWindowDays() int {
 const updateTimestampLayout = "2006-01-02T15:04:05-07:00"
 
 type ReportOptions struct {
-	Limit       int
-	Reverse     bool
-	OffFromWork bool
-	Now         time.Time
-	WindowDays  int
+	Limit         int
+	Reverse       bool
+	OffFromWork   bool
+	Now           time.Time
+	WindowDays    int
+	Announcements []Announcement
 }
 
 type Summary struct {
@@ -109,15 +110,23 @@ func GenerateReport(rows []StoredMessage, options ReportOptions) (Summary, error
 	header := buildHeader(normalisedRows, options)
 	footer := buildFooter(normalisedRows, options)
 	prefix := ""
+	suffix := ""
 	if options.OffFromWork {
 		prefix = "夠鐘收工~~\n\n"
+		suffix = announcementSuffix(options.Announcements, options.Now)
 	}
-	bodyLimit := max(0, ReportLimit-jsStringLength(header)-jsStringLength(footer)-jsStringLength(prefix))
-	report := header + buildBodyWithLimit(normalisedRows, options, bodyLimit) + footer
+	// The suffix is reserved in the body budget so the final truncation
+	// cannot cut into the footer or the announcements.
+	bodyLimit := max(0, ReportLimit-jsStringLength(header)-jsStringLength(footer)-jsStringLength(prefix)-jsStringLength(suffix))
+	body := buildBodyWithLimit(normalisedRows, options, bodyLimit)
+	if suffix != "" {
+		body = truncateByJSLength(body, bodyLimit)
+	}
+	report := header + body + footer + suffix
 	if prefix != "" {
 		report = prefix + report
 	}
-	report = truncateReportByJSLength(report)
+	report = truncateByJSLength(report, ReportLimit)
 
 	return Summary{
 		Report:       report,
@@ -228,16 +237,36 @@ func buildFooter(summary rowSummary, options ReportOptions) string {
 	return footer
 }
 
-// truncateReportByJSLength trims text to the report limit using JavaScript
-// String.length semantics while keeping UTF-8 valid.
+// announcementSuffix joins live announcements for the off-work report.
+// For example, one live and one expired announcement at now becomes "\n\n<live>".
+func announcementSuffix(announcements []Announcement, now time.Time) string {
+	live := make([]string, 0, len(announcements))
+	for _, announcement := range announcements {
+		if strings.TrimSpace(announcement.Message) == "" {
+			continue
+		}
+		if announcement.ExpiresOn != nil && !now.Before(*announcement.ExpiresOn) {
+			continue
+		}
+		live = append(live, announcement.Message)
+	}
+	if len(live) == 0 {
+		return ""
+	}
+
+	return "\n\n" + strings.Join(live, "\n")
+}
+
+// truncateByJSLength trims text to limit using JavaScript String.length
+// semantics while keeping UTF-8 valid.
 // For example, a report one astral character over the limit drops that rune.
-func truncateReportByJSLength(text string) string {
-	if jsStringLength(text) <= ReportLimit {
+func truncateByJSLength(text string, limit int) string {
+	if jsStringLength(text) <= limit {
 		return text
 	}
 
 	runes := []rune(text)
-	for len(runes) > 0 && jsStringLength(string(runes)) > ReportLimit {
+	for len(runes) > 0 && jsStringLength(string(runes)) > limit {
 		runes = runes[:len(runes)-1]
 	}
 
