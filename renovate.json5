@@ -20,7 +20,7 @@
   packageRules: [
     {
       // Image CVE fixes keep the 1 day wait. Routine updates wait 3 days.
-      matchManagers: ['docker', 'dockerfile', 'helm', 'helm-values'],
+      matchManagers: ['dockerfile', 'helm-values'],
       minimumReleaseAge: '1 day',
       minimumReleaseAgeBehaviour: 'timestamp-optional',
     },
