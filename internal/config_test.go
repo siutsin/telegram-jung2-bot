@@ -387,8 +387,6 @@ func TestLoadRejectsInvalidAnnouncementExpirationDate(t *testing.T) {
 	}
 }
 
-// TestLoadRejectsAnnouncementLocationFailure keeps a missing Asia/Hong_Kong
-// zone from silently moving the expiry boundary to UTC.
 func TestLoadRejectsAnnouncementLocationFailure(t *testing.T) {
 	original := loadHongKongLocation
 	loadHongKongLocation = func() (*time.Location, error) {

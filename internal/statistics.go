@@ -115,8 +115,6 @@ func GenerateReport(rows []StoredMessage, options ReportOptions) (Summary, error
 		prefix = "夠鐘收工~~\n\n"
 		suffix = announcementSuffix(options.Announcements, options.Now)
 	}
-	// The suffix is reserved in the body budget so the final truncation
-	// cannot cut into the footer or the announcements.
 	bodyLimit := max(0, ReportLimit-jsStringLength(header)-jsStringLength(footer)-jsStringLength(prefix)-jsStringLength(suffix))
 	body := buildBodyWithLimit(normalisedRows, options, bodyLimit)
 	if suffix != "" {
@@ -237,7 +235,6 @@ func buildFooter(summary rowSummary, options ReportOptions) string {
 	return footer
 }
 
-// announcementSuffix joins live announcements for the off-work report.
 // For example, one live and one expired announcement at now becomes "\n\n<live>".
 func announcementSuffix(announcements []Announcement, now time.Time) string {
 	live := make([]string, 0, len(announcements))
@@ -257,8 +254,6 @@ func announcementSuffix(announcements []Announcement, now time.Time) string {
 	return "\n\n" + strings.Join(live, "\n")
 }
 
-// truncateByJSLength trims text to limit using JavaScript String.length
-// semantics while keeping UTF-8 valid.
 // For example, a report one astral character over the limit drops that rune.
 func truncateByJSLength(text string, limit int) string {
 	if jsStringLength(text) <= limit {
