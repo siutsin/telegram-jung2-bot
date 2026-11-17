@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	// The production image ships no system time zone data, so expiry dates need the embedded copy.
 	_ "time/tzdata"
 
 	caarlosenv "github.com/caarlos0/env/v11"
