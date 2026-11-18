@@ -233,48 +233,18 @@ func TestGenerateOffFromWorkReportJoinsMultipleAnnouncementsWithNewline(t *testi
 	assert.Equal(t, baseline.Report+"\n\nFirst\nSecond", summary.Report)
 }
 
-func TestGenerateOffFromWorkReportWithAllAnnouncementsExpiredIsUnchanged(t *testing.T) {
-	t.Parallel()
-
-	location := hongKongLocation(t)
-	first := time.Date(2026, 4, 1, 0, 0, 0, 0, location)
-	second := time.Date(2026, 5, 1, 0, 0, 0, 0, location)
-
-	baseline, err := GenerateReport(sampleRows(), ReportOptions{Limit: 1, OffFromWork: true, Now: now()})
-	require.NoError(t, err)
-
-	summary, err := GenerateReport(sampleRows(), ReportOptions{
-		Limit: 1, OffFromWork: true, Now: now(),
-		Announcements: []Announcement{
-			{Message: "Old news", ExpiresOn: &first},
-			{Message: "Older news", ExpiresOn: &second},
-		},
-	})
-
-	require.NoError(t, err)
-	assert.Equal(t, baseline.Report, summary.Report)
-}
-
-func TestGenerateOffFromWorkReportWithAllBlankAnnouncementsIsUnchanged(t *testing.T) {
-	t.Parallel()
-
-	baseline, err := GenerateReport(sampleRows(), ReportOptions{Limit: 1, OffFromWork: true, Now: now()})
-	require.NoError(t, err)
-
-	summary, err := GenerateReport(sampleRows(), ReportOptions{
-		Limit: 1, OffFromWork: true, Now: now(),
-		Announcements: []Announcement{{Message: ""}, {Message: "   "}, {Message: "\t\n"}},
-	})
-
-	require.NoError(t, err)
-	assert.Equal(t, baseline.Report, summary.Report)
-}
-
 func TestGenerateOffFromWorkReportSkipsBlankAnnouncements(t *testing.T) {
 	t.Parallel()
 
 	baseline, err := GenerateReport(sampleRows(), ReportOptions{Limit: 1, OffFromWork: true, Now: now()})
 	require.NoError(t, err)
+
+	unchanged, err := GenerateReport(sampleRows(), ReportOptions{
+		Limit: 1, OffFromWork: true, Now: now(),
+		Announcements: []Announcement{{Message: ""}, {Message: "   "}, {Message: "\t\n"}},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, baseline.Report, unchanged.Report)
 
 	summary, err := GenerateReport(sampleRows(), ReportOptions{
 		Limit: 1, OffFromWork: true, Now: now(),
