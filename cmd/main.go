@@ -150,6 +150,7 @@ func (app app) run(ctx context.Context) error {
 		time.Now,
 		app.config.EventQueueURL,
 		app.queue,
+		app.config.Announcements,
 		app.metrics,
 	)
 	queueWorker, err := newQueueWorker(app, actions)

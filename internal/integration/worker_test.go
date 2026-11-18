@@ -516,5 +516,6 @@ func newIntegrationService(
 		func() time.Time { return integrationNow },
 		resources.queueURL,
 		sender,
+		nil,
 	)
 }

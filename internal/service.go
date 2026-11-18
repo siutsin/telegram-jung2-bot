@@ -45,6 +45,7 @@ type Service struct {
 	nowFunc        func() time.Time
 	queueURL       string
 	sender         queueSender
+	announcements  []Announcement
 	metrics        *Metrics
 }
 
@@ -58,6 +59,7 @@ func NewService(
 	now func() time.Time,
 	queueURL string,
 	sender queueSender,
+	announcements []Announcement,
 	metrics ...*Metrics,
 ) Service {
 	return Service{
@@ -69,6 +71,7 @@ func NewService(
 		nowFunc:        now,
 		queueURL:       queueURL,
 		sender:         sender,
+		announcements:  announcements,
 		metrics:        firstMetrics(metrics),
 	}
 }
@@ -118,7 +121,7 @@ func (service Service) JungHelp(ctx context.Context, chatID int64, chatTitle str
 
 // OffFromWork sends the off-work report.
 func (service Service) OffFromWork(ctx context.Context, chatID int64) error {
-	return service.sendStatistics(ctx, chatID, ReportOptions{Limit: 10, OffFromWork: true})
+	return service.sendStatistics(ctx, chatID, ReportOptions{Limit: 10, OffFromWork: true, Announcements: service.announcements})
 }
 
 // OnOffFromWork fans out due off-work actions for one scheduled instant.
