@@ -225,6 +225,7 @@ func newTelegramClient(loadedConfig bot.Config, metrics *bot.Metrics) bot.Client
 func newHTTPServer(app app) (*http.Server, error) {
 	dependencies := httpserver.Dependencies{
 		ChatTable:            app.config.ChatIDTable,
+		ChatDeleter:          app.chats,
 		MessageTable:         app.config.MessageTable,
 		Enqueuer:             queue.NewProducer(app.config.EventQueueURL, app.queue),
 		MessageEnqueuer:      app.messageEnqueuer,

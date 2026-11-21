@@ -92,8 +92,24 @@ func NewClient(botToken string, options ...ClientOption) Client {
 
 // Update is the subset of Telegram updates used by this service.
 type Update struct {
-	UpdateID int64            `json:"update_id"`
-	Message  *TelegramMessage `json:"message"`
+	UpdateID     int64              `json:"update_id"`
+	Message      *TelegramMessage   `json:"message"`
+	MyChatMember *ChatMemberUpdated `json:"my_chat_member"`
+}
+
+// ChatMemberUpdated is the subset of a my_chat_member update used by this service.
+type ChatMemberUpdated struct {
+	Chat          Chat       `json:"chat"`
+	From          User       `json:"from"`
+	Date          int64      `json:"date"`
+	OldChatMember ChatMember `json:"old_chat_member"`
+	NewChatMember ChatMember `json:"new_chat_member"`
+}
+
+// ChatMember is the subset of a Telegram chat member used by this service.
+type ChatMember struct {
+	User   User   `json:"user"`
+	Status string `json:"status"`
 }
 
 // TelegramMessage is the subset of Telegram messages used by this service.
