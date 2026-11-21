@@ -3,6 +3,7 @@ package httpserver
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	bot "github.com/siutsin/telegram-jung2-bot/internal"
@@ -255,4 +256,98 @@ func TestEnqueueWebhookCommandIgnoresUnsupportedCommand(t *testing.T) {
 
 	assert.True(t, ok)
 	assert.Equal(t, response{}, result)
+}
+
+// myChatMemberPayload builds a my_chat_member update for chat 123.
+// For example, ("supergroup", "member", "left") is the bot leaving a supergroup.
+func myChatMemberPayload(chatType, oldStatus, newStatus string) string {
+	return fmt.Sprintf(`{"update_id":1,"my_chat_member":{"chat":{"id":123,"title":"Group","type":%q},"from":{"id":999},"date":1777723200,"old_chat_member":{"user":{"id":999},"status":%q},"new_chat_member":{"user":{"id":999},"status":%q}}}`, chatType, oldStatus, newStatus)
+}
+
+// TestHandleWebhookDeletesChatOnBotRemoval covers the left and kicked removals.
+func TestHandleWebhookDeletesChatOnBotRemoval(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		newStatus string
+	}{
+		{
+			name:      "left",
+			newStatus: "left",
+		},
+		{
+			name:      "kicked",
+			newStatus: "kicked",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			mocks, dependencies := newMockDependencies(t)
+			mocks.expectDeleteChat(nil)
+			got := handleWebhook(context.Background(), []byte(myChatMemberPayload("supergroup", "member", tc.newStatus)), dependencies)
+
+			assert.Equal(t, response{statusCode: 200}, got)
+			assert.Equal(t, []int64{123}, mocks.deletedChatIDs)
+		})
+	}
+}
+
+// TestHandleWebhookIgnoresMyChatMemberWithoutRemoval covers every my_chat_member
+// update that must not delete the chat row.
+func TestHandleWebhookIgnoresMyChatMemberWithoutRemoval(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		chatType  string
+		oldStatus string
+		newStatus string
+	}{
+		{
+			name:      "member to administrator",
+			chatType:  "supergroup",
+			oldStatus: "member",
+			newStatus: "administrator",
+		},
+		{
+			name:      "restricted",
+			chatType:  "group",
+			oldStatus: "member",
+			newStatus: "restricted",
+		},
+		{
+			name:      "non-group left",
+			chatType:  "private",
+			oldStatus: "member",
+			newStatus: "left",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, dependencies := newMockDependencies(t)
+			got := handleWebhook(context.Background(), []byte(myChatMemberPayload(tc.chatType, tc.oldStatus, tc.newStatus)), dependencies)
+
+			assert.Equal(t, response{statusCode: 204, message: "edited_message or non-group"}, got)
+		})
+	}
+}
+
+// TestHandleWebhookReturns200WhenChatDeleteFails keeps a failed deletion from
+// forcing a Telegram retry.
+func TestHandleWebhookReturns200WhenChatDeleteFails(t *testing.T) {
+	t.Parallel()
+
+	mocks, dependencies := newMockDependencies(t)
+	mocks.expectDeleteChat(errors.New("boom"))
+	got := handleWebhook(context.Background(), []byte(myChatMemberPayload("group", "member", "left")), dependencies)
+
+	assert.Equal(t, response{statusCode: 200}, got)
+	assert.Equal(t, []int64{123}, mocks.deletedChatIDs)
 }

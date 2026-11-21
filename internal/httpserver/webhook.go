@@ -12,15 +12,42 @@ import (
 
 // handleWebhook processes a Telegram webhook payload.
 func handleWebhook(ctx context.Context, payload []byte, dependencies Dependencies) response {
-	update, result, ok := parseGroupMessage(payload)
+	update, err := bot.ParseUpdate(payload)
+	if err == nil && update.MyChatMember != nil {
+		return handleMyChatMember(ctx, update.MyChatMember, dependencies)
+	}
+	parsed, result, ok := parseGroupMessage(payload)
 	if !ok {
 		return result
 	}
-	if result, saved := enqueueWebhookSave(ctx, update.UpdateID, *update.Message, dependencies); !saved {
+	if result, saved := enqueueWebhookSave(ctx, parsed.UpdateID, *parsed.Message, dependencies); !saved {
 		return result
 	}
 
-	return enqueueWebhookCommands(ctx, *update.Message, dependencies)
+	return enqueueWebhookCommands(ctx, *parsed.Message, dependencies)
+}
+
+// handleMyChatMember deletes the chat row when the bot leaves or is kicked from a group.
+// For example, a left status in a supergroup deletes chat 123 and returns 200.
+func handleMyChatMember(ctx context.Context, memberUpdate *bot.ChatMemberUpdated, dependencies Dependencies) response {
+	if !isRemovedChatMemberStatus(memberUpdate.NewChatMember.Status) || !isGroupChat(memberUpdate.Chat.Type) {
+		return response{statusCode: 204, message: "edited_message or non-group"}
+	}
+
+	err := dependencies.ChatDeleter.DeleteChat(ctx, dependencies.ChatTable, memberUpdate.Chat.ID)
+	if err != nil {
+		slog.Error("delete chat on bot removal", "chatId", memberUpdate.Chat.ID, "oldStatus", memberUpdate.OldChatMember.Status, "newStatus", memberUpdate.NewChatMember.Status, "err", err)
+		return response{statusCode: 200}
+	}
+
+	slog.Info("deleted chat on bot removal", "chatId", memberUpdate.Chat.ID, "oldStatus", memberUpdate.OldChatMember.Status, "newStatus", memberUpdate.NewChatMember.Status)
+	return response{statusCode: 200}
+}
+
+// isRemovedChatMemberStatus reports whether the bot left the chat.
+// For example, "left" and "kicked" return true while "member" returns false.
+func isRemovedChatMemberStatus(status string) bool {
+	return status == "left" || status == "kicked"
 }
 
 // parseGroupMessage parses a Telegram webhook and keeps only group messages.

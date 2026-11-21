@@ -25,10 +25,12 @@ type httpserverMocks struct {
 	messageEnqueuer *httpservermock.MockEnqueuer
 	messenger       *httpservermock.MockMessenger
 	scaleUpper      *httpservermock.MockScaleUpper
+	chatDeleter     *httpservermock.MockChatDeleter
 
 	actions        []queue.Action
 	messageActions []queue.Action
 	sentMessages   []string
+	deletedChatIDs []int64
 }
 
 func newMockDependencies(t *testing.T) (*httpserverMocks, Dependencies) {
@@ -40,12 +42,14 @@ func newMockDependencies(t *testing.T) (*httpserverMocks, Dependencies) {
 		messageEnqueuer: httpservermock.NewMockEnqueuer(controller),
 		messenger:       httpservermock.NewMockMessenger(controller),
 		scaleUpper:      httpservermock.NewMockScaleUpper(controller),
+		chatDeleter:     httpservermock.NewMockChatDeleter(controller),
 	}
 
 	readiness := &atomic.Bool{}
 	readiness.Store(true)
 
 	return mocks, Dependencies{
+		ChatDeleter:     mocks.chatDeleter,
 		Enqueuer:        mocks.enqueuer,
 		MessageEnqueuer: mocks.messageEnqueuer,
 		Messenger:       mocks.messenger,
@@ -90,4 +94,13 @@ func (mocks *httpserverMocks) expectSendMessage(err error) {
 
 func (mocks *httpserverMocks) expectScaleUp(err error) {
 	mocks.scaleUpper.EXPECT().ScaleUp(gomock.Any()).Return(err)
+}
+
+func (mocks *httpserverMocks) expectDeleteChat(err error) {
+	mocks.chatDeleter.EXPECT().
+		DeleteChat(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, tableName string, chatID int64) error {
+			mocks.deletedChatIDs = append(mocks.deletedChatIDs, chatID)
+			return err
+		})
 }
