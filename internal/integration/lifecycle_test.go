@@ -145,7 +145,7 @@ func startLifecycleApp(t *testing.T, ctx context.Context) lifecycleApp {
 		crashWorkerOnce.Do(func() { close(crashWorker) })
 		releaseDrainOnce.Do(func() { close(releaseDrain) })
 		select {
-		case <-runDone:
+		case <-runDone: //nolint:errcheck // cleanup only waits for shutdown; run error is asserted in the test body
 		case <-time.After(time.Second):
 		}
 	})
